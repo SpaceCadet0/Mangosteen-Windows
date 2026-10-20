@@ -144,6 +144,34 @@ internal static class MetadataEditor
 
     public static (double Latitude, double Longitude)? Location(BitmapMetadata? metadata)
     {
+        if (metadata is null)
+        {
+            return null;
+        }
+        // Raw EXIF first (rationals), then the property-system names some files use.
+        foreach (var gps in new[] { "/app1/ifd/gps", "/ifd/gps" })
+        {
+            try
+            {
+                if (metadata.GetQuery(gps + "/{ushort=2}") is ulong[] { Length: 3 } latRaw && metadata.GetQuery(gps + "/{ushort=4}") is ulong[] { Length: 3 } lonRaw)
+                {
+                    var latitude = Degrees(latRaw);
+                    var longitude = Degrees(lonRaw);
+                    if (metadata.GetQuery(gps + "/{ushort=1}") as string == "S")
+                    {
+                        latitude = -latitude;
+                    }
+                    if (metadata.GetQuery(gps + "/{ushort=3}") as string == "W")
+                    {
+                        longitude = -longitude;
+                    }
+                    return (latitude, longitude);
+                }
+            }
+            catch (Exception error) when (error is NotSupportedException or InvalidOperationException or ArgumentException)
+            {
+            }
+        }
         try
         {
             if (metadata?.GetQuery("System.GPS.Latitude") is double[] { Length: 3 } lat
@@ -166,6 +194,16 @@ internal static class MetadataEditor
         {
         }
         return null;
+    }
+
+    private static double Degrees(ulong[] rationals)
+    {
+        static double Value(ulong rational)
+        {
+            var denominator = (uint)(rational >> 32);
+            return denominator == 0 ? 0 : (double)(uint)rational / denominator;
+        }
+        return Value(rationals[0]) + Value(rationals[1]) / 60 + Value(rationals[2]) / 3600;
     }
 
     /// <summary>Writes "name (metadata).ext" next to the original with the changes applied.</summary>

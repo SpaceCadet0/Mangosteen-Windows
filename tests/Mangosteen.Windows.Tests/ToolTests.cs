@@ -34,10 +34,12 @@ public sealed class ToolTests : IDisposable
         var metadata = new BitmapMetadata("jpg") { Title = "Старое название", CameraModel = "Test camera" };
         if (gps)
         {
-            metadata.SetQuery("System.GPS.Latitude", new[] { 55.0, 45.0, 0.0 });
-            metadata.SetQuery("System.GPS.LatitudeRef", "N");
-            metadata.SetQuery("System.GPS.Longitude", new[] { 37.0, 37.0, 0.0 });
-            metadata.SetQuery("System.GPS.LongitudeRef", "E");
+            // EXIF rationals: numerator in the low 32 bits, denominator in the high 32 bits.
+            static ulong Rational(uint value) => value | (1UL << 32);
+            metadata.SetQuery("/app1/ifd/gps/{ushort=1}", "N");
+            metadata.SetQuery("/app1/ifd/gps/{ushort=2}", new[] { Rational(55), Rational(45), Rational(0) });
+            metadata.SetQuery("/app1/ifd/gps/{ushort=3}", "E");
+            metadata.SetQuery("/app1/ifd/gps/{ushort=4}", new[] { Rational(37), Rational(37), Rational(0) });
         }
         var encoder = new JpegBitmapEncoder { QualityLevel = 90 };
         encoder.Frames.Add(BitmapFrame.Create(new FormatConvertedBitmap(image, PixelFormats.Bgr24, null, 0), null, metadata, null));
@@ -73,7 +75,7 @@ public sealed class ToolTests : IDisposable
         var output = MetadataEditor.Apply(photo, new MetadataChanges { RemoveLocation = true });
         var metadata = MetadataEditor.Read(output);
         Assert.Null(MetadataEditor.Location(metadata));
-        Assert.Null(metadata?.GetQuery("System.GPS.Latitude"));
+        Assert.Null(metadata?.GetQuery("/app1/ifd/gps/{ushort=2}"));
         Assert.Equal("Test camera", MetadataEditor.Text(MetadataField.Model, metadata));
     }
 
@@ -140,7 +142,7 @@ public sealed class ToolTests : IDisposable
         Assert.Equal(3, pages.Count);
         Assert.Equal(90, pages[0].Rotation.Value);
         Assert.Equal(180, pages[2].Rotation.Value);
-        Assert.Equal(100, pages[0].MediaBox.Bounds.Width, 1); // the second page came first
+        Assert.Equal(75, pages[0].MediaBox.Bounds.Width, 1); // the second page (100 px at 96 dpi = 75 pt) came first
     }
 
     [Fact]
