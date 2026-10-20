@@ -93,19 +93,18 @@ internal static class ToolRegistry
     private static void Save(Window window, string output)
     {
         window.UpdateLayout();
-        var content = (FrameworkElement)window.Content;
-        var width = (int)Math.Ceiling(content.ActualWidth + content.Margin.Left + content.Margin.Right);
-        var height = (int)Math.Ceiling(content.ActualHeight + content.Margin.Top + content.Margin.Bottom);
-        var visual = new DrawingVisual();
-        using (var context = visual.RenderOpen())
+        // The whole window is rendered, so effects such as shadows keep their place.
+        var width = (int)Math.Ceiling(window.ActualWidth);
+        var height = (int)Math.Ceiling(window.ActualHeight);
+        var background = new DrawingVisual();
+        using (var context = background.RenderOpen())
         {
-            var background = window.Background is SolidColorBrush { Color.A: > 0 } brush ? brush : SystemColors.WindowBrush;
-            context.DrawRectangle(background, null, new Rect(0, 0, width, height));
-            context.DrawRectangle(new VisualBrush(content) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top },
-                null, new Rect(content.Margin.Left, content.Margin.Top, content.ActualWidth, content.ActualHeight));
+            var brush = window.Background is SolidColorBrush { Color.A: > 0 } solid ? solid : SystemColors.WindowBrush;
+            context.DrawRectangle(brush, null, new Rect(0, 0, width, height));
         }
         var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(visual);
+        bitmap.Render(background);
+        bitmap.Render(window);
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output))!);
