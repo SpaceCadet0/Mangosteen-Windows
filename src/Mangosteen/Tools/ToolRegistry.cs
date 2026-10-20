@@ -20,6 +20,18 @@ internal static class ToolRegistry
         "tool.edit" => new EditorTool(files, jobs),
         "tool.redact" => new HideTool(files, jobs),
         "tool.annotate" => new AnnotateTool(files, jobs),
+        "tool.trimMedia" => new TrimTool(files, jobs),
+        "tool.splitMedia" => new SplitTool(files, jobs),
+        "tool.frames" => new FramesTool(files, jobs),
+        "tool.speed" => new SpeedTool(files, jobs),
+        "tool.normalize" => new VolumeTool(files, jobs),
+        "tool.channels" => new ChannelsTool(files, jobs),
+        "tool.compressMedia" => new MediaCompressTool(files, jobs),
+        "tool.join" => new JoinTool(files, jobs),
+        "tool.cropVideo" => new CropTool(files, jobs),
+        "tool.bleep" => new BleepTool(files, jobs),
+        "tool.visualizer" => new VisualizerTool(files, jobs),
+        "tool.redactVideo" => new VideoHideTool(files, jobs),
         _ => null,
     };
 

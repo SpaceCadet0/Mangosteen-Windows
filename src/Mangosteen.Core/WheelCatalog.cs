@@ -63,6 +63,15 @@ public static class WheelCatalog
     /// <summary>Tools that already work on Windows; the others are shown greyed out until their phase.</summary>
     private static readonly HashSet<string> AvailableTools = ["tool.extract", "tool.createPDF", "tool.mergePDF", "tool.crop", "tool.compress", "tool.metadata", "tool.frame", "tool.collage", "tool.organizePDF", "tool.edit", "tool.redact", "tool.annotate"];
 
+    /// <summary>Video and audio tools; they need the bundled FFmpeg.</summary>
+    private static readonly HashSet<string> MediaTools =
+    [
+        "tool.trimMedia", "tool.splitMedia", "tool.speed", "tool.normalize", "tool.bleep", "tool.channels", "tool.visualizer",
+        "tool.redactVideo", "tool.cropVideo", "tool.join", "tool.compressMedia", "tool.frames",
+    ];
+
+    private static bool IsAvailable(string id) => AvailableTools.Contains(id) || FormatCatalog.MediaAvailable && MediaTools.Contains(id);
+
     /// <summary>Same rules and order as the macOS Tools wheel.</summary>
     private static List<WheelItem> ToolItems(IReadOnlyList<string> paths)
     {
@@ -80,7 +89,7 @@ public static class WheelCatalog
         {
             if (condition)
             {
-                items.Add(new WheelItem(id, title, icon, AvailableTools.Contains(id)));
+                items.Add(new WheelItem(id, title, icon, IsAvailable(id)));
             }
         }
         Add(media, "tool.trimMedia", "Trim", WheelIcon.Trim);

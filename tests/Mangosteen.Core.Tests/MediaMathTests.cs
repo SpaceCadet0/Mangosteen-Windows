@@ -74,3 +74,19 @@ public class MediaMathTests
     [Fact]
     public void LosslessAudioCompressesToM4a() => Assert.Equal(FileFormat.M4a, MediaMath.CompressedFormat(FileFormat.Wav));
 }
+
+public sealed class MediaToolCatalogTests : IDisposable
+{
+    public void Dispose() => FormatCatalog.MediaAvailable = false;
+
+    [Fact]
+    public void MediaToolsNeedFFmpeg()
+    {
+        FormatCatalog.MediaAvailable = false;
+        Assert.All(WheelCatalog.Items(WheelKind.Tools, ["clip.mp4"]), i => Assert.False(i.Available));
+        FormatCatalog.MediaAvailable = true;
+        var items = WheelCatalog.Items(WheelKind.Tools, ["clip.mp4", "b.mp4"]);
+        Assert.Contains(items, i => i.Id == "tool.join" && i.Available);
+        Assert.All(items, i => Assert.True(i.Available));
+    }
+}
