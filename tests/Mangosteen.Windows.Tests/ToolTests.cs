@@ -156,3 +156,31 @@ public sealed class ToolTests : IDisposable
         Assert.Equal(1000, collage.PixelWidth);
     }
 }
+
+public sealed class AnnotationTests
+{
+    [Fact]
+    public void EveryKindRendersAtFullSize()
+    {
+        var photo = BitmapSource.Create(400, 300, 96, 96, PixelFormats.Bgra32, null, new byte[400 * 300 * 4], 1600);
+        photo.Freeze();
+        System.Windows.Point P(double x, double y) => new(x, y);
+        var marks = new List<Annotation>
+        {
+            new(AnnotationKind.Arrow, [P(10, 10), P(200, 150)], 0xFFE5484D, 4, 20),
+            new(AnnotationKind.Rectangle, [P(20, 20), P(120, 80)], 0xFF3E8ED0, 3, 20),
+            new(AnnotationKind.Ellipse, [P(150, 20), P(250, 90)], 0xFF46A758, 3, 20),
+            new(AnnotationKind.Text, [P(30, 200)], 0xFFFFFFFF, 3, 24) { Text = "Привет" },
+            new(AnnotationKind.Number, [P(300, 200)], 0xFF671E38, 3, 20) { Number = 1 },
+            new(AnnotationKind.Pen, [P(10, 280), P(50, 260), P(90, 290)], 0xFF000000, 3, 20),
+            new(AnnotationKind.Highlight, [P(100, 250), P(200, 250)], 0xFFF5C542, 3, 20),
+            new(AnnotationKind.Magnifier, [P(320, 80), P(360, 80)], 0, 3, 20),
+            new(AnnotationKind.Picture, [P(250, 220), P(290, 260)], 0, 0, 0) { Picture = photo },
+        };
+        var result = Sta.Run(() => AnnotationDrawing.Render(photo, marks));
+        Assert.Equal(400, result.PixelWidth);
+        Assert.Equal(300, result.PixelHeight);
+        // The arrow is drawn: the transparent photo got opaque pixels.
+        Assert.Contains(ImageIO.ToBgra(result).Pixels.Where((_, i) => i % 4 == 3), a => a > 200);
+    }
+}

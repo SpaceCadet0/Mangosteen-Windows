@@ -19,6 +19,7 @@ internal static class ToolRegistry
         "tool.organizePDF" => new PdfPagesTool(files, jobs),
         "tool.edit" => new EditorTool(files, jobs),
         "tool.redact" => new HideTool(files, jobs),
+        "tool.annotate" => new AnnotateTool(files, jobs),
         _ => null,
     };
 

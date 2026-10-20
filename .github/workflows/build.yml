@@ -55,7 +55,8 @@ jobs:
             @{ id = 'tool.collage'; files = @('photo.jpg', 'portrait.jpg', 'photo.jpg') },
             @{ id = 'tool.organizePDF'; files = @('document.pdf') },
             @{ id = 'tool.edit'; files = @('photo.jpg') },
-            @{ id = 'tool.redact'; files = @('photo.jpg', 'portrait.jpg') }
+            @{ id = 'tool.redact'; files = @('photo.jpg', 'portrait.jpg') },
+            @{ id = 'tool.annotate'; files = @('photo.jpg') }
           )
           New-Item -ItemType Directory -Force snapshots | Out-Null
           foreach ($tool in $tools) {
