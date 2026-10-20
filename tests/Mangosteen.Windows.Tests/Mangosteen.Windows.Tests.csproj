@@ -11,6 +11,7 @@
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="System.IO" />
     <ProjectReference Include="..\..\src\Mangosteen\Mangosteen.csproj" />
   </ItemGroup>
 </Project>

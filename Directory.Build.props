@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <DebugType>embedded</DebugType>
     <Version>0.1.0</Version>
     <Authors>Igor Rusakov (SpaceCadet)</Authors>
     <Copyright>Copyright (c) 2026 Igor Rusakov (SpaceCadet)</Copyright>

@@ -1,0 +1,50 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{3A7FF70E-170F-4C43-ACD7-5B1731A81B1E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mangosteen.Core", "src\Mangosteen.Core\Mangosteen.Core.csproj", "{E95689D5-D9EA-4823-8F32-B9C5FCC67005}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mangosteen", "src\Mangosteen\Mangosteen.csproj", "{6B9EE146-2982-4629-B6FB-C2C821C814AA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{C62EE908-CAFB-422A-9F5E-168293CF0B2F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mangosteen.Core.Tests", "tests\Mangosteen.Core.Tests\Mangosteen.Core.Tests.csproj", "{4A5C63CC-C118-453A-86C7-66650D50F05F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mangosteen.Windows.Tests", "tests\Mangosteen.Windows.Tests\Mangosteen.Windows.Tests.csproj", "{642FF396-DC15-4344-B953-386D010E7405}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E95689D5-D9EA-4823-8F32-B9C5FCC67005}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E95689D5-D9EA-4823-8F32-B9C5FCC67005}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E95689D5-D9EA-4823-8F32-B9C5FCC67005}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E95689D5-D9EA-4823-8F32-B9C5FCC67005}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6B9EE146-2982-4629-B6FB-C2C821C814AA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6B9EE146-2982-4629-B6FB-C2C821C814AA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6B9EE146-2982-4629-B6FB-C2C821C814AA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6B9EE146-2982-4629-B6FB-C2C821C814AA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4A5C63CC-C118-453A-86C7-66650D50F05F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4A5C63CC-C118-453A-86C7-66650D50F05F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4A5C63CC-C118-453A-86C7-66650D50F05F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4A5C63CC-C118-453A-86C7-66650D50F05F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{642FF396-DC15-4344-B953-386D010E7405}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{642FF396-DC15-4344-B953-386D010E7405}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{642FF396-DC15-4344-B953-386D010E7405}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{642FF396-DC15-4344-B953-386D010E7405}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E95689D5-D9EA-4823-8F32-B9C5FCC67005} = {3A7FF70E-170F-4C43-ACD7-5B1731A81B1E}
+		{6B9EE146-2982-4629-B6FB-C2C821C814AA} = {3A7FF70E-170F-4C43-ACD7-5B1731A81B1E}
+		{4A5C63CC-C118-453A-86C7-66650D50F05F} = {C62EE908-CAFB-422A-9F5E-168293CF0B2F}
+		{642FF396-DC15-4344-B953-386D010E7405} = {C62EE908-CAFB-422A-9F5E-168293CF0B2F}
+	EndGlobalSection
+EndGlobal

@@ -10,19 +10,20 @@
     <ApplicationIcon>Assets\Mangosteen.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <StartupObject>Mangosteen.Program</StartupObject>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- DPI awareness is declared in app.manifest for the WPF app; the WinForms analyzer would prefer an API call. -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-    <DebugType>embedded</DebugType>
   </PropertyGroup>
   <ItemGroup>
     <!-- WPF and WinForms share type names (Application, Point, MessageBox); WinForms is only used for the tray icon. -->
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
+    <Using Include="System.IO" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Assets\Mangosteen.ico" />
