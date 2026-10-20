@@ -12,7 +12,9 @@ internal static partial class Native
     public const int WM_QUIT = 0x0012;
     public const int WM_CANCELMODE = 0x001F;
     public const int WM_KEYDOWN = 0x0100;
+    public const int WM_KEYUP = 0x0101;
     public const int WM_SYSKEYDOWN = 0x0104;
+    public const int WM_SYSKEYUP = 0x0105;
     public const int WM_LBUTTONDOWN = 0x0201;
     public const int WM_RBUTTONDOWN = 0x0204;
     public const int WM_RBUTTONUP = 0x0205;
@@ -24,6 +26,12 @@ internal static partial class Native
     public const int VK_MENU = 0x12;
     public const int VK_ESCAPE = 0x1B;
     public const int VK_RBUTTON = 0x02;
+    public const int VK_LSHIFT = 0xA0;
+    public const int VK_RSHIFT = 0xA1;
+    public const int VK_LCONTROL = 0xA2;
+    public const int VK_RCONTROL = 0xA3;
+    public const int VK_LMENU = 0xA4;
+    public const int VK_RMENU = 0xA5;
     public const int VK_LWIN = 0x5B;
     public const int VK_RWIN = 0x5C;
     /// <summary>Unassigned virtual key, used to stop a lone Alt press from activating a menu bar.</summary>

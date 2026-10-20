@@ -17,6 +17,8 @@ internal sealed class AppController : IDisposable
     private readonly InputHooks _hooks = new();
     private TrayIcon? _tray;
     private WheelWindow? _wheel;
+    private WheelKind _wheelKind;
+    private IReadOnlyList<string> _wheelPaths = [];
 
     public AppController(Dispatcher dispatcher) => _dispatcher = dispatcher;
 
@@ -27,6 +29,7 @@ internal sealed class AppController : IDisposable
         _hooks.Armed += click => _dispatcher.BeginInvoke(() => OnArmed(click));
         _hooks.Triggered += (click, up) => _dispatcher.BeginInvoke(() => OnTriggered(click, up));
         _hooks.DismissWheel += reason => _dispatcher.BeginInvoke(() => CloseWheel(reason));
+        _hooks.SwitchWheel += kind => _dispatcher.BeginInvoke(() => SwitchWheel(kind));
         _hooks.Start();
         _dispatcher.BeginInvoke(ShellHitTest.WarmUp, DispatcherPriority.ApplicationIdle);
         if (_hooks.Installed)
@@ -150,8 +153,23 @@ internal sealed class AppController : IDisposable
             }
         };
         _wheel = wheel;
+        _wheelKind = kind;
+        _wheelPaths = paths;
         wheel.Show();
         return wheel;
+    }
+
+    /// <summary>Shift, Ctrl or Alt pressed while a wheel is open: show that wheel for the same files.</summary>
+    private void SwitchWheel(WheelKind kind)
+    {
+        if (_wheel is not { } wheel || kind == _wheelKind)
+        {
+            return;
+        }
+        var items = WheelCatalog.Items(kind, _wheelPaths);
+        Log.Write($"wheel switched {_wheelKind} -> {kind}: {string.Join(", ", items.Select(i => i.Title))}");
+        _wheelKind = kind;
+        wheel.ShowItems(kind, items, _wheelPaths.Count);
     }
 
     private void CloseWheel(string reason)

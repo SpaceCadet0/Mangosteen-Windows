@@ -55,6 +55,13 @@ internal sealed class InputHooks : IDisposable
     /// <summary>Raised on the hook thread when a click lands outside the open wheel, or Esc is pressed.</summary>
     public event Action<string>? DismissWheel;
 
+    /// <summary>Raised on the hook thread when Shift, Ctrl or Alt is pressed while a wheel is open.</summary>
+    public event Action<WheelKind>? SwitchWheel;
+
+    // Touched only on the hook thread.
+    private readonly HashSet<uint> _modifiersDown = [];
+    private readonly HashSet<uint> _swallowedModifiers = [];
+
     public InputHooks()
     {
         _mouseProc = MouseProc;
@@ -163,17 +170,60 @@ internal sealed class InputHooks : IDisposable
 
     private IntPtr KeyboardProc(int nCode, IntPtr wParam, IntPtr lParam)
     {
-        if (nCode >= 0 && _wheel is not null && (int)wParam is WM_KEYDOWN or WM_SYSKEYDOWN)
+        if (nCode < 0)
         {
-            var info = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
-            if (info.vkCode == VK_ESCAPE)
+            return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
+        }
+        var info = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
+        var injected = (info.flags & LLKHF_INJECTED) != 0 && info.dwExtraInfo == InjectedTag;
+        var message = (int)wParam;
+        var keyDown = message is WM_KEYDOWN or WM_SYSKEYDOWN;
+        var keyUp = message is WM_KEYUP or WM_SYSKEYUP;
+
+        if (!injected && WheelForModifier(info.vkCode) is { } kind)
+        {
+            // Held modifiers auto-repeat, so only a key that was up counts as a press. A press while the wheel is
+            // open switches the wheel, and both its down and up are swallowed so the app underneath never sees
+            // it (a lone Alt would otherwise open the menu bar). A key already held when the wheel opened, such
+            // as the one used for the right click, passes through untouched, including its release.
+            if (keyDown)
             {
-                DismissWheel?.Invoke("Esc");
-                return 1;
+                var fresh = _modifiersDown.Add(info.vkCode);
+                if (_swallowedModifiers.Contains(info.vkCode))
+                {
+                    return 1;
+                }
+                if (fresh && _wheel is not null)
+                {
+                    _swallowedModifiers.Add(info.vkCode);
+                    SwitchWheel?.Invoke(kind);
+                    return 1;
+                }
             }
+            else if (keyUp)
+            {
+                _modifiersDown.Remove(info.vkCode);
+                if (_swallowedModifiers.Remove(info.vkCode))
+                {
+                    return 1;
+                }
+            }
+        }
+        else if (keyDown && _wheel is not null && info.vkCode == VK_ESCAPE)
+        {
+            DismissWheel?.Invoke("Esc");
+            return 1;
         }
         return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
     }
+
+    private static WheelKind? WheelForModifier(uint vk) => vk switch
+    {
+        VK_SHIFT or VK_LSHIFT or VK_RSHIFT => WheelKind.Convert,
+        VK_CONTROL or VK_LCONTROL or VK_RCONTROL => WheelKind.Tools,
+        VK_MENU or VK_LMENU or VK_RMENU => WheelKind.Actions,
+        _ => null,
+    };
 
     /// <summary>Exactly one of Shift, Ctrl and Alt picks the wheel; any other combination is left alone.</summary>
     private static WheelKind? HeldWheel()

@@ -39,7 +39,10 @@ internal sealed class WheelWindow : Window
     private static readonly Brush TextBrush = Frozen(new SolidColorBrush(Color.FromRgb(0xE6, 0xE6, 0xEA)));
     private static readonly Brush SecondaryBrush = Frozen(new SolidColorBrush(Color.FromRgb(0x9A, 0x9A, 0xA0)));
 
+    private static readonly Point Center = new(WindowSize / 2, WindowSize / 2);
+
     private readonly POINT _anchor;
+    private readonly Canvas _layer = new() { Width = WindowSize, Height = WindowSize };
     private bool _closing;
 
     /// <summary>Raised when a segment is clicked. The window closes itself first.</summary>
@@ -68,34 +71,14 @@ internal sealed class WheelWindow : Window
         UseLayoutRounding = true;
         TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
 
+        // The disc stays; the segments and the centre live in a layer that is replaced when the wheel switches.
         var canvas = new Canvas { Width = WindowSize, Height = WindowSize };
-        var center = new Point(WindowSize / 2, WindowSize / 2);
-
-        canvas.Children.Add(Circle(center, DiscRadius, DiscBrush, DiscBorderBrush, effect: new DropShadowEffect
+        canvas.Children.Add(Circle(Center, DiscRadius, DiscBrush, DiscBorderBrush, effect: new DropShadowEffect
         {
             BlurRadius = 14, ShadowDepth = 3, Direction = 270, Opacity = 0.45, Color = Colors.Black,
         }));
-
-        for (var i = 0; i < items.Count; i++)
-        {
-            AddSegment(canvas, center, items[i], i, items.Count);
-        }
-
-        canvas.Children.Add(Circle(center, CenterRadius, CenterBrush, null));
-        var centerText = new StackPanel { Width = CenterRadius * 2 - 12, IsHitTestVisible = false };
-        centerText.Children.Add(new TextBlock
-        {
-            Text = WheelCatalog.Title(kind), Foreground = Brushes.White, FontSize = 15, FontWeight = FontWeights.SemiBold,
-            TextAlignment = TextAlignment.Center,
-        });
-        centerText.Children.Add(new TextBlock
-        {
-            Text = items.Count == 0 ? (kind == WheelKind.Convert ? "Nothing to convert" : "Nothing here yet")
-                : WheelCatalog.FileCount(fileCount),
-            Foreground = SecondaryBrush, FontSize = 12, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 2, 0, 0),
-        });
-        PlaceCentered(canvas, centerText, center, CenterRadius * 2 - 12, 44);
+        canvas.Children.Add(_layer);
+        _layer.Children.Add(BuildLayer(kind, items, fileCount));
 
         var scale = new ScaleTransform(0.92, 0.92, WindowSize / 2, WindowSize / 2);
         canvas.RenderTransform = scale;
@@ -110,6 +93,41 @@ internal sealed class WheelWindow : Window
             scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1, duration) { EasingFunction = ease });
             scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1, duration) { EasingFunction = ease });
         };
+    }
+
+    /// <summary>Shows another wheel for the same files in place: same window, same position.</summary>
+    public void ShowItems(WheelKind kind, IReadOnlyList<WheelItem> items, int fileCount)
+    {
+        var layer = BuildLayer(kind, items, fileCount);
+        _layer.Children.Clear();
+        _layer.Children.Add(layer);
+        layer.BeginAnimation(OpacityProperty, new DoubleAnimation(0.3, 1, TimeSpan.FromMilliseconds(90)));
+    }
+
+    private Canvas BuildLayer(WheelKind kind, IReadOnlyList<WheelItem> items, int fileCount)
+    {
+        var layer = new Canvas { Width = WindowSize, Height = WindowSize };
+        for (var i = 0; i < items.Count; i++)
+        {
+            AddSegment(layer, Center, items[i], i, items.Count);
+        }
+
+        layer.Children.Add(Circle(Center, CenterRadius, CenterBrush, null));
+        var centerText = new StackPanel { Width = CenterRadius * 2 - 12, IsHitTestVisible = false };
+        centerText.Children.Add(new TextBlock
+        {
+            Text = WheelCatalog.Title(kind), Foreground = Brushes.White, FontSize = 15, FontWeight = FontWeights.SemiBold,
+            TextAlignment = TextAlignment.Center,
+        });
+        centerText.Children.Add(new TextBlock
+        {
+            Text = items.Count == 0 ? (kind == WheelKind.Convert ? "Nothing to convert" : "Nothing here yet")
+                : WheelCatalog.FileCount(fileCount),
+            Foreground = SecondaryBrush, FontSize = 12, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 2, 0, 0),
+        });
+        PlaceCentered(layer, centerText, Center, CenterRadius * 2 - 12, 44);
+        return layer;
     }
 
     public void CloseWheel()
