@@ -43,7 +43,7 @@ jobs:
           $size = (Get-Item publish/Mangosteen.exe).Length / 1MB
           Write-Host ("Mangosteen.exe: {0:N1} MB" -f $size)
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Mangosteen-win-x64
           path: publish/Mangosteen.exe
