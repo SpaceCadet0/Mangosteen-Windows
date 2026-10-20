@@ -11,7 +11,7 @@ public sealed class ImageConverterTests : IDisposable
     private const int Height = 5;
     private readonly string _dir = Directory.CreateTempSubdirectory("mangosteen-wic").FullName;
 
-    public void Dispose() => Directory.Delete(_dir, recursive: true);
+    public void Dispose() => TempCleanup.Delete(_dir);
 
     public static TheoryData<FileFormat> Targets => new() { FileFormat.Jpg, FileFormat.Tiff, FileFormat.Bmp, FileFormat.Gif };
 

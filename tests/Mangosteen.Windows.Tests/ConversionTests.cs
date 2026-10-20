@@ -12,7 +12,7 @@ public sealed class ConversionTests : IDisposable
 {
     private readonly string _dir = Directory.CreateTempSubdirectory("mangosteen-conv").FullName;
 
-    public void Dispose() => Directory.Delete(_dir, recursive: true);
+    public void Dispose() => TempCleanup.Delete(_dir);
 
     private string PathOf(string name) => Path.Combine(_dir, name);
 

@@ -14,7 +14,7 @@ public sealed class MediaTests : IDisposable
     public void Dispose()
     {
         FormatCatalog.MediaAvailable = false;
-        Directory.Delete(_dir, recursive: true);
+        TempCleanup.Delete(_dir);
     }
 
     private string PathOf(string name) => Path.Combine(_dir, name);
