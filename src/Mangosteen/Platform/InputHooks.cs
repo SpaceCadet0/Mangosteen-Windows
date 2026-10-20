@@ -26,9 +26,10 @@ internal sealed record ScreenCircle(double X, double Y, double Radius)
 /// read cheap state and post everything else to the UI thread.
 /// </summary>
 /// <remarks>
-/// Hold Shift, Ctrl or Alt and right-click a file in Explorer or on the desktop. The button-down passes
-/// through so Explorer selects the item under the cursor; the matching button-up is swallowed so no
-/// context menu opens, and <see cref="Triggered"/> fires instead. Every other click passes untouched.
+/// Hold Shift, Ctrl or Alt and right-click a file in Explorer or on the desktop. Both the button-down and
+/// the button-up are swallowed, so Explorer never sees the click (no context menu, no right-drag, no half
+/// finished click), and <see cref="Triggered"/> fires instead; the item under the cursor is then selected
+/// through UI Automation. Every other click passes untouched.
 /// </remarks>
 internal sealed class InputHooks : IDisposable
 {
@@ -141,6 +142,7 @@ internal sealed class InputHooks : IDisposable
                         if (_armed is not null)
                         {
                             Armed?.Invoke(_armed);
+                            return 1; // Explorer never sees this click, so it cannot start a menu or a drag.
                         }
                     }
                     break;
@@ -148,7 +150,7 @@ internal sealed class InputHooks : IDisposable
                 case WM_RBUTTONUP when _armed is { } armed:
                     _armed = null;
                     Triggered?.Invoke(armed, info.pt);
-                    return 1; // No WM_RBUTTONUP, so no context menu.
+                    return 1;
             }
         }
         catch (Exception)

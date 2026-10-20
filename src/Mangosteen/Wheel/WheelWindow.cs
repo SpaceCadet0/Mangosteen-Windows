@@ -45,11 +45,6 @@ internal sealed class WheelWindow : Window
     /// <summary>Raised when a segment is clicked. The window closes itself first.</summary>
     public event Action<WheelItem>? Chosen;
 
-    /// <summary>Raised when the opening animation has finished and the wheel is fully visible and clickable.</summary>
-    public event Action<WheelWindow>? Opened;
-
-    public IntPtr Handle => new WindowInteropHelper(this).Handle;
-
     /// <summary>Raised once the window is placed: the disc in physical screen pixels.</summary>
     public event Action<ScreenCircle>? Placed;
 
@@ -111,9 +106,7 @@ internal sealed class WheelWindow : Window
         {
             var duration = TimeSpan.FromMilliseconds(120);
             var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-            var fade = new DoubleAnimation(1, duration);
-            fade.Completed += (_, _) => Opened?.Invoke(this);
-            canvas.BeginAnimation(OpacityProperty, fade);
+            canvas.BeginAnimation(OpacityProperty, new DoubleAnimation(1, duration));
             scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1, duration) { EasingFunction = ease });
             scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1, duration) { EasingFunction = ease });
         };

@@ -28,6 +28,7 @@ internal sealed class AppController : IDisposable
         _hooks.Triggered += (click, up) => _dispatcher.BeginInvoke(() => OnTriggered(click, up));
         _hooks.DismissWheel += reason => _dispatcher.BeginInvoke(() => CloseWheel(reason));
         _hooks.Start();
+        _dispatcher.BeginInvoke(ShellHitTest.WarmUp, DispatcherPriority.ApplicationIdle);
         if (_hooks.Installed)
         {
             _tray.Notify("Mangosteen is running", "Hold Shift, Ctrl or Alt and right-click a file in Explorer or on the desktop.");
@@ -66,30 +67,44 @@ internal sealed class AppController : IDisposable
         var clock = Stopwatch.StartNew();
         var latency = Environment.TickCount64 - click.DownTimestamp;
 
-        // Explorer saw the button-down but not the button-up; take it out of any capture or drag-detect mode
-        // before talking to it over COM.
-        var threadId = GetWindowThreadProcessId(click.Root, out _);
-        var info = new GUITHREADINFO { cbSize = Marshal.SizeOf<GUITHREADINFO>() };
-        var capture = GetGUIThreadInfo(threadId, ref info) ? info.hwndCapture : IntPtr.Zero;
-        if (capture != IntPtr.Zero)
+        // Explorer never saw this click, so select the item under the cursor the way it would have.
+        var hit = ShellHitTest.SelectItemAt(click.DownPoint);
+        var hitTime = clock.ElapsedMilliseconds;
+        Log.Write($"triggered {click.Kind}: down-to-up {latency} ms, hit {hit.Outcome} {hit.Detail} in {hitTime} ms");
+        if (hit.Outcome is ShellHitTest.Outcome.NoItem or ShellHitTest.Outcome.Failed)
         {
-            PostMessage(capture, WM_CANCELMODE, IntPtr.Zero, IntPtr.Zero);
+            // Empty space, a header, or something UI Automation cannot select: give the click back so the usual
+            // context menu opens.
+            Log.Write($"replaying the right click because hit={hit.Outcome}");
+            SendRightClick();
+            return;
         }
 
+        // A selection made through UI Automation may reach the shell view a moment later; after Select() exactly
+        // one item is expected.
         ShellSelection.Result selection;
-        try
+        var attempts = 0;
+        do
         {
-            selection = ShellSelection.Read(click.Target, click.RootClass);
+            if (attempts > 0)
+            {
+                Thread.Sleep(30);
+            }
+            attempts++;
+            try
+            {
+                selection = ShellSelection.Read(click.Target, click.RootClass);
+            }
+            catch (Exception error)
+            {
+                Log.Error("read selection", error);
+                selection = new ShellSelection.Result([], "error");
+            }
         }
-        catch (Exception error)
-        {
-            Log.Error("read selection", error);
-            selection = new ShellSelection.Result([], "error");
-        }
+        while (hit.Outcome == ShellHitTest.Outcome.Selected && selection.Paths.Count != 1 && attempts < 4);
 
-        Log.Write($"triggered {click.Kind}: down-to-up {latency} ms, capture={(capture == IntPtr.Zero ? "none" : ClassName(capture))}, " +
-            $"selection {selection.Paths.Count} via {selection.Source} in {clock.ElapsedMilliseconds} ms, " +
-            $"rbutton down={IsDown(VK_RBUTTON)}");
+        Log.Write($"selection {selection.Paths.Count} via {selection.Source} in {clock.ElapsedMilliseconds - hitTime} ms " +
+            $"({attempts} {(attempts == 1 ? "read" : "reads")}), rbutton down={IsDown(VK_RBUTTON)}");
         foreach (var path in selection.Paths.Take(20))
         {
             Log.Write($"  {path}");
@@ -98,42 +113,12 @@ internal sealed class AppController : IDisposable
         if (selection.Paths.Count == 0)
         {
             // Not on a file (empty space, or a non-file item): give the right click back so the usual menu opens.
-            Log.Write("nothing selected: replaying the right click");
+            Log.Write("replaying the right click because the selection has no files");
             SendRightClick();
             return;
         }
 
-        var wheel = ShowWheel(click.Kind, selection.Paths, up);
-        wheel.Opened += _ => ReleaseStuckRightButton(wheel, threadId);
-    }
-
-    /// <summary>
-    /// A swallowed button-up may leave Windows thinking the right button is still down. Once the wheel is fully
-    /// visible (a layered window at opacity 0 is click-through) and is the window under the cursor, an extra
-    /// button-up lands on the wheel, which ignores it. Otherwise it could open Explorer's menu, so it is skipped.
-    /// </summary>
-    private static void ReleaseStuckRightButton(WheelWindow wheel, uint explorerThread)
-    {
-        if (!IsDown(VK_RBUTTON))
-        {
-            Log.Write("right button reads as up: nothing to release");
-            return;
-        }
-        var info = new GUITHREADINFO { cbSize = Marshal.SizeOf<GUITHREADINFO>() };
-        if (GetGUIThreadInfo(explorerThread, ref info) && info.hwndCapture != IntPtr.Zero)
-        {
-            Log.Write($"right button reads as down, but Explorer still has capture ({ClassName(info.hwndCapture)}): not releasing");
-            return;
-        }
-        GetCursorPos(out var cursor);
-        var under = GetAncestor(WindowFromPoint(cursor), GA_ROOT);
-        if (under != wheel.Handle)
-        {
-            Log.Write($"right button reads as down, but the cursor is over {ClassName(under)}, not the wheel: not releasing");
-            return;
-        }
-        Log.Write("right button reads as down: releasing it on the wheel");
-        SendRightButton(MOUSEEVENTF_RIGHTUP);
+        ShowWheel(click.Kind, selection.Paths, up);
     }
 
     private void ChooseFiles(WheelKind kind)
