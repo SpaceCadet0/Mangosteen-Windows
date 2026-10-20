@@ -24,6 +24,7 @@
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
     <Using Include="System.IO" />
+    <Using Include="Mangosteen.Core.Loc" Static="true" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Assets\Mangosteen.ico" />

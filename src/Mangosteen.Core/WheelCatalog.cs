@@ -61,7 +61,7 @@ public static class WheelCatalog
     ];
 
     /// <summary>Tools that already work on Windows; the others are shown greyed out until their phase.</summary>
-    private static readonly HashSet<string> AvailableTools = ["tool.extract", "tool.createPDF", "tool.mergePDF"];
+    private static readonly HashSet<string> AvailableTools = ["tool.extract", "tool.createPDF", "tool.mergePDF", "tool.crop"];
 
     /// <summary>Same rules and order as the macOS Tools wheel.</summary>
     private static List<WheelItem> ToolItems(IReadOnlyList<string> paths)

@@ -43,6 +43,32 @@ jobs:
           $size = (Get-Item publish/Mangosteen.exe).Length / 1MB
           Write-Host ("Mangosteen.exe: {0:N1} MB" -f $size)
 
+      - name: Tool window snapshots
+        shell: pwsh
+        run: |
+          $fixtures = Resolve-Path tests/fixtures
+          $tools = @(
+            @{ id = 'tool.crop'; files = @('photo.jpg', 'portrait.jpg') }
+          )
+          New-Item -ItemType Directory -Force snapshots | Out-Null
+          foreach ($tool in $tools) {
+            $output = Join-Path (Resolve-Path snapshots) ($tool.id + '.png')
+            $arguments = @('--snapshot', $tool.id, $output) + ($tool.files | ForEach-Object { Join-Path $fixtures $_ })
+            $process = Start-Process publish/Mangosteen.exe -ArgumentList $arguments -Wait -PassThru
+            if ($process.ExitCode -ne 0 -or -not (Test-Path $output)) {
+              Get-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/mangosteen.log') -Tail 40
+              throw "Snapshot of $($tool.id) failed"
+            }
+            Write-Host "snapshot: $($tool.id)"
+          }
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: tool-snapshots
+          path: snapshots
+          if-no-files-found: ignore
+
       - uses: actions/upload-artifact@v7
         with:
           name: Mangosteen-win-x64

@@ -243,7 +243,14 @@ internal sealed class AppController : IDisposable
                     FileActions.OpenTerminal(paths);
                     break;
                 default:
-                    tray.Notify(item.Title, "Coming in a later version of Mangosteen for Windows.");
+                    if (Tools.ToolRegistry.Create(item.Id, paths, jobs) is { } tool)
+                    {
+                        tool.Present();
+                    }
+                    else
+                    {
+                        tray.Notify(item.Title, L("Coming in a later version of Mangosteen for Windows."));
+                    }
                     break;
             }
         }
