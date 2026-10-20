@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Version>0.1.0</Version>
+    <Authors>Igor Rusakov (SpaceCadet)</Authors>
+    <Copyright>Copyright (c) 2026 Igor Rusakov (SpaceCadet)</Copyright>
+  </PropertyGroup>
+</Project>
