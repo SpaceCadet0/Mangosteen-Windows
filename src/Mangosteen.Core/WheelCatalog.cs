@@ -100,7 +100,7 @@ public static class WheelCatalog
         Add(audio, "tool.channels", "Channels", WheelIcon.Channels);
         Add(audio, "tool.visualizer", "Visualizer", WheelIcon.Visualizer);
         Add(video, "tool.redactVideo", "Hide", WheelIcon.Hide);
-        Add(video, "tool.cropVideo", "Crop", WheelIcon.Crop);
+        Add(video, "tool.cropVideo", "Reframe", WheelIcon.Crop);
         Add(Count(f => f.Category() == FormatCategory.Video) >= 2, "tool.join", "Join", WheelIcon.Join);
         Add(media && !images && !pdf, "tool.compressMedia", "Compress", WheelIcon.Compress);
         Add(video, "tool.frames", "Frames", WheelIcon.Frames);

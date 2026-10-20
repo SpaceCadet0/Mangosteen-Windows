@@ -28,18 +28,35 @@ internal sealed class Timeline : Grid
     private Drag _drag;
     private double _viewStart;
     private double _viewEnd = 1;
+    private readonly System.Windows.Controls.Primitives.ScrollBar _scroll = new()
+    {
+        Orientation = Orientation.Horizontal, Visibility = Visibility.Collapsed, Margin = new Thickness(0, 4, 0, 0),
+    };
+    private bool _syncingScroll;
 
     public Timeline()
     {
         RowDefinitions.Add(new RowDefinition { Height = new GridLength(StripHeight) });
         RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         Children.Add(_strip);
+        // Shown while zoomed in: drag it to move along the file.
+        SetRow(_scroll, 1);
+        Children.Add(_scroll);
+        _scroll.ValueChanged += (_, e) =>
+        {
+            if (!_syncingScroll)
+            {
+                var span = _viewEnd - _viewStart;
+                SetView(e.NewValue, e.NewValue + span);
+            }
+        };
         Children.Add(_overlay);
         var labels = new Grid { Margin = new Thickness(0, 3, 0, 0) };
         labels.Children.Add(_left);
         labels.Children.Add(_center);
         labels.Children.Add(_right);
-        SetRow(labels, 1);
+        SetRow(labels, 2);
         Children.Add(labels);
         _overlay.MouseLeftButtonDown += Down;
         _overlay.MouseMove += Move;
@@ -247,6 +264,16 @@ internal sealed class Timeline : Grid
         Canvas.SetTop(playhead, -3);
         _overlay.Children.Add(playhead);
 
+        var zoomed = _viewEnd - _viewStart < Duration - 0.001;
+        _scroll.Visibility = zoomed ? Visibility.Visible : Visibility.Collapsed;
+        _syncingScroll = true;
+        _scroll.Minimum = 0;
+        _scroll.Maximum = Math.Max(0, Duration - (_viewEnd - _viewStart));
+        _scroll.ViewportSize = _viewEnd - _viewStart;
+        _scroll.SmallChange = (_viewEnd - _viewStart) * 0.1;
+        _scroll.LargeChange = (_viewEnd - _viewStart) * 0.8;
+        _scroll.Value = _viewStart;
+        _syncingScroll = false;
         _left.Text = MediaMath.Timecode(_viewStart);
         _right.Text = MediaMath.Timecode(_viewEnd);
         _center.Text = ShowSelection

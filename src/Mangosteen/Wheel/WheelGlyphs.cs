@@ -16,7 +16,7 @@ internal static class WheelGlyphs
         WheelIcon.Archive => "",
         WheelIcon.Table => "",
         WheelIcon.Subtitle => "",
-        WheelIcon.Trim => "",
+        WheelIcon.Trim => "",
         WheelIcon.Split => "",
         WheelIcon.Speed => "",
         WheelIcon.Volume => "",

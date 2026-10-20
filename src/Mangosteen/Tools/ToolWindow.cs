@@ -35,7 +35,8 @@ internal abstract class ToolWindow : Window
         };
         ShowInTaskbar = true;
         SizeToContent = SizeToContent.WidthAndHeight;
-        ResizeMode = ResizeMode.CanResize;
+        // The layouts are made for their natural size; stretching them only spreads the controls apart.
+        ResizeMode = ResizeMode.CanMinimize;
         WindowStartupLocation = WindowStartupLocation.Manual;
         UseLayoutRounding = true;
         try

@@ -36,7 +36,7 @@ internal sealed class CropTool : ToolWindow
     private (Point Start, UnitRect Rect, CropMath.Edges? Edges)? _drag;
     private bool _loaded;
 
-    public CropTool(IReadOnlyList<string> files, Jobs jobs) : base(L("Crop"), files, L("Crop"))
+    public CropTool(IReadOnlyList<string> files, Jobs jobs) : base(IsVideo(files) ? L("Reframe") : L("Crop"), files, IsVideo(files) ? L("Reframe") : L("Crop"))
     {
         _images = ToolOutput.Images(files);
         // Crop video: the frame is drawn on a still from the video.
@@ -130,6 +130,9 @@ internal sealed class CropTool : ToolWindow
     }
 
     public override bool IsSettled => _loaded;
+
+    private static bool IsVideo(IReadOnlyList<string> files) =>
+        ToolOutput.Images(files).Count == 0 && files.Any(f => Core.FileFormats.Detect(f) is { } format && Core.FileFormats.Category(format) == Core.FormatCategory.Video);
 
     private void Load()
     {
