@@ -213,7 +213,7 @@ internal sealed class BleepTool : MediaToolWindow
     {
         action();
         Timeline.Redraw();
-        _count.Text = string.Format(L("{0} bleeps"), Timeline.Ranges.Count);
+        _count.Text = Core.Loc.Count(Timeline.Ranges.Count, "bleep");
     }
 
     private void Preview(Button button)

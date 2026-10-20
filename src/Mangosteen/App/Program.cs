@@ -21,11 +21,21 @@ internal static class Program
         {
             return RunSnapshot(args[1], args[2], args[3..]);
         }
-        using var instance = new Mutex(initiallyOwned: true, @"Local\Mangosteen.SingleInstance", out var isFirst);
-        if (!isFirst)
+        using var instance = new Mutex(initiallyOwned: false, @"Local\Mangosteen.SingleInstance");
+        // After a language change the old copy is still closing; wait for it.
+        var wait = args.Contains("--restart") ? TimeSpan.FromSeconds(15) : TimeSpan.Zero;
+        try
         {
-            return 0;
+            if (!instance.WaitOne(wait))
+            {
+                return 0;
+            }
         }
+        catch (AbandonedMutexException)
+        {
+        }
+        var settings = AppSettings.Load();
+        Core.Loc.SetLanguage(Environment.GetEnvironmentVariable("MANGOSTEEN_LANGUAGE") ?? settings.EffectiveLanguage);
 
         Log.Start(Version);
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
@@ -36,7 +46,7 @@ internal static class Program
         };
         AppDomain.CurrentDomain.UnhandledException += (_, e) => Log.Write($"FATAL {e.ExceptionObject}");
 
-        using var controller = new AppController(app.Dispatcher);
+        using var controller = new AppController(app.Dispatcher, settings);
         app.Dispatcher.BeginInvoke(controller.Start, DispatcherPriority.Normal);
         return app.Run();
     }
@@ -44,6 +54,7 @@ internal static class Program
     /// <summary>Renders one tool window to a PNG and exits; no tray icon, no hooks.</summary>
     private static int RunSnapshot(string id, string output, IReadOnlyList<string> files)
     {
+        Core.Loc.SetLanguage(Environment.GetEnvironmentVariable("MANGOSTEEN_LANGUAGE") ?? "en");
         Core.FormatCatalog.MediaAvailable = Media.FFmpeg.IsBundled;
         Log.Start(Version + " (snapshot)");
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };

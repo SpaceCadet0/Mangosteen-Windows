@@ -121,7 +121,7 @@ internal sealed class WheelWindow : Window
         });
         centerText.Children.Add(new TextBlock
         {
-            Text = items.Count == 0 ? (kind == WheelKind.Convert ? "Nothing to convert" : "Nothing here yet")
+            Text = items.Count == 0 ? (kind == WheelKind.Convert ? L("Nothing to convert") : L("Nothing here yet"))
                 : WheelCatalog.FileCount(fileCount),
             Foreground = SecondaryBrush, FontSize = 12, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 2, 0, 0),
@@ -188,7 +188,7 @@ internal sealed class WheelWindow : Window
             StrokeThickness = count == 1 ? 0 : Corner * 2,
             StrokeLineJoin = PenLineJoin.Round,
             Cursor = System.Windows.Input.Cursors.Hand,
-            ToolTip = item.Available ? null : "Coming in a later version",
+            ToolTip = item.Available ? null : L("Coming in a later version"),
         };
 
         var foreground = item.Available ? TextBrush : SecondaryBrush;

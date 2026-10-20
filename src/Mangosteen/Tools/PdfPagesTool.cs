@@ -169,7 +169,7 @@ internal sealed class PdfPagesTool : ToolWindow
             };
             _tiles.Children.Add(tile);
         }
-        _hint.Text = string.Format(L("{0} pages. Drag pages to reorder; Ctrl or Shift selects several."), _items.Count);
+        _hint.Text = Core.Loc.Count(_items.Count, "page") + ". " + L("Drag pages to reorder; Ctrl or Shift selects several.");
         ActionEnabled = _items.Count > 0;
     }
 
@@ -252,6 +252,6 @@ internal sealed class PdfPagesTool : ToolWindow
         var items = _items.ToList();
         var pdfs = _pdfs.ToList();
         Close();
-        _jobs.RunOnce(L("Saving pages"), L("Pages saved"), string.Format(L("{0} pages"), items.Count), () => Save(items, pdfs));
+        _jobs.RunOnce(L("Saving pages"), L("Pages saved"), Core.Loc.Count(items.Count, "page"), () => Save(items, pdfs));
     }
 }

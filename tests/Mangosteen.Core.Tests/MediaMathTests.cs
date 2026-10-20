@@ -90,3 +90,45 @@ public sealed class MediaToolCatalogTests : IDisposable
         Assert.All(items, i => Assert.True(i.Available));
     }
 }
+
+public sealed class LanguageTests : IDisposable
+{
+    public void Dispose() => Loc.SetLanguage("en");
+
+    [Theory]
+    [InlineData(1, "1 файл")]
+    [InlineData(2, "2 файла")]
+    [InlineData(5, "5 файлов")]
+    [InlineData(11, "11 файлов")]
+    [InlineData(21, "21 файл")]
+    [InlineData(22, "22 файла")]
+    [InlineData(112, "112 файлов")]
+    public void RussianPlurals(int count, string text)
+    {
+        Loc.SetLanguage("ru");
+        Assert.Equal(text, WheelCatalog.FileCount(count));
+    }
+
+    [Fact]
+    public void SpanishAndEnglishPlurals()
+    {
+        Loc.SetLanguage("es");
+        Assert.Equal("1 archivo", WheelCatalog.FileCount(1));
+        Assert.Equal("3 archivos", WheelCatalog.FileCount(3));
+        Loc.SetLanguage("en");
+        Assert.Equal("3 files", WheelCatalog.FileCount(3));
+    }
+
+    [Fact]
+    public void TablesAreEmbeddedAndComplete()
+    {
+        var ru = Loc.Load("ru");
+        var es = Loc.Load("es");
+        Assert.True(ru.Count > 300);
+        Assert.Equal(ru.Keys.Order(), es.Keys.Order());
+        Loc.SetLanguage("ru");
+        Assert.Equal("Обрезать", Loc.L("Crop"));
+        Assert.Equal("Инструменты", WheelCatalog.Title(WheelKind.Tools));
+        Assert.Contains(WheelCatalog.Items(WheelKind.Actions, ["a.png"]), i => i.Title == "Путь" || i.Title == "Копировать");
+    }
+}

@@ -11,6 +11,8 @@ internal static class ToolRegistry
 {
     public static ToolWindow? Create(string id, IReadOnlyList<string> files, Jobs jobs) => id switch
     {
+        "welcome" => new WelcomeWindow(),
+        "settings" => new SettingsWindow(new AppSettings()),
         "tool.crop" => new CropTool(files, jobs),
         "tool.compress" => new CompressTool(files, jobs),
         "tool.metadata" => new MetadataTool(files, jobs),

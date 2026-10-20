@@ -90,7 +90,7 @@ internal sealed class SplitTool : MediaToolWindow
     {
         action();
         Timeline.Redraw();
-        _count.Text = string.Format(L("{0} parts"), Timeline.Markers.Count + 1);
+        _count.Text = Core.Loc.Count(Timeline.Markers.Count + 1, "part");
     }
 
     protected override void Run()
@@ -129,7 +129,7 @@ internal sealed class FramesTool : MediaToolWindow
     {
         action();
         Timeline.Redraw();
-        _count.Text = string.Format(L("{0} frames"), Timeline.Markers.Count);
+        _count.Text = Core.Loc.Count(Timeline.Markers.Count, "frame");
     }
 
     protected override void Run()

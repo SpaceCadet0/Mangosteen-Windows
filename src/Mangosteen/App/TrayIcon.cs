@@ -12,23 +12,25 @@ internal sealed class TrayIcon : IDisposable
 
     private string? _reveal;
 
-    public TrayIcon(Action<WheelKind> chooseFiles, Action toggleShelf, Action quit)
+    public TrayIcon(Action<WheelKind> chooseFiles, Action toggleShelf, Action settings, Action welcome, Action quit)
     {
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add(new Forms.ToolStripMenuItem($"Mangosteen {Program.Version}") { Enabled = false });
-        menu.Items.Add(new Forms.ToolStripMenuItem("Shift / Ctrl / Alt + right-click a file") { Enabled = false });
+        menu.Items.Add(new Forms.ToolStripMenuItem(L("Shift / Ctrl / Alt + right-click a file")) { Enabled = false });
         menu.Items.Add(new Forms.ToolStripSeparator());
 
-        var choose = new Forms.ToolStripMenuItem("Choose files…");
-        choose.DropDownItems.Add("Convert…", null, (_, _) => chooseFiles(WheelKind.Convert));
-        choose.DropDownItems.Add("Tools…", null, (_, _) => chooseFiles(WheelKind.Tools));
-        choose.DropDownItems.Add("Actions…", null, (_, _) => chooseFiles(WheelKind.Actions));
+        var choose = new Forms.ToolStripMenuItem(L("Choose files…"));
+        choose.DropDownItems.Add(L("Convert…"), null, (_, _) => chooseFiles(WheelKind.Convert));
+        choose.DropDownItems.Add(L("Tools…"), null, (_, _) => chooseFiles(WheelKind.Tools));
+        choose.DropDownItems.Add(L("Actions…"), null, (_, _) => chooseFiles(WheelKind.Actions));
         menu.Items.Add(choose);
-        menu.Items.Add("Float shelf", null, (_, _) => toggleShelf());
+        menu.Items.Add(L("Float shelf"), null, (_, _) => toggleShelf());
 
-        menu.Items.Add("Open log", null, (_, _) => OpenLog());
+        menu.Items.Add(L("Settings…"), null, (_, _) => settings());
+        menu.Items.Add(L("Welcome…"), null, (_, _) => welcome());
+        menu.Items.Add(L("Open log"), null, (_, _) => OpenLog());
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("Quit Mangosteen", null, (_, _) => quit());
+        menu.Items.Add(L("Quit Mangosteen"), null, (_, _) => quit());
 
         using var stream = typeof(TrayIcon).Assembly.GetManifestResourceStream("Mangosteen.ico")!;
         _icon = new Forms.NotifyIcon

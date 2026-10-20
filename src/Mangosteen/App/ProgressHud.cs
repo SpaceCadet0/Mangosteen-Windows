@@ -44,14 +44,14 @@ internal sealed class ProgressHud : Window
         };
         _stop = new Button
         {
-            Content = "Stop", Padding = new Thickness(12, 3, 12, 3), Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
+            Content = L("Stop"), Padding = new Thickness(12, 3, 12, 3), Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
             Foreground = text, Background = new SolidColorBrush(Color.FromRgb(0x3A, 0x3A, 0x3D)), BorderThickness = new Thickness(0),
             Cursor = System.Windows.Input.Cursors.Hand,
         };
         _stop.Click += (_, _) =>
         {
             _stop.IsEnabled = false;
-            _stop.Content = "Stopping…";
+            _stop.Content = L("Stopping…");
             StopRequested?.Invoke();
         };
 
@@ -91,7 +91,7 @@ internal sealed class ProgressHud : Window
     {
         _bar.IsIndeterminate = total <= 1 && fraction is null;
         _bar.Value = total == 0 ? 0 : (done + (fraction ?? 0)) / total;
-        _detail.Text = total > 1 ? $"{Math.Min(done + 1, total)} of {total} · {item}" : item;
+        _detail.Text = total > 1 ? string.Format(L("{0} of {1}"), Math.Min(done + 1, total), total) + $" · {item}" : item;
     }
 
     protected override void OnSourceInitialized(EventArgs e)

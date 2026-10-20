@@ -22,13 +22,19 @@ internal sealed class AppController : IDisposable
     private WheelKind _wheelKind;
     private IReadOnlyList<string> _wheelPaths = [];
 
-    public AppController(Dispatcher dispatcher) => _dispatcher = dispatcher;
+    private readonly AppSettings _settings;
+
+    public AppController(Dispatcher dispatcher, AppSettings settings)
+    {
+        _dispatcher = dispatcher;
+        _settings = settings;
+    }
 
     public void Start()
     {
         FormatCatalog.MediaAvailable = Media.FFmpeg.IsBundled;
         Log.Write($"ffmpeg bundled: {Media.FFmpeg.IsBundled}");
-        _tray = new TrayIcon(ChooseFiles, _shelf.Toggle, Quit);
+        _tray = new TrayIcon(ChooseFiles, _shelf.Toggle, () => new SettingsWindow(_settings).Present(), () => new WelcomeWindow().Present(), Quit);
         _jobs = new Jobs(_dispatcher, _tray);
         // The hook thread only posts; everything below runs on the UI thread.
         _hooks.Armed += click => _dispatcher.BeginInvoke(() => OnArmed(click));
@@ -37,13 +43,19 @@ internal sealed class AppController : IDisposable
         _hooks.SwitchWheel += kind => _dispatcher.BeginInvoke(() => SwitchWheel(kind));
         _hooks.Start();
         _dispatcher.BeginInvoke(ShellHitTest.WarmUp, DispatcherPriority.ApplicationIdle);
-        if (_hooks.Installed)
+        if (!_settings.WelcomeShown)
         {
-            _tray.Notify("Mangosteen is running", "Hold Shift, Ctrl or Alt and right-click a file in Explorer or on the desktop.");
+            _settings.WelcomeShown = true;
+            _settings.Save();
+            new WelcomeWindow().Present();
+        }
+        else if (_hooks.Installed)
+        {
+            _tray.Notify(L("Mangosteen is running"), L("Hold Shift, Ctrl or Alt and right-click a file in Explorer or on the desktop."));
         }
         else
         {
-            _tray.Notify("Mangosteen", "Could not install the mouse hook. See the log in the tray menu.", error: true);
+            _tray.Notify("Mangosteen", L("Could not install the mouse hook. See the log in the tray menu."), error: true);
         }
     }
 
@@ -199,7 +211,7 @@ internal sealed class AppController : IDisposable
         {
             // Items that cannot become the target (or already are it) are skipped, as the wheel promised.
             var inputs = paths.Where(p => FormatCatalog.Conversion(p) is var c && c.Source != target && c.Targets.Contains(target)).ToList();
-            jobs.RunEach($"Converting to {target.DisplayName()}", $"Converted to {target.DisplayName()}", inputs,
+            jobs.RunEach(string.Format(L("Converting to {0}"), target.DisplayName()), string.Format(L("Converted to {0}"), target.DisplayName()), inputs,
                 (input, token, progress) => Converter.Convert(input, target, token, progress));
             return;
         }
@@ -209,35 +221,35 @@ internal sealed class AppController : IDisposable
             {
                 case "tool.extract":
                     var archives = paths.Where(p => FileFormats.Detect(p)?.Category() == FormatCategory.Archive).ToList();
-                    jobs.RunEach("Extracting", "Extracted", archives, (input, _) => Archives.ExtractNextToArchive(input));
+                    jobs.RunEach(L("Extracting"), L("Extracted"), archives, (input, _) => Archives.ExtractNextToArchive(input));
                     break;
                 case "tool.createPDF":
-                    jobs.RunOnce("Creating PDF", "PDF created", WheelCatalog.FileCount(paths.Count), () => Converter.CreatePdf(paths));
+                    jobs.RunOnce(L("Creating PDF"), L("PDF created"), WheelCatalog.FileCount(paths.Count), () => Converter.CreatePdf(paths));
                     break;
                 case "tool.mergePDF":
-                    jobs.RunOnce("Merging PDFs", "PDFs merged", WheelCatalog.FileCount(paths.Count), () => Converter.MergePdfs(paths));
+                    jobs.RunOnce(L("Merging PDFs"), L("PDFs merged"), WheelCatalog.FileCount(paths.Count), () => Converter.MergePdfs(paths));
                     break;
                 case "action.float":
                     _shelf.Add(paths);
                     break;
                 case "action.copy":
                     FileActions.Copy(paths);
-                    tray.Notify("Copied", paths.Count == 1 ? $"{Path.GetFileName(paths[0])}: paste it in a folder or a message." : $"{paths.Count} items: paste them in a folder or a message.");
+                    tray.Notify(L("Copied"), string.Format(L("{0}: paste it in a folder or a message."), paths.Count == 1 ? Path.GetFileName(paths[0]) : Core.Loc.Count(paths.Count, "item")));
                     break;
                 case "action.copyPath":
                     FileActions.CopyPaths(paths);
-                    tray.Notify("Path copied", paths.Count == 1 ? paths[0] : $"{paths.Count} paths");
+                    tray.Notify(L("Path copied"), paths.Count == 1 ? paths[0] : Core.Loc.Count(paths.Count, "path"));
                     break;
                 case "action.move":
                     if (FileActions.Move(paths) is var (moved, failed))
                     {
                         if (failed.Count > 0)
                         {
-                            tray.Notify($"{failed.Count} of {moved.Count + failed.Count} not moved", string.Join("\n", failed.Take(3)), error: true);
+                            tray.Notify(string.Format(L("{0} of {1} not moved"), failed.Count, moved.Count + failed.Count), string.Join("\n", failed.Take(3)), error: true);
                         }
                         else if (moved.Count > 0)
                         {
-                            tray.Notify("Moved", moved.Count == 1 ? Path.GetFileName(moved[0]) : $"{moved.Count} items", reveal: moved[^1]);
+                            tray.Notify(L("Moved"), moved.Count == 1 ? Path.GetFileName(moved[0]) : Core.Loc.Count(moved.Count, "item"), reveal: moved[^1]);
                         }
                     }
                     break;

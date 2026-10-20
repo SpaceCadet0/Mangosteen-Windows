@@ -51,26 +51,26 @@ internal sealed class FloatShelf : Window
 
         _moveMode = new ToggleButton
         {
-            Content = "Copy", ToolTip = "Dragging out copies the files. Click to move them instead.",
+            Content = L("Copy"), ToolTip = L("Dragging out copies the files. Click to move them instead."),
             Foreground = TextBrush, Background = Line, BorderThickness = new Thickness(0), Padding = new Thickness(10, 2, 10, 2),
             Margin = new Thickness(0, 0, 6, 0), Cursor = Cursors.Hand,
         };
         _moveMode.Checked += (_, _) =>
         {
-            _moveMode.Content = "Move";
+            _moveMode.Content = L("Move");
             _moveMode.Background = BrandBrush;
-            _moveMode.ToolTip = "Dragging out moves the files. Click to copy them instead.";
+            _moveMode.ToolTip = L("Dragging out moves the files. Click to copy them instead.");
         };
         _moveMode.Unchecked += (_, _) =>
         {
-            _moveMode.Content = "Copy";
+            _moveMode.Content = L("Copy");
             _moveMode.Background = Line;
-            _moveMode.ToolTip = "Dragging out copies the files. Click to move them instead.";
+            _moveMode.ToolTip = L("Dragging out copies the files. Click to move them instead.");
         };
 
-        var clear = HeaderButton("", "Remove all");
+        var clear = HeaderButton("", L("Remove all"));
         clear.Click += (_, _) => Clear();
-        var close = HeaderButton("", "Hide the shelf (it keeps its files)");
+        var close = HeaderButton("", L("Hide the shelf (it keeps its files)"));
         close.Click += (_, _) => Hide();
 
         var title = new TextBlock
@@ -95,7 +95,7 @@ internal sealed class FloatShelf : Window
 
         _empty = new TextBlock
         {
-            Text = "Drop files here, or use Float on the Actions wheel.", Foreground = Secondary, FontSize = 12,
+            Text = L("Drop files here, or use Float on the Actions wheel."), Foreground = Secondary, FontSize = 12,
             TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 16, 4, 16), TextAlignment = TextAlignment.Center,
         };
         var scroll = new ScrollViewer { Content = _rows, MaxHeight = 420, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
@@ -175,7 +175,7 @@ internal sealed class FloatShelf : Window
         var available = _items.Where(Exists).ToList();
         if (available.Count > 1)
         {
-            _rows.Children.Add(Row(available, $"All {available.Count} items", "Drag them all at once", null));
+            _rows.Children.Add(Row(available, string.Format(L("All {0}"), Core.Loc.Count(available.Count, "item")), L("Drag them all at once"), null));
         }
         foreach (var item in _items)
         {
@@ -210,13 +210,13 @@ internal sealed class FloatShelf : Window
         text.Children.Add(new TextBlock { Text = title, Foreground = TextBrush, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis });
         text.Children.Add(new TextBlock
         {
-            Text = present ? subtitle : "Moved or deleted", Foreground = Secondary, FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis,
+            Text = present ? subtitle : L("Moved or deleted"), Foreground = Secondary, FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis,
         });
         var remove = new Button
         {
             Content = "", FontFamily = new FontFamily(WheelGlyphs.FontFamily), FontSize = 10, Foreground = Secondary,
             Background = Brushes.Transparent, BorderThickness = new Thickness(0), Padding = new Thickness(6), Cursor = Cursors.Hand,
-            VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Hidden, ToolTip = "Remove from the shelf",
+            VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Hidden, ToolTip = L("Remove from the shelf"),
         };
         remove.Click += (_, _) =>
         {
@@ -287,11 +287,11 @@ internal sealed class FloatShelf : Window
         if (single is not null)
         {
             var menu = new ContextMenu();
-            var open = new MenuItem { Header = "Open" };
+            var open = new MenuItem { Header = L("Open") };
             open.Click += (_, _) => Process.Start(new ProcessStartInfo(single) { UseShellExecute = true });
-            var reveal = new MenuItem { Header = "Show in Explorer" };
+            var reveal = new MenuItem { Header = L("Show in Explorer") };
             reveal.Click += (_, _) => FileActions.Reveal(single);
-            var drop = new MenuItem { Header = "Remove from shelf" };
+            var drop = new MenuItem { Header = L("Remove from shelf") };
             drop.Click += (_, _) =>
             {
                 _items.Remove(single);

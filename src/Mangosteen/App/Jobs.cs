@@ -86,7 +86,7 @@ internal sealed class Jobs(Dispatcher dispatcher, TrayIcon tray)
                 finished = true;
                 timer.Stop();
                 hud?.Close();
-                Report(doneTitle, outputs, failures, stopped ? $"Stopped after {done} of {inputs.Count}." : null);
+                Report(doneTitle, outputs, failures, stopped ? string.Format(L("Stopped after {0} of {1}."), done, inputs.Count) : null);
                 cancel.Dispose();
             });
         });
@@ -101,20 +101,20 @@ internal sealed class Jobs(Dispatcher dispatcher, TrayIcon tray)
         if (failures.Count > 0)
         {
             var total = failures.Count + outputs.Count;
-            tray.Notify(total == 1 ? $"{doneTitle}: failed" : $"{failures.Count} of {total} failed",
+            tray.Notify(total == 1 ? string.Format(L("{0}: failed"), doneTitle) : string.Format(L("{0} of {1} failed"), failures.Count, total),
                 string.Join("\n", failures.Take(3)), error: true);
             return;
         }
         if (stoppedNote is not null)
         {
-            tray.Notify($"{doneTitle}: stopped", stoppedNote, reveal: outputs.LastOrDefault());
+            tray.Notify(string.Format(L("{0}: stopped"), doneTitle), stoppedNote, reveal: outputs.LastOrDefault());
             return;
         }
         if (outputs.Count == 0)
         {
-            tray.Notify(doneTitle, "Nothing to do: the files already have that format.");
+            tray.Notify(doneTitle, L("Nothing to do: the files already have that format."));
             return;
         }
-        tray.Notify(doneTitle, outputs.Count == 1 ? Path.GetFileName(outputs[0]) : $"{outputs.Count} files", reveal: outputs[^1]);
+        tray.Notify(doneTitle, outputs.Count == 1 ? Path.GetFileName(outputs[0]) : Core.Loc.Count(outputs.Count, "file"), reveal: outputs[^1]);
     }
 }

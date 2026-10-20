@@ -89,11 +89,19 @@ jobs:
             @{ id = 'tool.cropVideo'; files = @('clip.mp4') },
             @{ id = 'tool.bleep'; files = @('song.mp3') },
             @{ id = 'tool.visualizer'; files = @('song.mp3') },
-            @{ id = 'tool.redactVideo'; files = @('clip.mp4') }
+            @{ id = 'tool.redactVideo'; files = @('clip.mp4') },
+            @{ id = 'welcome'; files = @() },
+            @{ id = 'settings'; files = @() },
+            @{ id = 'tool.compress'; files = @('photo.jpg'); language = 'ru'; name = 'ru.tool.compress' },
+            @{ id = 'tool.trimMedia'; files = @('clip.mp4'); language = 'ru'; name = 'ru.tool.trimMedia' },
+            @{ id = 'welcome'; files = @(); language = 'ru'; name = 'ru.welcome' },
+            @{ id = 'tool.edit'; files = @('photo.jpg'); language = 'es'; name = 'es.tool.edit' }
           )
           New-Item -ItemType Directory -Force snapshots | Out-Null
           foreach ($tool in $tools) {
-            $output = Join-Path (Resolve-Path snapshots) ($tool.id + '.png')
+            $name = if ($tool.name) { $tool.name } else { $tool.id }
+            $output = Join-Path (Resolve-Path snapshots) ($name + '.png')
+            $env:MANGOSTEEN_LANGUAGE = if ($tool.language) { $tool.language } else { 'en' }
             $arguments = @('--snapshot', $tool.id, $output) + ($tool.files | ForEach-Object { Join-Path $fixtures $_ })
             $process = Start-Process publish/Mangosteen.exe -ArgumentList $arguments -Wait -PassThru
             if ($process.ExitCode -ne 0 -or -not (Test-Path $output)) {

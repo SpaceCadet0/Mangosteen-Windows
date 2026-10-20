@@ -6,7 +6,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <DebugType>embedded</DebugType>
-    <Version>0.4.0</Version>
+    <Version>0.5.0</Version>
     <Authors>Igor Rusakov (SpaceCadet)</Authors>
     <Copyright>Copyright (c) 2026 Igor Rusakov (SpaceCadet)</Copyright>
   </PropertyGroup>

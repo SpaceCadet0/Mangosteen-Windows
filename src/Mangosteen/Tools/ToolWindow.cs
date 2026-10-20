@@ -30,7 +30,7 @@ internal abstract class ToolWindow : Window
         {
             0 => title,
             1 => $"{title} — {Path.GetFileName(files[0])}",
-            _ => $"{title} — {Path.GetFileName(files[0])} {string.Format(L("and {0} more"), files.Count - 1)}",
+            _ => $"{title} — {Path.GetFileName(files[0])} " + string.Format(L("and {0} more"), files.Count - 1),
         };
         ShowInTaskbar = true;
         SizeToContent = SizeToContent.WidthAndHeight;

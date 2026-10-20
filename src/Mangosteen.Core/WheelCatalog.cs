@@ -24,12 +24,12 @@ public static class WheelCatalog
 {
     public static string Title(WheelKind kind) => kind switch
     {
-        WheelKind.Convert => "Convert",
-        WheelKind.Tools => "Tools",
-        _ => "Actions",
+        WheelKind.Convert => Loc.L("Convert"),
+        WheelKind.Tools => Loc.L("Tools"),
+        _ => Loc.L("Actions"),
     };
 
-    public static string FileCount(int count) => count == 1 ? "1 file" : $"{count} files";
+    public static string FileCount(int count) => Loc.Count(count, "file");
 
     public static IReadOnlyList<WheelItem> Items(WheelKind kind, IReadOnlyList<string> paths) => kind switch
     {
@@ -37,7 +37,7 @@ public static class WheelCatalog
             .Select(f => new WheelItem($"convert.{f.Extension()}", f.DisplayName(), IconFor(f), true, f))
             .ToList(),
         WheelKind.Tools => ToolItems(paths),
-        _ => ActionItems,
+        _ => ActionItems.Select(i => i with { Title = Loc.L(i.Title) }).ToList(),
     };
 
     public static WheelIcon IconFor(FileFormat format) => format.Category() switch
@@ -89,7 +89,7 @@ public static class WheelCatalog
         {
             if (condition)
             {
-                items.Add(new WheelItem(id, title, icon, IsAvailable(id)));
+                items.Add(new WheelItem(id, Loc.L(title), icon, IsAvailable(id)));
             }
         }
         Add(media, "tool.trimMedia", "Trim", WheelIcon.Trim);
