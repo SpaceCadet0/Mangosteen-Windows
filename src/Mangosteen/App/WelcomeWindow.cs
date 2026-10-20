@@ -13,6 +13,7 @@ internal sealed class WelcomeWindow : ToolWindow
     public WelcomeWindow() : base(L("Welcome to Mangosteen"), [], L("Got it"))
     {
         StatusText = "";
+        HideCancel();
         var columns = new UniformGrid();
         columns.Columns = 3;
         foreach (var (key, title, text, glyph) in new[]

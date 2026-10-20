@@ -17,6 +17,7 @@ namespace Mangosteen.Tools;
 internal abstract class ToolWindow : Window
 {
     private readonly Button _action;
+    private readonly Button _cancel;
     private readonly TextBlock _status;
     private readonly ContentControl _body = new();
 
@@ -51,6 +52,7 @@ internal abstract class ToolWindow : Window
         _action.Click += (_, _) => Run();
         var cancel = new Button { Content = L("Cancel"), IsCancel = true, MinWidth = 96 };
         cancel.Click += (_, _) => Close();
+        _cancel = cancel;
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         buttons.Children.Add(cancel);
@@ -100,6 +102,13 @@ internal abstract class ToolWindow : Window
                 RelaxMinimumWidths(child);
             }
         }
+    }
+
+    /// <summary>For windows with a single button (the welcome window); Esc still closes them.</summary>
+    protected void HideCancel()
+    {
+        _cancel.Visibility = Visibility.Collapsed;
+        _action.IsCancel = true;
     }
 
     protected bool ActionEnabled

@@ -214,4 +214,8 @@ T = {
 "Float shelf, copy, move, copy the path or open a terminal.": ("Полка Float, копирование, перемещение, путь к файлу или терминал.", "Estante Float, copiar, mover, copiar la ruta o abrir una terminal."),
 "Hold a key and right-click a file in Explorer or on the desktop: a wheel opens at the cursor. Results are saved next to the original; nothing is uploaded.": ("Зажмите клавишу и щёлкните правой кнопкой по файлу в Проводнике или на рабочем столе: у курсора откроется колесо. Результат сохраняется рядом с оригиналом, ничего никуда не загружается.", "Mantén una tecla y haz clic derecho en un archivo del Explorador o del escritorio: se abre una rueda junto al cursor. Los resultados se guardan junto al original; no se sube nada."),
 "Picked the wrong wheel? While it is open, press Shift, Ctrl or Alt to switch. Mangosteen lives in the notification area by the clock.": ("Открыли не то колесо? Пока оно на экране, нажмите Shift, Ctrl или Alt. Mangosteen живёт в области уведомлений рядом с часами.", "¿Rueda equivocada? Mientras está abierta, pulsa Mayús, Ctrl o Alt para cambiar. Mangosteen vive en el área de notificaciones junto al reloj."),
+"Compress": ("Сжать", "Comprimir"),
+"B": ("Б", "B"),
+"KB": ("КБ", "KB"),
+"MB": ("МБ", "MB"),
 }

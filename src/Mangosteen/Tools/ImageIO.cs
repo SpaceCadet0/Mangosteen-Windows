@@ -160,9 +160,9 @@ internal static class ImageIO
 
     public static string Size(long bytes) => bytes switch
     {
-        < 1000 => $"{bytes} B",
-        < 1_000_000 => $"{bytes / 1000.0:0.#} KB",
-        _ => $"{bytes / 1_000_000.0:0.##} MB",
+        < 1000 => $"{bytes} {L("B")}",
+        < 1_000_000 => $"{bytes / 1000.0:0.#} {L("KB")}",
+        _ => $"{bytes / 1_000_000.0:0.##} {L("MB")}",
     };
 }
 
