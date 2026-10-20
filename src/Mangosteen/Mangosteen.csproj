@@ -36,7 +36,8 @@
     <InternalsVisibleTo Include="Mangosteen.Windows.Tests" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="PDFsharp-MigraDoc" Version="6.5.0" />
+    <!-- PDFsharp 6.5 and later are AGPL-3.0; 6.2.x is the last MIT release. Do not upgrade. -->
+    <PackageReference Include="PDFsharp-MigraDoc" Version="6.2.4" />
     <PackageReference Include="SkiaSharp" Version="4.153.1" />
   </ItemGroup>
 </Project>

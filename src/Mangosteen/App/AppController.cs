@@ -210,10 +210,10 @@ internal sealed class AppController : IDisposable
                     jobs.RunEach("Extracting", "Extracted", archives, (input, _) => Archives.ExtractNextToArchive(input));
                     break;
                 case "tool.createPDF":
-                    jobs.RunOnce("Creating PDF", "PDF created", () => Converter.CreatePdf(paths));
+                    jobs.RunOnce("Creating PDF", "PDF created", WheelCatalog.FileCount(paths.Count), () => Converter.CreatePdf(paths));
                     break;
                 case "tool.mergePDF":
-                    jobs.RunOnce("Merging PDFs", "PDFs merged", () => Converter.MergePdfs(paths));
+                    jobs.RunOnce("Merging PDFs", "PDFs merged", WheelCatalog.FileCount(paths.Count), () => Converter.MergePdfs(paths));
                     break;
                 case "action.float":
                     _shelf.Add(paths);

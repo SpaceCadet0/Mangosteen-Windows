@@ -77,9 +77,9 @@ internal sealed class Jobs(Dispatcher dispatcher, TrayIcon tray)
         });
     }
 
-    /// <summary>One job that turns all inputs into a single result.</summary>
-    public void RunOnce(string title, string doneTitle, Func<string> work) =>
-        RunEach(title, doneTitle, ["selection"], (_, _) => work());
+    /// <summary>One job that turns all inputs into a single result; <paramref name="label"/> is shown while it runs.</summary>
+    public void RunOnce(string title, string doneTitle, string label, Func<string> work) =>
+        RunEach(title, doneTitle, [label], (_, _) => work());
 
     private void Report(string doneTitle, List<string> outputs, List<string> failures, string? stoppedNote)
     {

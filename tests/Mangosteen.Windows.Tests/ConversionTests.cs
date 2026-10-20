@@ -86,7 +86,7 @@ public sealed class ConversionTests : IDisposable
         var pdf = Converter.CreatePdf([Png("a.png"), Png("b.png"), Png("c.png")]);
         var folder = Converter.Convert(pdf, FileFormat.Jpg)!;
         Assert.Equal(PathOf("Images (JPG)"), folder);
-        Assert.Equal(["Images 1.jpg", "Images 2.jpg", "Images 3.jpg"], Directory.GetFiles(folder).Select(Path.GetFileName).Order());
+        Assert.Equal(["Images 1.jpg", "Images 2.jpg", "Images 3.jpg"], Directory.GetFiles(folder).Select(Path.GetFileName).Order(StringComparer.Ordinal));
     }
 
     [Fact]
@@ -159,6 +159,6 @@ public sealed class ConversionTests : IDisposable
         }
         var folder = Converter.Convert(xlsx, FileFormat.Csv)!;
         Assert.Equal(PathOf("книга (CSV)"), folder);
-        Assert.Equal(["Второй.csv", "Первый.csv"], Directory.GetFiles(folder).Select(Path.GetFileName).Order());
+        Assert.Equal(["Второй.csv", "Первый.csv"], Directory.GetFiles(folder).Select(Path.GetFileName).Order(StringComparer.Ordinal));
     }
 }

@@ -4,7 +4,7 @@
 
 The Windows sibling of [Mangosteen](https://github.com/SpaceCadet0/Mangosteen), the macOS menu-bar app that converts and edits files from a wheel. Hold a modifier key, right-click a file in File Explorer or on the desktop, and pick what to do from a round wheel at the cursor. The result is written next to the original. Everything runs offline.
 
-This is an early prototype (version 0.1). The two repositories share no code; each has its own releases and CI.
+This is an early version (0.2). The two repositories share no code; each has its own releases and CI.
 
 ## Key map
 
@@ -20,12 +20,43 @@ Pick a segment with a left click. Esc or a click outside the wheel closes it. Pi
 
 For other apps, use the tray icon: **Choose files…** opens a file dialog and then shows the wheel at the cursor.
 
-## What works in this prototype
+## What it does
 
-- Convert images between PNG, JPG, TIFF, BMP and GIF. JPG, BMP and GIF have no transparency, so transparent areas become white. Multi-page TIFF and animated GIF inputs are converted from their first frame. WebP, HEIC and AVIF can be read when the matching codec from the Microsoft Store is installed.
-- Results never overwrite anything: `photo.jpg`, then `photo 2.jpg`, `photo 3.jpg`. The original is never changed.
-- Actions: **Path** copies the full paths of the files.
-- The other Tools and Actions segments are shown, but their features arrive in later versions.
+### Convert (Shift)
+
+| Kind | Formats |
+| --- | --- |
+| Images | PNG, JPG, WebP, TIFF, BMP, GIF, PDF; also reads ICO, and WebP, HEIC and AVIF when their Microsoft Store codecs are installed |
+| PDF | to PNG or JPG (a PDF with several pages becomes a folder of pages), TXT, Markdown, RTF, DOCX, HTML |
+| Documents | DOCX, ODT, RTF, TXT, Markdown, HTML into each other and into PDF |
+| Subtitles | SRT and VTT into each other and into TXT |
+| Tables | CSV, TSV, XLSX into each other (a workbook with several sheets becomes a folder of tables) |
+| Archives | ZIP, TAR, TAR.GZ into each other; folders into archives |
+
+Results never overwrite anything: `photo.jpg`, then `photo 2.jpg`, `photo 3.jpg`. The original is never changed.
+Text files in the old Windows Cyrillic encoding (Windows-1251) are read correctly. Longer jobs show a small
+progress panel with a Stop button; click the final notification to see the result in Explorer.
+
+Not yet on Windows: HEIC and AVIF output, animated WebP, video and audio (they arrive with ffmpeg), and the old
+binary `.doc` format. Documents keep headings, paragraphs, lists, bold, italic, underline, links and code; images
+and tables inside documents are not carried over.
+
+### Tools (Ctrl)
+
+- **Extract** an archive into a folder next to it.
+- **PDF from images**: one PDF with a page per image.
+- **Merge** several PDFs into one.
+
+The other tools (compress, crop, editor, annotate and more) are shown greyed out and arrive in the next versions.
+
+### Actions (Alt)
+
+- **Float** puts the files on a floating shelf. Drag them from the shelf into any app later. Dragging out copies;
+  switch the shelf to Move to move the originals instead. The shelf is also in the tray menu.
+- **Copy** puts the files on the clipboard, ready to paste into a folder or a message.
+- **Move** asks for a folder and moves the files there.
+- **Path** copies the full paths.
+- **Terminal** opens the folder in Windows Terminal (or PowerShell).
 
 ## Download
 
@@ -55,4 +86,5 @@ The image conversion tests (`tests/Mangosteen.Windows.Tests`) need Windows and r
 
 ## License
 
-[MIT](LICENSE). Copyright (c) 2026 Igor Rusakov (SpaceCadet).
+[MIT](LICENSE). Copyright (c) 2026 Igor Rusakov (SpaceCadet). Open-source components and their licenses are
+listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

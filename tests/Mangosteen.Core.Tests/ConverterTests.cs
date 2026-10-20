@@ -110,7 +110,7 @@ public class TableTests : TempFolderTest
     public void SheetsBecomeFiles()
     {
         Tables.WriteSheets([new Tables.Sheet("Лист: 1", [["a"]]), new Tables.Sheet("Two", [["b"]])], FileFormat.Csv, PathOf("out"));
-        Assert.Equal(["Lист- 1.csv".Replace('L', 'Л'), "Two.csv"], Directory.GetFiles(PathOf("out")).Select(Path.GetFileName).Order());
+        Assert.Equal(["Two.csv", "Лист- 1.csv"], Directory.GetFiles(PathOf("out")).Select(Path.GetFileName).Order(StringComparer.Ordinal));
     }
 
     [Theory]
