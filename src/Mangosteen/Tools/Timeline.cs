@@ -26,6 +26,8 @@ internal sealed class Timeline : Grid
     private float[] _peaks = [];
     private enum Drag { None, Playhead, Start, End }
     private Drag _drag;
+    private double _viewStart;
+    private double _viewEnd = 1;
 
     public Timeline()
     {
@@ -47,6 +49,39 @@ internal sealed class Timeline : Grid
             _overlay.ReleaseMouseCapture();
         };
         SizeChanged += (_, _) => Redraw();
+        // The wheel zooms around the pointer, Shift + wheel scrolls, a double click shows the whole file.
+        _overlay.MouseWheel += (_, e) =>
+        {
+            var span = _viewEnd - _viewStart;
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+            {
+                var shift = -Math.Sign(e.Delta) * span * 0.15;
+                SetView(_viewStart + shift, _viewEnd + shift);
+            }
+            else
+            {
+                var anchor = Time(e.GetPosition(_overlay).X);
+                var factor = e.Delta > 0 ? 0.8 : 1.25;
+                SetView(anchor - (anchor - _viewStart) * factor, anchor + (_viewEnd - anchor) * factor);
+            }
+            e.Handled = true;
+        };
+        _overlay.MouseLeftButtonDown += (_, e) =>
+        {
+            if (e.ClickCount == 2)
+            {
+                SetView(0, Duration);
+            }
+        };
+    }
+
+    private void SetView(double start, double end)
+    {
+        var span = Math.Clamp(end - start, Math.Min(Duration, 0.5), Duration);
+        start = Math.Clamp(start, 0, Duration - span);
+        _viewStart = start;
+        _viewEnd = start + span;
+        Redraw();
     }
 
     public double Duration { get; private set; } = 1;
@@ -63,6 +98,8 @@ internal sealed class Timeline : Grid
     public void Load(double duration, IReadOnlyList<BitmapSource> frames, float[] peaks)
     {
         Duration = Math.Max(duration, 0.01);
+        _viewStart = 0;
+        _viewEnd = Duration;
         SelectionStart = 0;
         SelectionEnd = Duration;
         _frames = frames;
@@ -85,11 +122,11 @@ internal sealed class Timeline : Grid
         SelectionChanged?.Invoke();
     }
 
-    private double X(double seconds) => seconds / Duration * StripWidth();
+    private double X(double seconds) => (seconds - _viewStart) / (_viewEnd - _viewStart) * StripWidth();
 
     private double StripWidth() => Math.Max(ActualWidth, 1);
 
-    private double Time(double x) => Math.Clamp(x / StripWidth() * Duration, 0, Duration);
+    private double Time(double x) => Math.Clamp(_viewStart + x / StripWidth() * (_viewEnd - _viewStart), 0, Duration);
 
     private void Down(object sender, MouseButtonEventArgs e)
     {
@@ -146,11 +183,17 @@ internal sealed class Timeline : Grid
         _overlay.Children.Clear();
         if (_frames.Count > 0)
         {
-            var tile = width / _frames.Count;
+            // Each frame covers its share of the file, so zooming stretches the strip.
+            var tile = X(Duration / _frames.Count) - X(0);
             for (var i = 0; i < _frames.Count; i++)
             {
+                var left = X(Duration * i / _frames.Count);
+                if (left + tile < 0 || left > width)
+                {
+                    continue;
+                }
                 var image = new Image { Source = _frames[i], Width = tile + 1, Height = StripHeight, Stretch = Stretch.UniformToFill };
-                Canvas.SetLeft(image, i * tile);
+                Canvas.SetLeft(image, left);
                 _strip.Children.Add(image);
             }
         }
@@ -162,7 +205,11 @@ internal sealed class Timeline : Grid
                 var middle = StripHeight / 2;
                 for (var i = 0; i < _peaks.Length; i++)
                 {
-                    var x = (i + 0.5) / _peaks.Length * width;
+                    var x = X((i + 0.5) / _peaks.Length * Duration);
+                    if (x < 0 || x > width)
+                    {
+                        continue;
+                    }
                     var h = Math.Max(1, _peaks[i] * (StripHeight - 8) / 2);
                     context.BeginFigure(new Point(x, middle - h), false, false);
                     context.LineTo(new Point(x, middle + h), true, false);
@@ -200,8 +247,8 @@ internal sealed class Timeline : Grid
         Canvas.SetTop(playhead, -3);
         _overlay.Children.Add(playhead);
 
-        _left.Text = MediaMath.Timecode(0);
-        _right.Text = MediaMath.Timecode(Duration);
+        _left.Text = MediaMath.Timecode(_viewStart);
+        _right.Text = MediaMath.Timecode(_viewEnd);
         _center.Text = ShowSelection
             ? $"{MediaMath.Timecode(SelectionStart)} – {MediaMath.Timecode(SelectionEnd)}  ({MediaMath.Timecode(SelectionEnd - SelectionStart)})"
             : MediaMath.Timecode(Playhead);

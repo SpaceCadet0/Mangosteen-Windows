@@ -4,7 +4,7 @@
 
 The Windows sibling of [Mangosteen](https://github.com/SpaceCadet0/Mangosteen), the macOS menu-bar app that converts and edits files from a wheel. Hold a modifier key, right-click a file in File Explorer or on the desktop, and pick what to do from a round wheel at the cursor. The result is written next to the original. Everything runs offline.
 
-This is an early version (0.4). The two repositories share no code; each has its own releases and CI.
+This is an early version (0.5). The interface speaks English, Spanish and Russian (it follows Windows; change it in Settings). The two repositories share no code; each has its own releases and CI.
 
 ## Key map
 
@@ -19,6 +19,7 @@ Right-clicks without one of these keys, and right-clicks anywhere else, open the
 Pick a segment with a left click. Esc or a click outside the wheel closes it. Picked the wrong wheel? While it is open, press Shift, Ctrl or Alt to switch to that wheel for the same files. As in Explorer, right-clicking a selected file uses the whole selection, and right-clicking a file that is not selected selects just that file.
 
 For other apps, use the tray icon: **Choose files…** opens a file dialog and then shows the wheel at the cursor.
+The tray menu also has **Settings…** (language, start with Windows) and **Welcome…**, the short guide shown on the first launch.
 
 ## What it does
 
@@ -61,7 +62,8 @@ as `photo (cropped).jpg`, `photo (edited).jpg` and so on.
 - **Pages** (PDF): reorder, rotate, duplicate and delete pages.
 - **Extract** an archive, **PDF from images**, **Merge** PDFs.
 
-Video and audio tools work on a timeline with frames or the waveform:
+Video and audio tools work on a timeline with frames or the waveform (the mouse wheel zooms, Shift + wheel scrolls,
+a double click shows the whole file):
 
 - **Trim** and **Split** (fast mode copies without re-encoding), **Frames** saves stills as PNG.
 - **Speed** with or without keeping the pitch, **Volume** (EBU R128 loudness normalisation, listen first), **Channels**.

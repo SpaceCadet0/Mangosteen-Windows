@@ -49,6 +49,8 @@ internal sealed class AnnotateTool : ToolWindow
     private int? _selected;
     private Point _dragStart;
     private Annotation? _dragOriginal;
+    private int _handle = -1;
+    private readonly List<Rectangle> _handleViews = [];
     private bool _settled;
 
     public AnnotateTool(IReadOnlyList<string> files, Jobs jobs) : base(L("Annotate"), files, L("Save"))
@@ -186,6 +188,27 @@ internal sealed class AnnotateTool : ToolWindow
         {
             _marks.Children.Add(AnnotationDrawing.Build(item, source));
         }
+        foreach (var view in _handleViews)
+        {
+            _canvas.Children.Remove(view);
+        }
+        _handleViews.Clear();
+        if (_selected is { } selectedIndex && selectedIndex < _items.Count)
+        {
+            foreach (var spot in Handles(_items[selectedIndex]))
+            {
+                var size = Unit * 9;
+                var view = new Rectangle
+                {
+                    Width = size, Height = size, Fill = Brushes.White, Stroke = new SolidColorBrush(Color.FromRgb(0xC0, 0x5A, 0x80)),
+                    StrokeThickness = Unit * 1.5, IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(view, spot.X - size / 2);
+                Canvas.SetTop(view, spot.Y - size / 2);
+                _handleViews.Add(view);
+                _canvas.Children.Add(view);
+            }
+        }
         if (_selected is { } index && index < _items.Count)
         {
             var bounds = Bounds(_items[index]);
@@ -200,6 +223,28 @@ internal sealed class AnnotateTool : ToolWindow
         {
             _selection.Visibility = Visibility.Collapsed;
         }
+    }
+
+    /// <summary>Points that can be dragged: arrow ends, opposite corners of boxes and pictures, the magnifier's edge.</summary>
+    private static IReadOnlyList<Point> Handles(Annotation a) => a.Kind switch
+    {
+        AnnotationKind.Arrow or AnnotationKind.Rectangle or AnnotationKind.Ellipse or AnnotationKind.Picture => [a.Points[0], a.Points[^1]],
+        AnnotationKind.Magnifier => [a.Points[^1]],
+        _ => [],
+    };
+
+    /// <summary>The index in <see cref="Annotation.Points"/> of the handle under <paramref name="point"/>, or -1.</summary>
+    private int HandleAt(Annotation a, Point point)
+    {
+        var handles = Handles(a);
+        for (var i = 0; i < handles.Count; i++)
+        {
+            if ((handles[i] - point).Length < Unit * 9)
+            {
+                return a.Kind == AnnotationKind.Magnifier ? a.Points.Count - 1 : i == 0 ? 0 : a.Points.Count - 1;
+            }
+        }
+        return -1;
     }
 
     /// <summary>Bounds including text and badges, whose size depends on the font.</summary>
@@ -244,6 +289,13 @@ internal sealed class AnnotateTool : ToolWindow
         switch (_mode)
         {
             case Mode.Select:
+                if (_selected is { } current && current < _items.Count && HandleAt(_items[current], point) is var handle and >= 0)
+                {
+                    _handle = handle;
+                    _dragOriginal = _items[current];
+                    Remember();
+                    break;
+                }
                 _selected = null;
                 for (var i = _items.Count - 1; i >= 0; i--)
                 {
@@ -294,7 +346,16 @@ internal sealed class AnnotateTool : ToolWindow
         var point = e.GetPosition(_canvas);
         if (_mode == Mode.Select && _selected is { } index && _dragOriginal is { } original)
         {
-            _items[index] = original.Translated(point - _dragStart);
+            if (_handle >= 0)
+            {
+                var points = original.Points.ToList();
+                points[_handle] = point;
+                _items[index] = original with { Points = points };
+            }
+            else
+            {
+                _items[index] = original.Translated(point - _dragStart);
+            }
             Redraw();
         }
         else if (_draft is { } draft)
@@ -310,6 +371,7 @@ internal sealed class AnnotateTool : ToolWindow
     {
         _canvas.ReleaseMouseCapture();
         _dragOriginal = null;
+        _handle = -1;
         if (_draft is { } draft)
         {
             _draft = null;
