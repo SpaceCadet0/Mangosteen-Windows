@@ -20,6 +20,18 @@ internal static class PdfRenderer
 
     public static BitmapSource RenderPage(string path, int index) => Render(Load(path), index);
 
+    /// <summary>Small images of every page, the longer side at most <paramref name="maxSide"/> pixels.</summary>
+    public static List<BitmapSource> Thumbnails(string path, int maxSide)
+    {
+        var document = Load(path);
+        var result = new List<BitmapSource>();
+        for (var index = 0; index < document.PageCount; index++)
+        {
+            result.Add(Render(document, index, maxSide));
+        }
+        return result;
+    }
+
     /// <summary>Writes <c>name 1.png</c>, <c>name 2.png</c>... (numbers padded to the page count) into a new folder.</summary>
     public static void RenderPages(string path, FileFormat target, string folder, string baseName, CancellationToken token)
     {
@@ -48,14 +60,14 @@ internal static class PdfRenderer
         }
     }
 
-    private static BitmapSource Render(PdfDocument document, int index)
+    private static BitmapSource Render(PdfDocument document, int index, double maxSide = MaxSide)
     {
         using var page = document.GetPage((uint)index);
         // Page size is in device-independent pixels (1/96 inch), already rotated.
         var scale = Dpi / 96;
         var width = page.Size.Width * scale;
         var height = page.Size.Height * scale;
-        var fit = Math.Min(1, MaxSide / Math.Max(width, height));
+        var fit = Math.Min(1, maxSide / Math.Max(width, height));
         var options = new PdfPageRenderOptions
         {
             DestinationWidth = (uint)Math.Max(1, Math.Round(width * fit)),

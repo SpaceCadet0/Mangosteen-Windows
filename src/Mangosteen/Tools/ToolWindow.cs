@@ -47,6 +47,7 @@ internal abstract class ToolWindow : Window
 
         _status = new TextBlock { VerticalAlignment = VerticalAlignment.Center, Opacity = 0.7 };
         _action = new Button { Content = actionTitle, IsDefault = true, MinWidth = 96, Margin = new Thickness(8, 0, 0, 0) };
+        _action.SetResourceReference(StyleProperty, "AccentButtonStyle");
         _action.Click += (_, _) => Run();
         var cancel = new Button { Content = L("Cancel"), IsCancel = true, MinWidth = 96 };
         cancel.Click += (_, _) => Close();

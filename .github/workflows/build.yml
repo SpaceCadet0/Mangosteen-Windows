@@ -48,7 +48,12 @@ jobs:
         run: |
           $fixtures = Resolve-Path tests/fixtures
           $tools = @(
-            @{ id = 'tool.crop'; files = @('photo.jpg', 'portrait.jpg') }
+            @{ id = 'tool.crop'; files = @('photo.jpg', 'portrait.jpg') },
+            @{ id = 'tool.compress'; files = @('photo.jpg', 'document.pdf') },
+            @{ id = 'tool.metadata'; files = @('photo.jpg') },
+            @{ id = 'tool.frame'; files = @('photo.jpg') },
+            @{ id = 'tool.collage'; files = @('photo.jpg', 'portrait.jpg', 'photo.jpg') },
+            @{ id = 'tool.organizePDF'; files = @('document.pdf') }
           )
           New-Item -ItemType Directory -Force snapshots | Out-Null
           foreach ($tool in $tools) {
