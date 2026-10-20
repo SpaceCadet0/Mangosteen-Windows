@@ -14,31 +14,39 @@ internal sealed class TrayIcon : IDisposable
 
     public TrayIcon(Action<WheelKind> chooseFiles, Action toggleShelf, Action settings, Action welcome, Action quit)
     {
-        var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add(new Forms.ToolStripMenuItem($"Mangosteen {Program.Version}") { Enabled = false });
-        menu.Items.Add(new Forms.ToolStripMenuItem(L("Shift / Ctrl / Alt + right-click a file")) { Enabled = false });
-        menu.Items.Add(new Forms.ToolStripSeparator());
-
-        var choose = new Forms.ToolStripMenuItem(L("Choose files…"));
-        choose.DropDownItems.Add(L("Convert…"), null, (_, _) => chooseFiles(WheelKind.Convert));
-        choose.DropDownItems.Add(L("Tools…"), null, (_, _) => chooseFiles(WheelKind.Tools));
-        choose.DropDownItems.Add(L("Actions…"), null, (_, _) => chooseFiles(WheelKind.Actions));
-        menu.Items.Add(choose);
-        menu.Items.Add(L("Float shelf"), null, (_, _) => toggleShelf());
-
-        menu.Items.Add(L("Settings…"), null, (_, _) => settings());
-        menu.Items.Add(L("Welcome…"), null, (_, _) => welcome());
-        menu.Items.Add(L("Open log"), null, (_, _) => OpenLog());
-        menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add(L("Quit Mangosteen"), null, (_, _) => quit());
+        // The menu is Mangosteen's own window (rounded, themed); the WinForms menu cannot be styled like that.
+        void ShowMenu()
+        {
+            var menu = new TrayMenu();
+            menu.AddHeader($"Mangosteen {Program.Version}", L("Shift / Ctrl / Alt + right-click a file"));
+            menu.AddSeparator();
+            menu.AddCaption(L("Choose files…"));
+            menu.AddItem(L("Convert…"), "\uE8AB", () => chooseFiles(WheelKind.Convert), indent: true);
+            menu.AddItem(L("Tools…"), "\uE90F", () => chooseFiles(WheelKind.Tools), indent: true);
+            menu.AddItem(L("Actions…"), "\uE8B7", () => chooseFiles(WheelKind.Actions), indent: true);
+            menu.AddSeparator();
+            menu.AddItem(L("Float shelf"), "\uE718", toggleShelf);
+            menu.AddItem(L("Settings…"), "\uE713", settings);
+            menu.AddItem(L("Welcome…"), "\uE946", welcome);
+            menu.AddItem(L("Open log"), "\uE7C3", OpenLog);
+            menu.AddSeparator();
+            menu.AddItem(L("Quit Mangosteen"), "\uE7E8", quit);
+            menu.ShowAtCursor();
+        }
 
         using var stream = typeof(TrayIcon).Assembly.GetManifestResourceStream("Mangosteen.ico")!;
         _icon = new Forms.NotifyIcon
         {
             Icon = new System.Drawing.Icon(stream, Forms.SystemInformation.SmallIconSize),
             Text = "Mangosteen",
-            ContextMenuStrip = menu,
             Visible = true,
+        };
+        _icon.MouseUp += (_, e) =>
+        {
+            if (e.Button is Forms.MouseButtons.Right or Forms.MouseButtons.Left)
+            {
+                ShowMenu();
+            }
         };
         // Clicking a "done" notification selects the result in Explorer.
         _icon.BalloonTipClicked += (_, _) =>

@@ -43,13 +43,30 @@ internal static class ToolRegistry
     /// </summary>
     public static void Snapshot(string id, string output, IReadOnlyList<string> files)
     {
-        var window = Create(id, files, null!) ?? throw new ArgumentException($"Unknown tool {id}");
+        Window window;
+        if (id.StartsWith("traymenu", StringComparison.Ordinal))
+        {
+            var menu = new TrayMenu(light: !id.EndsWith("dark", StringComparison.Ordinal)) { KeepOpen = true };
+            menu.AddHeader($"Mangosteen {Program.Version}", L("Shift / Ctrl / Alt + right-click a file"));
+            menu.AddSeparator();
+            menu.AddCaption(L("Choose files…"));
+            menu.AddItem(L("Convert…"), "\uE8AB", () => { }, indent: true);
+            menu.AddItem(L("Tools…"), "\uE90F", () => { }, indent: true);
+            menu.AddSeparator();
+            menu.AddItem(L("Settings…"), "\uE713", () => { });
+            menu.AddItem(L("Quit Mangosteen"), "\uE7E8", () => { });
+            window = menu;
+        }
+        else
+        {
+            window = Create(id, files, null!) ?? throw new ArgumentException($"Unknown tool {id}");
+        }
         window.Show();
         var started = DateTime.UtcNow;
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
         timer.Tick += (_, _) =>
         {
-            if (!window.IsSettled && DateTime.UtcNow - started < TimeSpan.FromSeconds(20))
+            if (window is ToolWindow { IsSettled: false } && DateTime.UtcNow - started < TimeSpan.FromSeconds(20))
             {
                 return;
             }

@@ -104,6 +104,8 @@ jobs:
             @{ id = 'tool.visualizer'; files = @('song.mp3') },
             @{ id = 'tool.redactVideo'; files = @('clip.mp4') },
             @{ id = 'welcome'; files = @() },
+            @{ id = 'traymenu'; files = @() },
+            @{ id = 'traymenu-dark'; files = @(); language = 'ru' },
             @{ id = 'settings'; files = @() },
             @{ id = 'tool.compress'; files = @('photo.jpg'); language = 'ru'; name = 'ru.tool.compress' },
             @{ id = 'tool.trimMedia'; files = @('clip.mp4'); language = 'ru'; name = 'ru.tool.trimMedia' },
