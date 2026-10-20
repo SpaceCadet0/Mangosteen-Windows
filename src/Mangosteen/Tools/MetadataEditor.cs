@@ -232,7 +232,7 @@ internal static class MetadataEditor
             File.Copy(full, output);
             if (!TryInPlace(output, changes))
             {
-                Log.Write($"metadata: no room in {Path.GetFileName(full)}, the file is saved again");
+                Log.Write($"metadata: no room in {Path.GetFileName(full)}, rebuilding its metadata segments");
                 File.Delete(output);
                 var metadata = Read(full)?.Clone() as BitmapMetadata ?? new BitmapMetadata(format switch
                 {
@@ -241,7 +241,14 @@ internal static class MetadataEditor
                     _ => "tiff",
                 });
                 Change(metadata, changes);
-                Reencode(full, output, format, metadata);
+                if (format == FileFormat.Jpg)
+                {
+                    File.WriteAllBytes(output, SpliceJpegMetadata(File.ReadAllBytes(full), metadata));
+                }
+                else
+                {
+                    Reencode(full, output, format, metadata);
+                }
             }
         });
     }
@@ -341,6 +348,66 @@ internal static class MetadataEditor
         encoder.Frames.Add(BitmapFrame.Create(frame, null, metadata, frame.ColorContexts));
         using var stream = File.Create(output);
         encoder.Save(stream);
+    }
+
+    /// <summary>
+    /// Replaces the metadata of a JPEG without touching its image data: WIC writes the new metadata into a 1×1
+    /// JPEG, and its EXIF, XMP and IPTC segments are moved into the original in place of the old ones.
+    /// </summary>
+    public static byte[] SpliceJpegMetadata(byte[] jpeg, BitmapMetadata metadata)
+    {
+        var dot = BitmapSource.Create(1, 1, 96, 96, System.Windows.Media.PixelFormats.Bgr24, null, new byte[3], 3);
+        var encoder = new JpegBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(dot, null, metadata, null));
+        using var donorStream = new MemoryStream();
+        encoder.Save(donorStream);
+        var donor = Segments(donorStream.ToArray()).Where(s => IsMetadata(s.Marker)).ToList();
+
+        using var output = new MemoryStream(jpeg.Length + donor.Sum(s => s.Bytes.Length));
+        output.Write(jpeg, 0, 2);
+        var inserted = false;
+        var end = 2;
+        foreach (var (marker, bytes, next) in Segments(jpeg))
+        {
+            end = next;
+            if (!inserted && marker != 0xE0)
+            {
+                // After the JFIF header (if any), before everything else.
+                foreach (var segment in donor)
+                {
+                    output.Write(segment.Bytes);
+                }
+                inserted = true;
+            }
+            if (!IsMetadata(marker))
+            {
+                output.Write(bytes);
+            }
+        }
+        if (!inserted)
+        {
+            foreach (var segment in donor)
+            {
+                output.Write(segment.Bytes);
+            }
+        }
+        output.Write(jpeg, end, jpeg.Length - end);
+        return output.ToArray();
+    }
+
+    private static bool IsMetadata(byte marker) => marker is 0xE1 or 0xED;
+
+    /// <summary>The segments before the image data: marker, bytes (with the marker) and the offset after the segment.</summary>
+    private static IEnumerable<(byte Marker, byte[] Bytes, int Next)> Segments(byte[] jpeg)
+    {
+        var i = 2;
+        while (i + 4 <= jpeg.Length && jpeg[i] == 0xFF && jpeg[i + 1] != 0xDA)
+        {
+            var length = (jpeg[i + 2] << 8) | jpeg[i + 3];
+            var count = Math.Min(length + 2, jpeg.Length - i);
+            yield return (jpeg[i + 1], jpeg.AsSpan(i, count).ToArray(), i + count);
+            i += count;
+        }
     }
 
     /// <summary>

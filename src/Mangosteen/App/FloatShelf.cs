@@ -27,6 +27,9 @@ internal sealed class FloatShelf : Window
     private static readonly Brush Secondary = Frozen(new SolidColorBrush(Color.FromRgb(0x9A, 0x9A, 0xA0)));
     private static readonly Brush BrandBrush = Frozen(new SolidColorBrush(WheelWindow.Brand));
 
+    /// <summary>Thumbnails sit in a square of this many DIPs, keeping their proportions.</summary>
+    private const int ThumbnailSide = 48;
+
     private readonly List<string> _items = [];
     private readonly StackPanel _rows = new();
     private readonly ToggleButton _moveMode;
@@ -185,10 +188,23 @@ internal sealed class FloatShelf : Window
     private FrameworkElement Row(IReadOnlyList<string> paths, string title, string subtitle, string? single)
     {
         var present = paths.All(Exists);
-        var icon = new Image { Width = 32, Height = 32, Source = single is null ? null : ShellIcon(single), Margin = new Thickness(0, 0, 10, 0) };
-        if (single is null)
+        var icon = new Image { Width = 32, Height = 32, Source = single is null ? null : ShellIcon(single), Stretch = Stretch.Uniform };
+        // A real thumbnail (photo, video frame, PDF page) replaces the icon when the shell has one.
+        var picture = new Border { Width = ThumbnailSide, Height = ThumbnailSide, Margin = new Thickness(0, 0, 10, 0), Child = icon };
+        if (single is not null && present)
         {
-            icon.Source = null;
+            Thumbnails.Request(single, ThumbnailSide * 2, Dispatcher, thumbnail =>
+            {
+                if (thumbnail is null)
+                {
+                    return;
+                }
+                var scale = Math.Min((double)ThumbnailSide / thumbnail.PixelWidth, (double)ThumbnailSide / thumbnail.PixelHeight);
+                icon.Width = Math.Max(1, thumbnail.PixelWidth * scale);
+                icon.Height = Math.Max(1, thumbnail.PixelHeight * scale);
+                icon.Source = thumbnail;
+                icon.Clip = new RectangleGeometry(new Rect(0, 0, icon.Width, icon.Height), 4, 4);
+            });
         }
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         text.Children.Add(new TextBlock { Text = title, Foreground = TextBrush, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis });
@@ -216,11 +232,11 @@ internal sealed class FloatShelf : Window
         };
         var dock = new DockPanel();
         DockPanel.SetDock(remove, Dock.Right);
-        DockPanel.SetDock(icon, Dock.Left);
+        DockPanel.SetDock(picture, Dock.Left);
         dock.Children.Add(remove);
         if (single is not null)
         {
-            dock.Children.Add(icon);
+            dock.Children.Add(picture);
         }
         dock.Children.Add(text);
         var row = new Border
