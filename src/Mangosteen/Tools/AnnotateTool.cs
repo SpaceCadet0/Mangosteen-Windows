@@ -87,7 +87,7 @@ internal sealed class AnnotateTool : ToolWindow
         _canvas.MouseLeftButtonUp += (_, e) => Up(e);
         var frame = new Border
         {
-            Width = 820, Height = 520, CornerRadius = new CornerRadius(10), Padding = new Thickness(8),
+            Width = 780, Height = 420, CornerRadius = new CornerRadius(10), Padding = new Thickness(8),
             Background = new SolidColorBrush(Color.FromArgb(0x18, 0x80, 0x80, 0x80)),
             Child = new Viewbox { Child = _canvas, Stretch = Stretch.Uniform },
         };

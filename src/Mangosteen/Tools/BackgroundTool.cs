@@ -36,7 +36,7 @@ internal sealed class BackgroundTool : ToolWindow
         _images = ToolOutput.Images(files);
         _jobs = jobs;
         StatusText = Core.WheelCatalog.FileCount(_images.Count);
-        var (frame, image) = PreviewPane(480, 380);
+        var (frame, image) = PreviewPane(440, 340);
         _preview = image;
         _debounce = new DispatcherTimer(TimeSpan.FromMilliseconds(120), DispatcherPriority.Background, (_, _) => Draw(), Dispatcher);
         _debounce.Stop();
@@ -92,7 +92,7 @@ internal sealed class BackgroundTool : ToolWindow
         _imageRow = Row(L("Image"), imagePanel);
         _blurRow = Row(L("Blur"), blurView);
 
-        var settings = new StackPanel { Width = 470, Margin = new Thickness(20, 0, 0, 0) };
+        var settings = new StackPanel { Width = 440, Margin = new Thickness(20, 0, 0, 0) };
         settings.Children.Add(kindsPanel);
         settings.Children.Add(_colorRow);
         settings.Children.Add(_gradientRows);
@@ -112,6 +112,7 @@ internal sealed class BackgroundTool : ToolWindow
         body.Children.Add(settings);
         Body = body;
         ActionEnabled = _images.Count > 0;
+        Changed();
         Load();
     }
 

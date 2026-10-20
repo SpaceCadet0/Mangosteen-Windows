@@ -33,7 +33,7 @@ internal sealed class CollageTool : ToolWindow
         _images = ToolOutput.Images(files);
         _jobs = jobs;
         StatusText = WheelCatalog.FileCount(_images.Count);
-        var (frame, image) = PreviewPane(520, 400);
+        var (frame, image) = PreviewPane(440, 360);
         _preview = image;
         _debounce = new DispatcherTimer(TimeSpan.FromMilliseconds(120), DispatcherPriority.Background, (_, _) => Draw(), Dispatcher);
         _debounce.Stop();
@@ -78,7 +78,7 @@ internal sealed class CollageTool : ToolWindow
         _background.Changed += _ => Changed();
 
         _columnsRow = Row(L("Columns"), _columns);
-        var settings = new StackPanel { Width = 470, Margin = new Thickness(20, 0, 0, 0) };
+        var settings = new StackPanel { Width = 440, Margin = new Thickness(20, 0, 0, 0) };
         settings.Children.Add(layouts);
         settings.Children.Add(_columnsRow);
         settings.Children.Add(Row(L("Proportions"), _aspect));

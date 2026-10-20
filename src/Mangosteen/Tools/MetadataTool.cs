@@ -15,7 +15,7 @@ internal sealed class MetadataTool : ToolWindow
     private readonly TextBox _date = new();
     private readonly CheckBox _removeLocation = new() { Content = L("Remove location"), Margin = new Thickness(0, 4, 0, 8) };
     private readonly CheckBox _removeAll = new() { Content = L("Remove all metadata") };
-    private readonly ListView _list = new() { Height = 420, Width = 430 };
+    private readonly ListView _list = new() { Height = 400, Width = 420 };
     private readonly TextBlock _location = new() { Opacity = 0.7, Margin = new Thickness(0, 0, 0, 4) };
     private string _originalDate = "";
 
@@ -80,7 +80,8 @@ internal sealed class MetadataTool : ToolWindow
         try
         {
             var metadata = MetadataEditor.Read(_images[0]);
-            _list.ItemsSource = MetadataEditor.Entries(metadata);
+            var entries = MetadataEditor.Entries(metadata);
+            _list.ItemsSource = entries.Count > 0 ? entries : [(L("This image has no metadata."), "")];
             foreach (var (field, box) in _fields)
             {
                 box.Text = _original[field] = MetadataEditor.Text(field, metadata);

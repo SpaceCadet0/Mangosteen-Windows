@@ -42,7 +42,7 @@ internal sealed class EditorTool : ToolWindow
         _images = ToolOutput.Images(files);
         _jobs = jobs;
         StatusText = WheelCatalog.FileCount(_images.Count);
-        var (frame, image) = PreviewPane(600, 460);
+        var (frame, image) = PreviewPane(520, 420);
         _preview = image;
         _scheduler = new PreviewScheduler<BitmapSource>(Dispatcher, bitmap =>
         {
@@ -88,7 +88,7 @@ internal sealed class EditorTool : ToolWindow
         {
             panel.Children.Add(Note(L("The same adjustments are applied to every image.")));
         }
-        var scroll = new ScrollViewer { Content = panel, Width = 420, Height = 460, Margin = new Thickness(20, 0, 0, 0), VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        var scroll = new ScrollViewer { Content = panel, Width = 400, Height = 420, Margin = new Thickness(20, 0, 0, 0), VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
 
         var body = new StackPanel { Orientation = Orientation.Horizontal };
         body.Children.Add(frame);

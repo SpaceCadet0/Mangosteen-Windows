@@ -45,7 +45,7 @@ internal sealed class HideTool : ToolWindow
         _overlay.MouseLeftButtonUp += (_, e) => FinishDrawing(e);
         var canvasFrame = new Border
         {
-            Width = 640, Height = 480, CornerRadius = new CornerRadius(10), Padding = new Thickness(8),
+            Width = 540, Height = 420, CornerRadius = new CornerRadius(10), Padding = new Thickness(8),
             Background = new SolidColorBrush(Color.FromArgb(0x18, 0x80, 0x80, 0x80)),
             Child = new Viewbox { Child = _surface, Stretch = Stretch.Uniform },
         };
@@ -66,7 +66,7 @@ internal sealed class HideTool : ToolWindow
         buttons.Children.Add(clear);
 
         _styles = [Radio(L("Fill"), true), Radio(L("Blur"), false), Radio(L("Pixels"), false)];
-        var styles = new WrapPanel();
+        var styles = new StackPanel { Orientation = Orientation.Horizontal };
         foreach (var style in _styles)
         {
             style.Margin = new Thickness(0, 0, 14, 0);

@@ -111,7 +111,7 @@ internal sealed class CompressTool : ToolWindow
         _metadata.Checked += (_, _) => Changed();
         _metadata.Unchecked += (_, _) => Changed();
 
-        var settings = new StackPanel { Width = 420, Margin = new Thickness(20, 0, 0, 0) };
+        var settings = new StackPanel { Width = 400, Margin = new Thickness(20, 0, 0, 0) };
         settings.Children.Add(modeRow);
         settings.Children.Add(_presetPanel);
         settings.Children.Add(_qualityRow);

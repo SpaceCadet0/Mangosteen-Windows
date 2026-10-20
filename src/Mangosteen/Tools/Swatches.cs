@@ -14,7 +14,7 @@ internal sealed class Swatches : StackPanel
         0xFF671E38, 0xFFE5484D, 0xFFFA9E5C, 0xFFF5C542, 0xFF46A758, 0xFF3E8ED0, 0xFF8C45AD,
     ];
 
-    private readonly TextBox _hex = new() { Width = 78, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBox _hex = new() { Width = 76, Margin = new Thickness(4, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
     private uint _value;
 
     public event Action<uint>? Changed;
@@ -26,7 +26,7 @@ internal sealed class Swatches : StackPanel
         {
             var swatch = new Button
             {
-                Width = 20, Height = 20, Margin = new Thickness(0, 0, 4, 0), Padding = new Thickness(0), MinWidth = 0, MinHeight = 0,
+                Width = 16, Height = 16, Margin = new Thickness(0, 0, 3, 0), Padding = new Thickness(0), MinWidth = 0, MinHeight = 0,
                 Background = new SolidColorBrush(ToColor(color)), BorderBrush = Brushes.Gray, BorderThickness = new Thickness(1),
                 ToolTip = Hex(color),
             };

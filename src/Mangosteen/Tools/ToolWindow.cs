@@ -75,7 +75,31 @@ internal abstract class ToolWindow : Window
     /// <summary>The tool's own controls, above the footer.</summary>
     protected UIElement Body
     {
-        set => _body.Content = value;
+        set
+        {
+            RelaxMinimumWidths(value);
+            _body.Content = value;
+        }
+    }
+
+    /// <summary>
+    /// The Fluent theme gives radio buttons, check boxes, sliders and combo boxes a large minimum width; in the
+    /// compact tool windows they should take only the space they need.
+    /// </summary>
+    private static void RelaxMinimumWidths(object node)
+    {
+        if (node is RadioButton or CheckBox or Slider or ComboBox && node is FrameworkElement element
+            && element.ReadLocalValue(MinWidthProperty) == DependencyProperty.UnsetValue)
+        {
+            element.MinWidth = 0;
+        }
+        if (node is DependencyObject parent)
+        {
+            foreach (var child in LogicalTreeHelper.GetChildren(parent))
+            {
+                RelaxMinimumWidths(child);
+            }
+        }
     }
 
     protected bool ActionEnabled
@@ -134,7 +158,7 @@ internal abstract class ToolWindow : Window
     protected static FrameworkElement Row(string label, UIElement control)
     {
         var grid = new Grid { Margin = new Thickness(0, 0, 0, 10) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         var text = new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) };
         grid.Children.Add(text);
@@ -171,7 +195,7 @@ internal abstract class ToolWindow : Window
         RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
         var frame = new Border
         {
-            Width = width, Height = height, CornerRadius = new CornerRadius(10), Child = image,
+            Width = width, Height = height, CornerRadius = new CornerRadius(10), Child = image, VerticalAlignment = VerticalAlignment.Top,
             Background = new SolidColorBrush(Color.FromArgb(0x18, 0x80, 0x80, 0x80)),
         };
         return (frame, image);

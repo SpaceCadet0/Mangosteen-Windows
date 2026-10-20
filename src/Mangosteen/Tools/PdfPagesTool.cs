@@ -47,7 +47,7 @@ internal sealed class PdfPagesTool : ToolWindow
         Add("▶", () => Shift(1), L("Move later"));
         toolbar.Children.Add(_hint);
 
-        var scroll = new ScrollViewer { Content = _tiles, Width = 820, Height = 500, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        var scroll = new ScrollViewer { Content = _tiles, Width = 820, Height = 460, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         var body = new DockPanel();
         DockPanel.SetDock(toolbar, Dock.Top);
         body.Children.Add(toolbar);
