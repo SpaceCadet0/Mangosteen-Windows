@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Carries only the FFmpeg archive. It is a separate assembly so the 78 MB stay out of memory until the first
+       time FFmpeg is unpacked; the single-file host decompresses an assembly when it is loaded. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Mangosteen.FFmpegArchive</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\Mangosteen\Media\ffmpeg.zip" LogicalName="ffmpeg.zip" Condition="Exists('..\Mangosteen\Media\ffmpeg.zip')" />
+  </ItemGroup>
+</Project>

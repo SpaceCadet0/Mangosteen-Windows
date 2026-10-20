@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Text;
 using Mangosteen.Platform;
 
@@ -16,17 +15,24 @@ namespace Mangosteen.Media;
 /// </summary>
 internal static class FFmpeg
 {
-    private const string Resource = "ffmpeg.zip";
+    private const string CompleteMarker = ".complete";
     private static readonly object Gate = new();
     private static string? _folder;
 
+    /// <summary>The archive's SHA-256, recorded at build time; null in builds without FFmpeg.</summary>
+    private static readonly string? Hash = typeof(FFmpeg).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false)
+        .OfType<System.Reflection.AssemblyMetadataAttribute>().FirstOrDefault(a => a.Key == "FFmpegHash")?.Value;
+
     /// <summary>True when this build carries FFmpeg (CI builds do; local builds without the fetch step do not).</summary>
-    public static bool IsBundled { get; } = typeof(FFmpeg).Assembly.GetManifestResourceInfo(Resource) is not null;
+    public static bool IsBundled { get; } = !string.IsNullOrEmpty(Hash);
 
     public static string FFmpegPath => Path.Combine(Folder(), "ffmpeg.exe");
     public static string FFprobePath => Path.Combine(Folder(), "ffprobe.exe");
 
-    /// <summary>Unpacks the bundle on first use: into a temporary folder that is then renamed, so a crash never leaves half a copy.</summary>
+    /// <summary>
+    /// Unpacks the bundle on first use: into a temporary folder that is then renamed, so a crash never leaves half a
+    /// copy. Later runs find the finished folder and never load the archive (it would take 78 MB of memory).
+    /// </summary>
     public static string Folder()
     {
         lock (Gate)
@@ -39,51 +45,50 @@ internal static class FFmpeg
             {
                 throw new InvalidOperationException(L("This build of Mangosteen has no FFmpeg, so video and audio are not available."));
             }
-            using var stream = typeof(FFmpeg).Assembly.GetManifestResourceStream(Resource)!;
-            var bytes = new byte[stream.Length];
-            stream.ReadExactly(bytes);
-            var hash = Convert.ToHexString(SHA256.HashData(bytes))[..16].ToLowerInvariant();
             var root = Path.Combine(Log.Directory, "ffmpeg");
-            var folder = Path.Combine(root, hash);
-            using var archive = new ZipArchive(new MemoryStream(bytes), ZipArchiveMode.Read);
-            if (!IsComplete(folder, archive))
+            var folder = Path.Combine(root, Hash![..16]);
+            if (!File.Exists(Path.Combine(folder, CompleteMarker)) || !File.Exists(Path.Combine(folder, "ffmpeg.exe")))
             {
-                Directory.CreateDirectory(root);
-                var temp = Path.Combine(root, $".unpacking-{Guid.NewGuid():N}");
-                archive.ExtractToDirectory(temp);
-                if (Directory.Exists(folder))
-                {
-                    Directory.Delete(folder, recursive: true);
-                }
-                try
-                {
-                    Directory.Move(temp, folder);
-                }
-                catch (IOException) when (IsComplete(folder, archive))
-                {
-                    // Another Mangosteen finished first.
-                    Directory.Delete(temp, recursive: true);
-                }
-                Log.Write($"ffmpeg unpacked to {folder}");
-                foreach (var old in Directory.GetDirectories(root).Where(d => !string.Equals(d, folder, StringComparison.OrdinalIgnoreCase)))
-                {
-                    try
-                    {
-                        Directory.Delete(old, recursive: true);
-                    }
-                    catch (Exception error) when (error is IOException or UnauthorizedAccessException)
-                    {
-                    }
-                }
+                Unpack(root, folder);
             }
             _folder = folder;
             return folder;
         }
     }
 
-    private static bool IsComplete(string folder, ZipArchive archive) =>
-        Directory.Exists(folder) && archive.Entries.All(e => e.FullName.EndsWith('/')
-            || new FileInfo(Path.Combine(folder, e.FullName)) is { Exists: true } file && file.Length == e.Length);
+    private static void Unpack(string root, string folder)
+    {
+        using var stream = FFmpegArchive.Archive.Open() ?? throw new InvalidOperationException(L("This build of Mangosteen has no FFmpeg, so video and audio are not available."));
+        using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
+        Directory.CreateDirectory(root);
+        var temp = Path.Combine(root, $".unpacking-{Guid.NewGuid():N}");
+        archive.ExtractToDirectory(temp);
+        File.WriteAllText(Path.Combine(temp, CompleteMarker), Hash);
+        if (Directory.Exists(folder))
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+        try
+        {
+            Directory.Move(temp, folder);
+        }
+        catch (IOException) when (File.Exists(Path.Combine(folder, CompleteMarker)))
+        {
+            // Another Mangosteen finished first.
+            Directory.Delete(temp, recursive: true);
+        }
+        Log.Write($"ffmpeg unpacked to {folder}");
+        foreach (var old in Directory.GetDirectories(root).Where(d => !string.Equals(d, folder, StringComparison.OrdinalIgnoreCase)))
+        {
+            try
+            {
+                Directory.Delete(old, recursive: true);
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            {
+            }
+        }
+    }
 
     /// <summary>Runs a program from the bundle and returns its standard output; throws with the last error lines on failure.</summary>
     public static string Run(string program, IEnumerable<string> arguments, CancellationToken token = default, Action<string>? onOutputLine = null)

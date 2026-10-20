@@ -10,6 +10,8 @@
     <ApplicationIcon>Assets\Mangosteen.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <StartupObject>Mangosteen.Program</StartupObject>
+    <!-- A tray app is idle most of the time: no background GC thread. -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
     <!-- DPI awareness is declared in app.manifest for the WPF app; the WinForms analyzer would prefer an API call. -->
     <NoWarn>$(NoWarn);WFAC010;WFO0003</NoWarn>
   </PropertyGroup>
@@ -29,10 +31,15 @@
   <ItemGroup>
     <Resource Include="Assets\Mangosteen.ico" />
     <EmbeddedResource Include="Assets\Mangosteen.ico" LogicalName="Mangosteen.ico" />
-    <!-- FFmpeg (GPLv3) is bundled when build/fetch-ffmpeg.ps1 has run; without it, video and audio are not offered. -->
-    <EmbeddedResource Include="Media\ffmpeg.zip" LogicalName="ffmpeg.zip" Condition="Exists('Media\ffmpeg.zip')" />
+    <!-- FFmpeg (GPLv3) is bundled when build/fetch-ffmpeg.ps1 has run: the archive lives in Mangosteen.FFmpeg.dll, and
+         its hash is recorded here so Mangosteen knows about it without loading that assembly. -->
+    <AssemblyMetadata Include="FFmpegHash" Value="$(FFmpegHash)" Condition="'$(FFmpegHash)' != ''" />
   </ItemGroup>
+  <PropertyGroup Condition="Exists('$(MSBuildThisFileDirectory)Media\ffmpeg.sha256')">
+    <FFmpegHash>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)Media\ffmpeg.sha256').Trim())</FFmpegHash>
+  </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Mangosteen.FFmpeg\Mangosteen.FFmpeg.csproj" />
     <ProjectReference Include="..\Mangosteen.Core\Mangosteen.Core.csproj" />
   </ItemGroup>
   <ItemGroup>

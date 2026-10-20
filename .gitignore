@@ -21,3 +21,4 @@ Thumbs.db
 # FFmpeg is fetched by build/fetch-ffmpeg.ps1
 ffmpeg-cache/
 src/Mangosteen/Media/ffmpeg.zip
+src/Mangosteen/Media/ffmpeg.sha256

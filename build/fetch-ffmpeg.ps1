@@ -31,4 +31,5 @@ Set-Content (Join-Path $pack 'FFmpeg-VERSION.txt') "$($root.Name)`nSource: https
 $target = Join-Path $PSScriptRoot '..' 'src/Mangosteen/Media/ffmpeg.zip'
 Remove-Item $target -ErrorAction SilentlyContinue
 Compress-Archive -Path (Join-Path $pack '*') -DestinationPath $target -CompressionLevel Optimal
+Set-Content ($target -replace 'ffmpeg\.zip$', 'ffmpeg.sha256') (Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant() -NoNewline
 Write-Host ("Packed {0} ({1:N1} MB)" -f $target, ((Get-Item $target).Length / 1MB))
