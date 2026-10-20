@@ -7,8 +7,22 @@ namespace Mangosteen.Core;
 /// </remarks>
 public static class FormatCatalog
 {
-    public static readonly IReadOnlyList<FileFormat> ImageOutputs =
+    /// <summary>True when the app carries FFmpeg: video, audio and AVIF are offered only then.</summary>
+    public static bool MediaAvailable { get; set; }
+
+    /// <summary>Image formats written without FFmpeg (WIC, SkiaSharp, PDFsharp).</summary>
+    public static readonly IReadOnlyList<FileFormat> WicImageOutputs =
         [FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Bmp, FileFormat.Gif, FileFormat.Pdf];
+
+    private static readonly IReadOnlyList<FileFormat> ImageOutputsWithAvif =
+        [FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Avif, FileFormat.Bmp, FileFormat.Gif, FileFormat.Pdf];
+
+    public static IReadOnlyList<FileFormat> ImageOutputs => MediaAvailable ? ImageOutputsWithAvif : WicImageOutputs;
+
+    public static readonly IReadOnlyList<FileFormat> VideoOutputs =
+        [FileFormat.Mp4, FileFormat.Mov, FileFormat.Mkv, FileFormat.Webm, FileFormat.Avi, FileFormat.Wmv, FileFormat.Gif, FileFormat.Mp3];
+    public static readonly IReadOnlyList<FileFormat> AudioOutputs =
+        [FileFormat.Mp3, FileFormat.M4a, FileFormat.Wav, FileFormat.Flac, FileFormat.Ogg, FileFormat.Opus, FileFormat.Aiff, FileFormat.Wma];
     public static readonly IReadOnlyList<FileFormat> PdfOutputs =
         [FileFormat.Png, FileFormat.Jpg, FileFormat.Txt, FileFormat.Md, FileFormat.Rtf, FileFormat.Docx, FileFormat.Html];
     public static readonly IReadOnlyList<FileFormat> DocumentOutputs =
@@ -29,16 +43,18 @@ public static class FormatCatalog
     {
         FormatCategory.Image => ImageInputs.Contains(format),
         FormatCategory.Document => format != FileFormat.Doc,
-        FormatCategory.Video or FormatCategory.Audio => false,
+        FormatCategory.Video or FormatCategory.Audio => MediaAvailable,
         _ => true,
     };
 
     /// <summary>Order of segments on the wheel when the selection mixes kinds of files.</summary>
     private static readonly IReadOnlyList<FileFormat> DisplayOrder =
     [
-        FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Bmp, FileFormat.Gif, FileFormat.Pdf,
+        FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Avif, FileFormat.Bmp, FileFormat.Gif, FileFormat.Pdf,
         FileFormat.Docx, FileFormat.Odt, FileFormat.Rtf, FileFormat.Txt, FileFormat.Md, FileFormat.Html,
         FileFormat.Srt, FileFormat.Vtt, FileFormat.Csv, FileFormat.Tsv, FileFormat.Xlsx,
+        FileFormat.Mp4, FileFormat.Mov, FileFormat.Mkv, FileFormat.Webm, FileFormat.Avi, FileFormat.Wmv,
+        FileFormat.Mp3, FileFormat.M4a, FileFormat.Wav, FileFormat.Flac, FileFormat.Ogg, FileFormat.Opus, FileFormat.Aiff, FileFormat.Wma,
         FileFormat.Zip, FileFormat.Tar, FileFormat.Tgz,
     ];
 
@@ -50,6 +66,8 @@ public static class FormatCatalog
         FormatCategory.Subtitle => SubtitleOutputs,
         FormatCategory.Table => TableOutputs,
         FormatCategory.Archive => ArchiveOutputs,
+        FormatCategory.Video => MediaAvailable ? VideoOutputs : [],
+        FormatCategory.Audio => MediaAvailable ? AudioOutputs : [],
         _ => [],
     };
 

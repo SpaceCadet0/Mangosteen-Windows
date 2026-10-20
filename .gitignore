@@ -17,3 +17,7 @@ TestResults/
 # OS
 .DS_Store
 Thumbs.db
+
+# FFmpeg is fetched by build/fetch-ffmpeg.ps1
+ffmpeg-cache/
+src/Mangosteen/Media/ffmpeg.zip

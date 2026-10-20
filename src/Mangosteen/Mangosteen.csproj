@@ -29,6 +29,8 @@
   <ItemGroup>
     <Resource Include="Assets\Mangosteen.ico" />
     <EmbeddedResource Include="Assets\Mangosteen.ico" LogicalName="Mangosteen.ico" />
+    <!-- FFmpeg (GPLv3) is bundled when build/fetch-ffmpeg.ps1 has run; without it, video and audio are not offered. -->
+    <EmbeddedResource Include="Media\ffmpeg.zip" LogicalName="ffmpeg.zip" Condition="Exists('Media\ffmpeg.zip')" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Mangosteen.Core\Mangosteen.Core.csproj" />

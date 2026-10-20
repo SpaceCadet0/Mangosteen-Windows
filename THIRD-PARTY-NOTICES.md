@@ -11,6 +11,7 @@ license texts are available at the linked projects.
 | [PdfPig](https://github.com/UglyToad/PdfPig) | Reading the text of PDF files | Apache License 2.0 |
 | [PDFsharp and MigraDoc](https://github.com/empira/PDFsharp) 6.2 | Writing PDF files | MIT |
 | [SkiaSharp](https://github.com/mono/SkiaSharp) | Writing WebP images | MIT |
+| [FFmpeg](https://ffmpeg.org) 8.1, the [BtbN build](https://github.com/BtbN/FFmpeg-Builds) with x264, libvpx, libaom, Opus, LAME and more | Video, audio and AVIF | GPL v3 |
 | [Skia](https://skia.org) and [libwebp](https://chromium.googlesource.com/webm/libwebp), inside SkiaSharp | Image encoding | BSD 3-Clause |
 
 ## PdfPig
@@ -23,3 +24,12 @@ the specific language governing permissions and limitations under the License.
 
 Copyright (c) UglyToad and the PdfPig contributors. PdfPig includes code ported from Apache PDFBox, Copyright
 The Apache Software Foundation.
+
+## FFmpeg
+
+Mangosteen.exe carries FFmpeg and FFprobe as separate programs. On first use they are unpacked into
+`%LOCALAPPDATA%\Mangosteen\ffmpeg` and run as their own processes; Mangosteen does not link to them. FFmpeg is
+licensed under the GNU General Public License version 3; its licence text and exact version are unpacked next to it
+(`FFmpeg-LICENSE.txt`, `FFmpeg-VERSION.txt`). The source code is available at https://ffmpeg.org/download.html and the
+build scripts at https://github.com/BtbN/FFmpeg-Builds; the archive used is named in
+[build/ffmpeg.pin](build/ffmpeg.pin).

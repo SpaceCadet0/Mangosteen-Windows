@@ -12,6 +12,11 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--media-self-test")
+        {
+            Log.Start(Version + " (media self-test)");
+            return Media.FFmpeg.SelfTest();
+        }
         if (args.Length >= 3 && args[0] == "--snapshot")
         {
             return RunSnapshot(args[1], args[2], args[3..]);
@@ -39,6 +44,7 @@ internal static class Program
     /// <summary>Renders one tool window to a PNG and exits; no tray icon, no hooks.</summary>
     private static int RunSnapshot(string id, string output, IReadOnlyList<string> files)
     {
+        Core.FormatCatalog.MediaAvailable = Media.FFmpeg.IsBundled;
         Log.Start(Version + " (snapshot)");
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.DispatcherUnhandledException += (_, e) =>

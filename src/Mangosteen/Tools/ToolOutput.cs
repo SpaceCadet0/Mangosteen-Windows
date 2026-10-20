@@ -14,7 +14,7 @@ internal static class ToolOutput
 
     /// <summary>The format results keep: the original's when Mangosteen can write it, otherwise PNG.</summary>
     public static FileFormat KeepFormat(string input) =>
-        FileFormats.Detect(input) is { } format && format != FileFormat.Pdf && FormatCatalog.ImageOutputs.Contains(format) ? format : FileFormat.Png;
+        FileFormats.Detect(input) is { } format && format != FileFormat.Pdf && FormatCatalog.WicImageOutputs.Contains(format) ? format : FileFormat.Png;
 
     public static List<string> Images(IEnumerable<string> paths) =>
         paths.Where(p => FileFormats.Detect(p) is { } f && FormatCatalog.ImageInputs.Contains(f)).ToList();

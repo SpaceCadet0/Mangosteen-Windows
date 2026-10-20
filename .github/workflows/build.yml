@@ -21,6 +21,15 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - uses: actions/cache@v6
+        with:
+          path: ffmpeg-cache/ffmpeg.zip
+          key: ffmpeg-${{ hashFiles('build/ffmpeg.pin') }}
+
+      - name: Fetch FFmpeg
+        shell: pwsh
+        run: ./build/fetch-ffmpeg.ps1
+
       - name: Restore
         run: dotnet restore Mangosteen.sln
 
@@ -42,6 +51,13 @@ jobs:
           if ($extra) { throw "Unexpected files next to Mangosteen.exe: $($extra -join ', ')" }
           $size = (Get-Item publish/Mangosteen.exe).Length / 1MB
           Write-Host ("Mangosteen.exe: {0:N1} MB" -f $size)
+
+      - name: Media self-test of the published exe
+        shell: pwsh
+        run: |
+          $process = Start-Process publish/Mangosteen.exe -ArgumentList '--media-self-test' -Wait -PassThru
+          Get-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/mangosteen.log') -Tail 15
+          if ($process.ExitCode -ne 0) { throw "Media self-test failed with exit code $($process.ExitCode)" }
 
       - name: Tool window snapshots
         shell: pwsh

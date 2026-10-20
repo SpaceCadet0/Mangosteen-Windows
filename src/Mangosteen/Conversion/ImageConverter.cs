@@ -15,7 +15,7 @@ internal static class ImageConverter
 {
     public const int WebpQuality = 80;
 
-    public static bool CanWrite(FileFormat format) => FormatCatalog.ImageOutputs.Contains(format);
+    public static bool CanWrite(FileFormat format) => FormatCatalog.WicImageOutputs.Contains(format);
 
     /// <summary>Converts <paramref name="source"/> next to itself and returns the path of the new file.</summary>
     public static string Convert(string source, FileFormat target)

@@ -13,7 +13,11 @@ internal sealed class Jobs(Dispatcher dispatcher, TrayIcon tray)
     private static readonly TimeSpan HudDelay = TimeSpan.FromMilliseconds(400);
 
     /// <summary>Applies <paramref name="work"/> to each input. Work returns the new file or folder, or null when there was nothing to do.</summary>
-    public void RunEach(string title, string doneTitle, IReadOnlyList<string> inputs, Func<string, CancellationToken, string?> work)
+    public void RunEach(string title, string doneTitle, IReadOnlyList<string> inputs, Func<string, CancellationToken, string?> work) =>
+        RunEach(title, doneTitle, inputs, (input, token, _) => work(input, token));
+
+    /// <summary>Like <see cref="RunEach(string, string, IReadOnlyList{string}, Func{string, CancellationToken, string?})"/>, with progress (0…1) within each file.</summary>
+    public void RunEach(string title, string doneTitle, IReadOnlyList<string> inputs, Func<string, CancellationToken, Action<double>, string?> work)
     {
         var cancel = new CancellationTokenSource();
         ProgressHud? hud = null;
@@ -48,7 +52,18 @@ internal sealed class Jobs(Dispatcher dispatcher, TrayIcon tray)
                 var clock = Stopwatch.StartNew();
                 try
                 {
-                    if (work(input, cancel.Token) is { } output)
+                    var lastShown = 0.0;
+                    void Progress(double fraction)
+                    {
+                        // A few updates a second are plenty.
+                        if (fraction - lastShown < 0.01 && fraction < 1)
+                        {
+                            return;
+                        }
+                        lastShown = fraction;
+                        dispatcher.BeginInvoke(() => hud?.Report(index, inputs.Count, name, fraction));
+                    }
+                    if (work(input, cancel.Token, Progress) is { } output)
                     {
                         outputs.Add(output);
                         Log.Write($"{title}: {input} -> {output} in {clock.ElapsedMilliseconds} ms");

@@ -301,3 +301,29 @@ public class OfficeValidityTests : TempFolderTest
         Assert.Equal(["отчёт за год.txt", "сад.txt"], Directory.GetFiles(folder).Select(Path.GetFileName).Order(StringComparer.Ordinal));
     }
 }
+
+public sealed class MediaCatalogTests : IDisposable
+{
+    public MediaCatalogTests() => FormatCatalog.MediaAvailable = true;
+
+    public void Dispose() => FormatCatalog.MediaAvailable = false;
+
+    [Fact]
+    public void VideoOffersContainersGifAndMp3() =>
+        Assert.Equal([FileFormat.Mov, FileFormat.Mkv, FileFormat.Webm, FileFormat.Avi, FileFormat.Wmv, FileFormat.Gif, FileFormat.Mp3],
+            FormatCatalog.Targets(["clip.mp4"]));
+
+    [Fact]
+    public void AudioOffersAudio() => Assert.Contains(FileFormat.Flac, FormatCatalog.Targets(["song.mp3"]));
+
+    [Fact]
+    public void ImagesGainAvif() => Assert.Contains(FileFormat.Avif, FormatCatalog.Targets(["a.png"]));
+
+    [Fact]
+    public void WithoutFFmpegMediaIsHidden()
+    {
+        FormatCatalog.MediaAvailable = false;
+        Assert.Empty(FormatCatalog.Targets(["clip.mp4", "song.mp3"]));
+        Assert.DoesNotContain(FileFormat.Avif, FormatCatalog.Targets(["a.png"]));
+    }
+}

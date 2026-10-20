@@ -26,6 +26,8 @@ internal sealed class AppController : IDisposable
 
     public void Start()
     {
+        FormatCatalog.MediaAvailable = Media.FFmpeg.IsBundled;
+        Log.Write($"ffmpeg bundled: {Media.FFmpeg.IsBundled}");
         _tray = new TrayIcon(ChooseFiles, _shelf.Toggle, Quit);
         _jobs = new Jobs(_dispatcher, _tray);
         // The hook thread only posts; everything below runs on the UI thread.
@@ -198,7 +200,7 @@ internal sealed class AppController : IDisposable
             // Items that cannot become the target (or already are it) are skipped, as the wheel promised.
             var inputs = paths.Where(p => FormatCatalog.Conversion(p) is var c && c.Source != target && c.Targets.Contains(target)).ToList();
             jobs.RunEach($"Converting to {target.DisplayName()}", $"Converted to {target.DisplayName()}", inputs,
-                (input, token) => Converter.Convert(input, target, token));
+                (input, token, progress) => Converter.Convert(input, target, token, progress));
             return;
         }
         try

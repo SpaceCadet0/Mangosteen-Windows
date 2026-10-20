@@ -86,10 +86,11 @@ internal sealed class ProgressHud : Window
         Open.Add(this);
     }
 
-    public void Report(int done, int total, string item)
+    /// <param name="fraction">Progress within the current file (0…1), or null when unknown.</param>
+    public void Report(int done, int total, string item, double? fraction = null)
     {
-        _bar.IsIndeterminate = total <= 1;
-        _bar.Value = total == 0 ? 0 : (double)done / total;
+        _bar.IsIndeterminate = total <= 1 && fraction is null;
+        _bar.Value = total == 0 ? 0 : (done + (fraction ?? 0)) / total;
         _detail.Text = total > 1 ? $"{Math.Min(done + 1, total)} of {total} · {item}" : item;
     }
 

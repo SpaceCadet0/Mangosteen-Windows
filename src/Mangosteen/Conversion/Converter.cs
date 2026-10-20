@@ -7,7 +7,7 @@ namespace Mangosteen.Conversion;
 internal static class Converter
 {
     /// <summary>Converts <paramref name="input"/> and returns the new file or folder, or null when it already has that format.</summary>
-    public static string? Convert(string input, FileFormat target, CancellationToken token = default)
+    public static string? Convert(string input, FileFormat target, CancellationToken token = default, Action<double>? progress = null)
     {
         var (source, targets) = FormatCatalog.Conversion(input);
         if (source == target)
@@ -48,8 +48,14 @@ internal static class Converter
                 case null:
                     Archives.Pack([path], target, output);
                     break;
+                case FormatCategory.Image when target == FileFormat.Avif:
+                    Media.MediaConverter.ImageToAvif(path, output, token);
+                    break;
                 case FormatCategory.Image:
                     ImageConverter.Write(path, target, output);
+                    break;
+                case FormatCategory.Video or FormatCategory.Audio:
+                    Media.MediaConverter.Convert(path, target, output, progress, token);
                     break;
                 case FormatCategory.Pdf when target.Category() == FormatCategory.Image:
                     ImageConverter.WriteImage(PdfRenderer.RenderPage(path, 0), target, output);
