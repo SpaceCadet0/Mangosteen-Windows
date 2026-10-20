@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Mangosteen for macOS
+    url: https://github.com/SpaceCadet0/Mangosteen
+    about: Issues with the Mac app belong in its own repository.

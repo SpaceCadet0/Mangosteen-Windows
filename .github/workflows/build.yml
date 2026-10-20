@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write # the release step attaches Mangosteen.exe to a GitHub release when a v* tag is pushed
 
 jobs:
   windows:
@@ -58,6 +58,19 @@ jobs:
           $process = Start-Process publish/Mangosteen.exe -ArgumentList '--media-self-test' -Wait -PassThru
           Get-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/mangosteen.log') -Tail 15
           if ($process.ExitCode -ne 0) { throw "Media self-test failed with exit code $($process.ExitCode)" }
+
+      - name: Memory in the background
+        shell: pwsh
+        run: |
+          # Start the published exe as a user would (tray icon and hooks, welcome already seen) and measure it idle.
+          New-Item -ItemType Directory -Force (Join-Path $env:LOCALAPPDATA 'Mangosteen') | Out-Null
+          Set-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/settings.json') '{"Language":"en","WelcomeShown":true}'
+          $process = Start-Process publish/Mangosteen.exe -PassThru
+          Start-Sleep -Seconds 25
+          $process.Refresh()
+          Write-Host ("memory idle: working set {0:N1} MB, private {1:N1} MB, peak working set {2:N1} MB" -f `
+            ($process.WorkingSet64 / 1MB), ($process.PrivateMemorySize64 / 1MB), ($process.PeakWorkingSet64 / 1MB))
+          Stop-Process $process -Force
 
       - name: Tool window snapshots
         shell: pwsh
@@ -123,3 +136,12 @@ jobs:
           name: Mangosteen-win-x64
           path: publish/Mangosteen.exe
           if-no-files-found: error
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ github.ref_name }}'
+          gh release create $tag publish/Mangosteen.exe --title "Mangosteen for Windows $($tag.TrimStart('v'))" --notes-file "docs/releases/$tag.md"

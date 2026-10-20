@@ -1,101 +1,140 @@
 *English* · [Русский](README.ru.md)
 
-# Mangosteen for Windows
+<p align="center">
+  <img src="docs/images/icon.png" width="128" alt="Mangosteen icon">
+</p>
 
-The Windows sibling of [Mangosteen](https://github.com/SpaceCadet0/Mangosteen), the macOS menu-bar app that converts and edits files from a wheel. Hold a modifier key, right-click a file in File Explorer or on the desktop, and pick what to do from a round wheel at the cursor. The result is written next to the original. Everything runs offline.
+<h1 align="center">Mangosteen for Windows</h1>
 
-This is an early version (0.5). The interface speaks English, Spanish and Russian (it follows Windows; change it in Settings). The two repositories share no code; each has its own releases and CI.
+<p align="center">
+  <b>Zero-click file converter and toolbox for Windows.</b><br>
+  Hold Shift, Ctrl or Alt, right-click a file, pick a segment — done.
+</p>
 
-## Key map
+<p align="center">
+  <img src="https://img.shields.io/badge/Windows-10%20%C2%B7%2011-671E38?logo=windows&logoColor=white" alt="Windows 10 and 11">
+  <img src="https://img.shields.io/badge/.NET-10%20%C2%B7%20WPF-671E38?logo=dotnet&logoColor=white" alt=".NET 10 and WPF">
+  <img src="https://img.shields.io/badge/works-offline-671E38" alt="Works offline">
+  <img src="https://img.shields.io/badge/languages-EN%20%C2%B7%20ES%20%C2%B7%20RU-671E38" alt="Languages">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-671E38" alt="MIT License"></a>
+</p>
 
-| Hold | Right-click a file | Wheel |
-| --- | --- | --- |
-| Shift | in File Explorer or on the desktop | Convert |
-| Ctrl | in File Explorer or on the desktop | Tools |
-| Alt | in File Explorer or on the desktop | Actions |
+---
 
-Right-clicks without one of these keys, and right-clicks anywhere else, open the usual context menu.
+The Windows sibling of [Mangosteen](https://github.com/SpaceCadet0/Mangosteen) for macOS. It lives in the notification
+area and waits for a right-click. Hold a modifier key, right-click a file in File Explorer or on the desktop, and a
+round wheel opens at the cursor. Pick a segment and the result appears next to the original. No windows to open, no
+save dialogs, no uploads, no limits. The two apps share no code; each has its own releases.
 
-Pick a segment with a left click. Esc or a click outside the wheel closes it. Picked the wrong wheel? While it is open, press Shift, Ctrl or Alt to switch to that wheel for the same files. As in Explorer, right-clicking a selected file uses the whole selection, and right-clicking a file that is not selected selects just that file.
+<p align="center">
+  <img src="docs/images/en/welcome.png" width="720" alt="The three wheels">
+</p>
 
-For other apps, use the tray icon: **Choose files…** opens a file dialog and then shows the wheel at the cursor.
-The tray menu also has **Settings…** (language, start with Windows) and **Welcome…**, the short guide shown on the first launch.
+| Hold and right-click | Wheel | What it does |
+|:---:|:---:|---|
+| `Shift` | **Convert** | Turns the file into another format |
+| `Ctrl` | **Tools** | Opens an editor with a live preview |
+| `Alt` | **Actions** | Float shelf, copy, move, path, terminal |
 
-## What it does
+Picked the wrong wheel? While it is open, press Shift, Ctrl or Alt to switch. As in Explorer, right-clicking a selected
+file uses the whole selection. Right-clicks without these keys open the usual context menu. For other apps, the tray
+menu has **Choose files…**.
 
-### Convert (Shift)
+## Highlights
+
+- **Zero clicks.** The wheel shows only what makes sense for the files you clicked.
+- **Never touches the original.** Results are written next to the source; names never clash (`photo 2.jpg`).
+- **Fully offline.** Everything runs on your PC. Nothing is uploaded, nothing is tracked.
+- **No limits.** Any number of files, any size, as often as you like.
+- **One file.** A single self-contained `Mangosteen.exe` with FFmpeg inside; no installer, no .NET to install.
+- **Native.** WPF with the Windows 11 look, Windows' own PDF, OCR and face detection engines.
+- **Three languages.** English, Spanish and Russian, following Windows or chosen in Settings.
+
+## Convert
 
 | Kind | Formats |
-| --- | --- |
-| Images | PNG, JPG, WebP, TIFF, AVIF, BMP, GIF, PDF; also reads ICO, and WebP, HEIC and AVIF when their Microsoft Store codecs are installed |
-| PDF | to PNG or JPG (a PDF with several pages becomes a folder of pages), TXT, Markdown, RTF, DOCX, HTML |
+|---|---|
+| Images | PNG, JPG, WebP, TIFF, AVIF, BMP, GIF, PDF; also reads ICO, and HEIC with the Microsoft Store codec |
+| PDF | to PNG or JPG (several pages become a folder of pages), TXT, Markdown, RTF, DOCX, HTML |
 | Documents | DOCX, ODT, RTF, TXT, Markdown, HTML into each other and into PDF |
+| Video | MP4, MOV, MKV, WebM, AVI, WMV into each other, GIF and MP3 |
+| Audio | MP3, M4A, WAV, FLAC, OGG, Opus, AIFF, WMA |
 | Subtitles | SRT and VTT into each other and into TXT |
 | Tables | CSV, TSV, XLSX into each other (a workbook with several sheets becomes a folder of tables) |
 | Archives | ZIP, TAR, TAR.GZ into each other; folders into archives |
-| Video | MP4, MOV, MKV, WebM, AVI, WMV into each other, GIF and MP3 |
-| Audio | MP3, M4A, WAV, FLAC, OGG, Opus, AIFF, WMA |
 
 When the target container accepts the original streams, video is copied without re-encoding, so it is instant and
-lossless.
+lossless. Text in the old Windows Cyrillic encoding is read correctly, and CSV files open in Excel with Cyrillic intact.
 
-Results never overwrite anything: `photo.jpg`, then `photo 2.jpg`, `photo 3.jpg`. The original is never changed.
-Text files in the old Windows Cyrillic encoding (Windows-1251) are read correctly. Longer jobs show a small
-progress panel with a Stop button; click the final notification to see the result in Explorer.
+## Tools
 
-Not yet on Windows: HEIC output, animated WebP and the old binary `.doc` format. Documents keep headings, paragraphs, lists, bold, italic, underline, links and code; images
-and tables inside documents are not carried over.
+Every tool opens a small window with a live preview. Close it and nothing is changed.
 
-### Tools (Ctrl)
+<p align="center">
+  <img src="docs/images/en/annotate.png" width="49%" alt="Annotate">
+  <img src="docs/images/en/frame.png" width="49%" alt="Background">
+</p>
 
-Tools open a window with a live preview; close it and nothing is changed. Results are saved next to the original
-as `photo (cropped).jpg`, `photo (edited).jpg` and so on.
+### Images and PDF
 
-- **Compress**: presets, quality or a target file size, a size limit and the format (JPG or WebP); works for PDF too.
-- **Crop**: a free frame, fixed proportions or an exact size in pixels.
-- **Editor**: light, colour, detail and effects. Hold the preview to see the original; double-click a slider to reset it.
-- **Annotate**: arrows, rectangles, ovals, text, numbered steps, pencil, highlighter, magnifier and pictures (Ctrl+V pastes one).
-- **Hide**: finds faces and text on the device and covers them with a fill, a blur or pixels; areas can be drawn by hand.
-- **Background**: puts a photo on a colour, gradient, image or a blurred copy of itself, with margin, corners and shadow.
-- **Collage**: a grid, a row, a column or a featured photo.
-- **Metadata**: see everything, edit common fields, remove the location or all metadata (without re-encoding JPEG).
-- **Pages** (PDF): reorder, rotate, duplicate and delete pages.
-- **Extract** an archive, **PDF from images**, **Merge** PDFs.
+- **Annotate** — arrows, shapes, text, numbered steps, pencil, highlighter, magnifier and pasted pictures.
+- **Background** — a photo on a colour, gradient, image or a blurred copy of itself, with margin, corners and shadow.
+- **Editor** — light, colour, detail and effects; hold the preview to compare, double-click a slider to reset it.
+- **Compress** — presets, quality, target file size, resize and format; works for PDF too.
+- **Crop** — free frame, aspect ratios or an exact size.
+- **Collage** — grid, row, column or a featured photo.
+- **Hide** — finds faces and text on the device and covers them with a fill, a blur or pixels.
+- **Metadata** — view everything, edit common fields, remove the location or all metadata (JPEG is not re-encoded).
+- **Pages** — reorder, rotate, duplicate and delete PDF pages; **Merge** PDFs; **PDF from images**.
 
-Video and audio tools work on a timeline with frames or the waveform (the mouse wheel zooms, Shift + wheel scrolls,
-a double click shows the whole file):
+<p align="center">
+  <img src="docs/images/en/edit.png" width="49%" alt="Photo editor">
+  <img src="docs/images/en/compress.png" width="49%" alt="Compress">
+</p>
 
-- **Trim** and **Split** (fast mode copies without re-encoding), **Frames** saves stills as PNG.
-- **Speed** with or without keeping the pitch, **Volume** (EBU R128 loudness normalisation, listen first), **Channels**.
-- **Compress** video and audio by quality, height or a target size, with an estimate; **Join** clips; **Crop video**.
-- **Bleep** words and listen before saving; **Hide** areas of a video during chosen moments; **Visualizer** turns a song into an MP4.
+### Video and audio
 
-### Actions (Alt)
+<p align="center">
+  <img src="docs/images/en/trimMedia.png" width="49%" alt="Trim">
+  <img src="docs/images/en/bleep.png" width="49%" alt="Bleep">
+</p>
 
-- **Float** puts the files on a floating shelf with real thumbnails of photos and videos. Drag them from the shelf into any app later. Dragging out copies;
-  switch the shelf to Move to move the originals instead. The shelf is also in the tray menu.
-- **Copy** puts the files on the clipboard, ready to paste into a folder or a message.
-- **Move** asks for a folder and moves the files there.
-- **Path** copies the full paths.
-- **Terminal** opens the folder in Windows Terminal (or PowerShell).
+- **Trim** and **Split** on a zoomable timeline with frame previews; fast mode copies without re-encoding.
+- **Speed**, **Volume** (EBU R128 loudness normalisation, listen first) and **Compress** with a size estimate.
+- **Bleep** — mark words on the timeline and listen to the bleeped version before saving.
+- **Hide on video** — cover areas with a fill, blur or pixels, each with its own time range.
+- **Reframe** video, **Join** clips, save **Frames** as PNG, **Channels** for audio, and a **Visualizer** that turns a song into an MP4.
+
+### Archives
+
+- **Extract** archives next to the original; Explorer's Cyrillic ZIP names come out right.
+
+## Actions
+
+- **Float** — a floating shelf with real thumbnails that holds files until you drag them somewhere else, in copy or move mode.
+- **Copy** the files to the clipboard, **Move** them to a folder, copy the **path**, open a **Terminal** there.
 
 ## Download
 
-There is no installer yet. Every push builds a self-contained `Mangosteen.exe` (Windows 10 and 11, x64, no .NET install needed). It is about 170 MB because it carries FFmpeg, which is unpacked into `%LOCALAPPDATA%\Mangosteen\ffmpeg` on first use:
+Download `Mangosteen.exe` from the [latest release](https://github.com/SpaceCadet0/Mangosteen-Windows/releases/latest) and
+run it. It is about 170 MB because it carries FFmpeg, which is unpacked into `%LOCALAPPDATA%\Mangosteen\ffmpeg` on first
+use. Windows 10 and 11, x64.
 
-1. Open the [Actions tab](https://github.com/SpaceCadet0/Mangosteen-Windows/actions/workflows/build.yml) and click the latest green run.
-2. Under **Artifacts**, download **Mangosteen-win-x64** (you need to be signed in to GitHub) and unzip it.
-3. Run `Mangosteen.exe`. The build is not signed, so SmartScreen may warn you: click **More info**, then **Run anyway**.
+The build is not signed, so SmartScreen may warn you: click **More info**, then **Run anyway**. Microsoft Defender may
+look at it closely the first time, because an unsigned app that unpacks programs and watches the mouse is unusual.
 
-Mangosteen lives in the notification area (click the arrow next to the clock if you do not see the icon). Quit it from the tray menu.
+Mangosteen lives in the notification area by the clock. The tray menu has **Settings…** (language, start with Windows),
+**Welcome…**, the **Float shelf**, the log and **Quit**. Builds of every commit are available as artifacts on the
+[Actions tab](https://github.com/SpaceCadet0/Mangosteen-Windows/actions/workflows/build.yml).
 
 ## Troubleshooting
 
-Mangosteen writes a log to `%LOCALAPPDATA%\Mangosteen\mangosteen.log` (**Open log** in the tray menu). It records every right-click Mangosteen handles: the window under the cursor, the selected files and timings. Attach it when reporting a problem.
+Mangosteen writes a log to `%LOCALAPPDATA%\Mangosteen\mangosteen.log` (**Open log** in the tray menu): every right-click
+it handles, every result and every error. Attach it to an [issue](https://github.com/SpaceCadet0/Mangosteen-Windows/issues).
 
 ## Building
 
-Requires the .NET 8 SDK. The app targets Windows, but it also compiles on macOS and Linux (`EnableWindowsTargeting`):
+Requires the .NET 10 SDK. The app targets Windows, but it also compiles on macOS and Linux (`EnableWindowsTargeting`):
 
 ```
 dotnet build Mangosteen.sln
@@ -103,7 +142,13 @@ dotnet test tests/Mangosteen.Core.Tests
 dotnet publish src/Mangosteen/Mangosteen.csproj -c Release -r win-x64 -o publish
 ```
 
-The image conversion tests (`tests/Mangosteen.Windows.Tests`) need Windows and run in CI.
+Video and audio need FFmpeg inside the exe: on Windows, run `build/fetch-ffmpeg.ps1` before building (CI does). Without
+it the app still works, and video and audio are simply not offered. The Windows tests (`tests/Mangosteen.Windows.Tests`)
+and the tool-window snapshots run in CI. Interface strings go through `L("…")`; after adding text, run
+`python3 build/build-translations.py`, which fails until every string has a Russian and a Spanish translation.
+
+`Mangosteen.exe --snapshot <tool id> <output.png> <files…>` renders a tool window to an image, and
+`Mangosteen.exe --media-self-test` checks the bundled FFmpeg.
 
 ## License
 
