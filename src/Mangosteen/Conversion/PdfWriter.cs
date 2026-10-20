@@ -16,14 +16,14 @@ internal static class PdfWriter
     private static readonly object FontSetup = new();
     private static bool _fontsReady;
 
-    /// <summary>MigraDoc and PDFsharp use the fonts installed in Windows (Cyrillic included).</summary>
+    /// <summary>MigraDoc and PDFsharp use the fonts installed in Windows (Cyrillic included); see <see cref="WindowsFontResolver"/>.</summary>
     private static void EnsureFonts()
     {
         lock (FontSetup)
         {
             if (!_fontsReady)
             {
-                GlobalFontSettings.UseWindowsFontsUnderWindows = true;
+                GlobalFontSettings.FontResolver = new WindowsFontResolver();
                 _fontsReady = true;
             }
         }
