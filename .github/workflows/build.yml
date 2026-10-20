@@ -53,7 +53,9 @@ jobs:
             @{ id = 'tool.metadata'; files = @('photo.jpg') },
             @{ id = 'tool.frame'; files = @('photo.jpg') },
             @{ id = 'tool.collage'; files = @('photo.jpg', 'portrait.jpg', 'photo.jpg') },
-            @{ id = 'tool.organizePDF'; files = @('document.pdf') }
+            @{ id = 'tool.organizePDF'; files = @('document.pdf') },
+            @{ id = 'tool.edit'; files = @('photo.jpg') },
+            @{ id = 'tool.redact'; files = @('photo.jpg', 'portrait.jpg') }
           )
           New-Item -ItemType Directory -Force snapshots | Out-Null
           foreach ($tool in $tools) {
