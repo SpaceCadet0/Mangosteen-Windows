@@ -18,6 +18,7 @@ internal sealed class CropTool : ToolWindow
 {
     private const int PreviewSide = 1600;
     private readonly List<string> _images;
+    private readonly string? _video;
     private readonly Jobs _jobs;
     private readonly Canvas _overlay = new();
     private readonly Image _image = new() { Stretch = Stretch.Fill };
@@ -38,6 +39,8 @@ internal sealed class CropTool : ToolWindow
     public CropTool(IReadOnlyList<string> files, Jobs jobs) : base(L("Crop"), files, L("Crop"))
     {
         _images = ToolOutput.Images(files);
+        // Crop video: the frame is drawn on a still from the video.
+        _video = _images.Count == 0 ? files.FirstOrDefault(f => Core.FileFormats.Category(Core.FileFormats.Detect(f) ?? Core.FileFormat.Txt) == Core.FormatCategory.Video && Core.FileFormats.Detect(f) is not null) : null;
         _jobs = jobs;
 
         _surface.Children.Add(_image);
@@ -130,14 +133,16 @@ internal sealed class CropTool : ToolWindow
 
     private void Load()
     {
-        if (_images.Count == 0)
+        if (_images.Count == 0 && _video is null)
         {
+            _loaded = true;
             return;
         }
-        var first = _images[0];
+        var first = _video ?? _images[0];
+        var video = _video is not null;
         Task.Run(() =>
         {
-            var full = ImageIO.Load(first);
+            var full = video ? Media.MediaTools.Frame(first, 1) : ImageIO.Load(first);
             return (Preview: ImageIO.Scale(full, PreviewSide), full.PixelWidth, full.PixelHeight);
         }).ContinueWith(task =>
         {
@@ -253,6 +258,11 @@ internal sealed class CropTool : ToolWindow
         var frameAspect = (double)firstRect.ToPixels(_width, _height).Width / firstRect.ToPixels(_width, _height).Height;
         var lockedFirst = PixelAspect(_width, _height);
         Close();
+        if (_video is { } video)
+        {
+            _jobs.RunEach(L("Cropping"), L("Cropped"), [video], (path, token, progress) => Media.MediaTools.CropVideo(path, firstRect, exact, progress, token));
+            return;
+        }
         _jobs.RunEach(L("Cropping"), L("Cropped"), _images, (input, _) =>
         {
             var image = ImageIO.Load(input);

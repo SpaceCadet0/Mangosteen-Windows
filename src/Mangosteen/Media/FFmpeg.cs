@@ -167,6 +167,59 @@ internal static class FFmpeg
         }
     }
 
+    /// <summary>Runs ffmpeg and returns its binary standard output (a PNG frame, raw samples).</summary>
+    public static byte[] RunBytes(IEnumerable<string> arguments, CancellationToken token = default)
+    {
+        var start = new ProcessStartInfo(FFmpegPath)
+        {
+            UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
+            StandardErrorEncoding = Encoding.UTF8,
+        };
+        foreach (var argument in new[] { "-hide_banner", "-nostdin", "-loglevel", "error" }.Concat(arguments))
+        {
+            start.ArgumentList.Add(argument);
+        }
+        using var process = new Process { StartInfo = start };
+        var errors = new StringBuilder();
+        process.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data is not null)
+            {
+                lock (errors)
+                {
+                    errors.AppendLine(e.Data);
+                }
+            }
+        };
+        process.Start();
+        Jobs.Add(process);
+        process.BeginErrorReadLine();
+        using var output = new MemoryStream();
+        using (token.Register(() =>
+        {
+            try
+            {
+                process.Kill(entireProcessTree: true);
+            }
+            catch (Exception error) when (error is InvalidOperationException or Win32Exception)
+            {
+            }
+        }))
+        {
+            process.StandardOutput.BaseStream.CopyTo(output);
+            process.WaitForExit();
+        }
+        token.ThrowIfCancellationRequested();
+        if (process.ExitCode != 0 || output.Length == 0)
+        {
+            lock (errors)
+            {
+                throw new InvalidOperationException(errors.Length > 0 ? errors.ToString().Trim() : "ffmpeg produced nothing.");
+            }
+        }
+        return output.ToArray();
+    }
+
     /// <summary>
     /// Runs ffmpeg with the given inputs, filters and codecs, writing <paramref name="output"/> and reporting progress
     /// (0…1) against <paramref name="duration"/> seconds.
