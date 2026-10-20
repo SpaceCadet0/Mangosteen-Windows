@@ -66,7 +66,8 @@ internal static class ToolRegistry
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
         timer.Tick += (_, _) =>
         {
-            if (window is ToolWindow { IsSettled: false } && DateTime.UtcNow - started < TimeSpan.FromSeconds(20))
+            var waited = DateTime.UtcNow - started;
+            if ((window is ToolWindow { IsSettled: false } || waited < TimeSpan.FromSeconds(1.5)) && waited < TimeSpan.FromSeconds(20))
             {
                 return;
             }
@@ -91,6 +92,7 @@ internal static class ToolRegistry
 
     private static void Save(Window window, string output)
     {
+        window.UpdateLayout();
         var content = (FrameworkElement)window.Content;
         var width = (int)Math.Ceiling(content.ActualWidth + content.Margin.Left + content.Margin.Right);
         var height = (int)Math.Ceiling(content.ActualHeight + content.Margin.Top + content.Margin.Bottom);

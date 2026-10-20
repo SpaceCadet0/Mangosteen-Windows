@@ -63,6 +63,14 @@ internal sealed class TrayMenu : Window
             }
         };
         Loaded += (_, _) => PlaceAtCursor();
+        // SizeToContent may settle on the final size after the first layout pass.
+        SizeChanged += (_, _) =>
+        {
+            if (IsLoaded)
+            {
+                PlaceAtCursor();
+            }
+        };
     }
 
     /// <summary>Windows' "app mode" setting (Settings › Personalisation › Colours).</summary>
