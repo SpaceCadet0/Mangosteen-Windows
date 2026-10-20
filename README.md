@@ -4,7 +4,7 @@
 
 The Windows sibling of [Mangosteen](https://github.com/SpaceCadet0/Mangosteen), the macOS menu-bar app that converts and edits files from a wheel. Hold a modifier key, right-click a file in File Explorer or on the desktop, and pick what to do from a round wheel at the cursor. The result is written next to the original. Everything runs offline.
 
-This is an early version (0.2). The two repositories share no code; each has its own releases and CI.
+This is an early version (0.3). The two repositories share no code; each has its own releases and CI.
 
 ## Key map
 
@@ -43,15 +43,25 @@ and tables inside documents are not carried over.
 
 ### Tools (Ctrl)
 
-- **Extract** an archive into a folder next to it.
-- **PDF from images**: one PDF with a page per image.
-- **Merge** several PDFs into one.
+Tools open a window with a live preview; close it and nothing is changed. Results are saved next to the original
+as `photo (cropped).jpg`, `photo (edited).jpg` and so on.
 
-The other tools (compress, crop, editor, annotate and more) are shown greyed out and arrive in the next versions.
+- **Compress**: presets, quality or a target file size, a size limit and the format (JPG or WebP); works for PDF too.
+- **Crop**: a free frame, fixed proportions or an exact size in pixels.
+- **Editor**: light, colour, detail and effects. Hold the preview to see the original; double-click a slider to reset it.
+- **Annotate**: arrows, rectangles, ovals, text, numbered steps, pencil, highlighter, magnifier and pictures (Ctrl+V pastes one).
+- **Hide**: finds faces and text on the device and covers them with a fill, a blur or pixels; areas can be drawn by hand.
+- **Background**: puts a photo on a colour, gradient, image or a blurred copy of itself, with margin, corners and shadow.
+- **Collage**: a grid, a row, a column or a featured photo.
+- **Metadata**: see everything, edit common fields, remove the location or all metadata (without re-encoding JPEG).
+- **Pages** (PDF): reorder, rotate, duplicate and delete pages.
+- **Extract** an archive, **PDF from images**, **Merge** PDFs.
+
+Video and audio tools are shown greyed out and arrive with ffmpeg.
 
 ### Actions (Alt)
 
-- **Float** puts the files on a floating shelf. Drag them from the shelf into any app later. Dragging out copies;
+- **Float** puts the files on a floating shelf with real thumbnails of photos and videos. Drag them from the shelf into any app later. Dragging out copies;
   switch the shelf to Move to move the originals instead. The shelf is also in the tray menu.
 - **Copy** puts the files on the clipboard, ready to paste into a folder or a message.
 - **Move** asks for a folder and moves the files there.
