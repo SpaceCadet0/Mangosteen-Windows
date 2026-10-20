@@ -30,7 +30,8 @@ public static class Tables
         }
         else
         {
-            TextFile.Write(output, Serialize(rows, Separator(target)));
+            // Excel opens a CSV without a byte order mark in the ANSI code page, which garbles Cyrillic.
+            File.WriteAllText(output, Serialize(rows, Separator(target)), new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
         }
     }
 

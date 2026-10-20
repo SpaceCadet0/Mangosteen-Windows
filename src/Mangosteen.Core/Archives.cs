@@ -1,5 +1,4 @@
 using System.Formats.Tar;
-using System.Globalization;
 using System.IO.Compression;
 using System.Text;
 
@@ -76,14 +75,17 @@ public static class Archives
             folder => Extract(archive, format, folder));
     }
 
-    public static void Extract(string archive, FileFormat format, string folder)
+    /// <param name="oemCodePage">The code page for ZIP names without the UTF-8 flag; the system's OEM code page by default.</param>
+    public static void Extract(string archive, FileFormat format, string folder, int? oemCodePage = null)
     {
         Directory.CreateDirectory(folder);
         switch (format)
         {
             case FileFormat.Zip:
                 // Archives made by Windows Explorer store non-Latin names in the OEM code page without the UTF-8 flag.
-                using (var zip = ZipFile.Open(archive, ZipArchiveMode.Read, new LegacyNameEncoding()))
+                // The choice is made once for the whole archive: some OEM names happen to be valid UTF-8 too.
+                var encoding = LegacyNamesAreUtf8(archive) ? Encoding.UTF8 : Encoding.GetEncoding(oemCodePage ?? SystemOemCodePage());
+                using (var zip = ZipFile.Open(archive, ZipArchiveMode.Read, encoding))
                 {
                     zip.ExtractToDirectory(folder);
                 }
@@ -101,6 +103,37 @@ public static class Archives
             default:
                 throw new NotSupportedException($"{format.DisplayName()} is not an archive format.");
         }
+    }
+
+    /// <summary>True when every entry name stored without the UTF-8 flag is still valid UTF-8.</summary>
+    internal static bool LegacyNamesAreUtf8(string archive)
+    {
+        var probe = new ProbeEncoding();
+        using (var zip = ZipFile.Open(archive, ZipArchiveMode.Read, probe))
+        {
+            foreach (var entry in zip.Entries)
+            {
+                _ = entry.FullName;
+            }
+        }
+        return !probe.SawInvalidUtf8;
+    }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    private static extern int GetOEMCP();
+
+    /// <summary>The OEM code page Explorer uses for ZIP names (866 on Russian Windows); 437 elsewhere.</summary>
+    private static int SystemOemCodePage()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            var codePage = GetOEMCP();
+            if (codePage is > 1 and not 65001)
+            {
+                return codePage;
+            }
+        }
+        return 437;
     }
 
     private static void AddToZip(ZipArchive zip, string path, string name)
@@ -135,41 +168,37 @@ public static class Archives
         }
     }
 
-    /// <summary>
-    /// Decodes ZIP entry names without the UTF-8 flag: strict UTF-8 first (many tools write UTF-8 without the flag),
-    /// then the OEM code page Windows Explorer uses (866 on Russian Windows), then 437.
-    /// </summary>
-    internal sealed class LegacyNameEncoding : Encoding
+    /// <summary>Decodes names as UTF-8 and remembers whether any name was not valid UTF-8.</summary>
+    private sealed class ProbeEncoding : Encoding
     {
         private static readonly Encoding StrictUtf8 = new UTF8Encoding(false, throwOnInvalidBytes: true);
-        private readonly Encoding _oem;
 
-        public LegacyNameEncoding()
-        {
-            var oem = CultureInfo.CurrentCulture.TextInfo.OEMCodePage;
-            _oem = GetEncoding(oem is 0 or 1 or 65001 ? 437 : oem);
-        }
+        public bool SawInvalidUtf8 { get; private set; }
 
-        private Encoding Pick(byte[] bytes, int index, int count)
+        private string Decode(byte[] bytes, int index, int count)
         {
             try
             {
-                StrictUtf8.GetCharCount(bytes, index, count);
-                return StrictUtf8;
+                return StrictUtf8.GetString(bytes, index, count);
             }
             catch (DecoderFallbackException)
             {
-                return _oem;
+                SawInvalidUtf8 = true;
+                return Latin1.GetString(bytes, index, count);
             }
         }
 
         public override int GetByteCount(char[] chars, int index, int count) => UTF8.GetByteCount(chars, index, count);
         public override int GetBytes(char[] chars, int charIndex, int charCount, byte[] bytes, int byteIndex) =>
             UTF8.GetBytes(chars, charIndex, charCount, bytes, byteIndex);
-        public override int GetCharCount(byte[] bytes, int index, int count) => Pick(bytes, index, count).GetCharCount(bytes, index, count);
-        public override int GetChars(byte[] bytes, int byteIndex, int byteCount, char[] chars, int charIndex) =>
-            Pick(bytes, byteIndex, byteCount).GetChars(bytes, byteIndex, byteCount, chars, charIndex);
-        public override string GetString(byte[] bytes, int index, int count) => Pick(bytes, index, count).GetString(bytes, index, count);
+        public override int GetCharCount(byte[] bytes, int index, int count) => Decode(bytes, index, count).Length;
+        public override int GetChars(byte[] bytes, int byteIndex, int byteCount, char[] chars, int charIndex)
+        {
+            var text = Decode(bytes, byteIndex, byteCount);
+            text.CopyTo(0, chars, charIndex, text.Length);
+            return text.Length;
+        }
+        public override string GetString(byte[] bytes, int index, int count) => Decode(bytes, index, count);
         public override int GetMaxByteCount(int charCount) => UTF8.GetMaxByteCount(charCount);
         public override int GetMaxCharCount(int byteCount) => byteCount;
     }

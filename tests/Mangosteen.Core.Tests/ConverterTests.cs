@@ -247,3 +247,57 @@ public class CatalogTests
         // The PDF is already a PDF, so "PDF" converts only the TIFF.
         Assert.Equal([FileFormat.Png, FileFormat.Jpg, FileFormat.Pdf], FormatCatalog.Targets(["a.pdf", "b.tiff"]));
 }
+
+public class OfficeValidityTests : TempFolderTest
+{
+    private static void AssertValid(DocumentFormat.OpenXml.Packaging.OpenXmlPackage package)
+    {
+        var errors = new DocumentFormat.OpenXml.Validation.OpenXmlValidator().Validate(package)
+            .Select(e => $"{e.Path?.XPath}: {e.Description}").ToList();
+        Assert.True(errors.Count == 0, string.Join("\n", errors));
+    }
+
+    [Fact]
+    public void DocxIsValidForWord()
+    {
+        var markdown = "# Заголовок\n\nТекст **жирный** [ссылка](https://example.com)\n\n- a\n  - b\n\n1. c\n\n```\ncode\n```\n";
+        DocxFormat.Write(MarkdownFormat.Parse(markdown), PathOf("a.docx"));
+        using var document = DocumentFormat.OpenXml.Packaging.WordprocessingDocument.Open(PathOf("a.docx"), false);
+        AssertValid(document);
+    }
+
+    [Fact]
+    public void XlsxIsValidForExcel()
+    {
+        Tables.WriteXlsx([["Город", "Население"], ["Москва", "13010112"], ["", "x"]], "Лист [1]", PathOf("a.xlsx"));
+        using var document = DocumentFormat.OpenXml.Packaging.SpreadsheetDocument.Open(PathOf("a.xlsx"), false);
+        AssertValid(document);
+    }
+
+    [Fact]
+    public void CsvStartsWithByteOrderMark()
+    {
+        Tables.Write([["Город"]], FileFormat.Csv, "x", PathOf("a.csv"));
+        Assert.Equal(new byte[] { 0xEF, 0xBB, 0xBF }, File.ReadAllBytes(PathOf("a.csv"))[..3]);
+        Assert.Equal([["Город"]], Tables.Parse(TextFile.Read(PathOf("a.csv")), ','));
+    }
+
+    [Fact]
+    public void ExplorerStyleZipNamesUseTheOemCodePage()
+    {
+        // Explorer on Russian Windows writes names in code page 866 without the UTF-8 flag. "сад" in 866 bytes
+        // is also valid UTF-8, so the archive as a whole decides the encoding.
+        var zip = PathOf("explorer.zip");
+        using (var archive = ZipFile.Open(zip, ZipArchiveMode.Create, Encoding.GetEncoding(866)))
+        {
+            foreach (var name in new[] { "сад.txt", "отчёт за год.txt" })
+            {
+                using var writer = new StreamWriter(archive.CreateEntry(name).Open());
+                writer.Write(name);
+            }
+        }
+        var folder = PathOf("out");
+        Archives.Extract(zip, FileFormat.Zip, folder, oemCodePage: 866);
+        Assert.Equal(["отчёт за год.txt", "сад.txt"], Directory.GetFiles(folder).Select(Path.GetFileName).Order(StringComparer.Ordinal));
+    }
+}

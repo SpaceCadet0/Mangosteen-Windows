@@ -266,7 +266,7 @@ public static class DocxFormat
             new DocDefaults(
                 new RunPropertiesDefault(new RunPropertiesBaseStyle(
                     new RunFonts { Ascii = "Calibri", HighAnsi = "Calibri", ComplexScript = "Calibri", EastAsia = "Calibri" },
-                    new FontSize { Val = "22" }, new Languages { Val = "en-US" })),
+                    new FontSize { Val = "22" })),
                 new ParagraphPropertiesDefault(new ParagraphPropertiesBaseStyle(
                     new SpacingBetweenLines { After = "120", Line = "276", LineRule = LineSpacingRuleValues.Auto }))));
         styles.Append(new W.Style(new StyleName { Val = "Normal" }, new PrimaryStyle())
@@ -295,8 +295,8 @@ public static class DocxFormat
         });
         styles.Append(new W.Style(
             new StyleName { Val = "Code" }, new BasedOn { Val = "Normal" },
-            new StyleParagraphProperties(new SpacingBetweenLines { After = "0", Line = "240", LineRule = LineSpacingRuleValues.Auto },
-                new Shading { Val = ShadingPatternValues.Clear, Fill = "F4F4F4" }),
+            new StyleParagraphProperties(new Shading { Val = ShadingPatternValues.Clear, Fill = "F4F4F4" },
+                new SpacingBetweenLines { After = "0", Line = "240", LineRule = LineSpacingRuleValues.Auto }),
             new StyleRunProperties(new RunFonts { Ascii = CodeFont, HighAnsi = CodeFont, ComplexScript = CodeFont },
                 new FontSize { Val = "20" }))
         {
