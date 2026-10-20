@@ -4,7 +4,7 @@
 
 The Windows sibling of [Mangosteen](https://github.com/SpaceCadet0/Mangosteen), the macOS menu-bar app that converts and edits files from a wheel. Hold a modifier key, right-click a file in File Explorer or on the desktop, and pick what to do from a round wheel at the cursor. The result is written next to the original. Everything runs offline.
 
-This is an early version (0.3). The two repositories share no code; each has its own releases and CI.
+This is an early version (0.4). The two repositories share no code; each has its own releases and CI.
 
 ## Key map
 
@@ -26,19 +26,23 @@ For other apps, use the tray icon: **Choose files…** opens a file dialog and t
 
 | Kind | Formats |
 | --- | --- |
-| Images | PNG, JPG, WebP, TIFF, BMP, GIF, PDF; also reads ICO, and WebP, HEIC and AVIF when their Microsoft Store codecs are installed |
+| Images | PNG, JPG, WebP, TIFF, AVIF, BMP, GIF, PDF; also reads ICO, and WebP, HEIC and AVIF when their Microsoft Store codecs are installed |
 | PDF | to PNG or JPG (a PDF with several pages becomes a folder of pages), TXT, Markdown, RTF, DOCX, HTML |
 | Documents | DOCX, ODT, RTF, TXT, Markdown, HTML into each other and into PDF |
 | Subtitles | SRT and VTT into each other and into TXT |
 | Tables | CSV, TSV, XLSX into each other (a workbook with several sheets becomes a folder of tables) |
 | Archives | ZIP, TAR, TAR.GZ into each other; folders into archives |
+| Video | MP4, MOV, MKV, WebM, AVI, WMV into each other, GIF and MP3 |
+| Audio | MP3, M4A, WAV, FLAC, OGG, Opus, AIFF, WMA |
+
+When the target container accepts the original streams, video is copied without re-encoding, so it is instant and
+lossless.
 
 Results never overwrite anything: `photo.jpg`, then `photo 2.jpg`, `photo 3.jpg`. The original is never changed.
 Text files in the old Windows Cyrillic encoding (Windows-1251) are read correctly. Longer jobs show a small
 progress panel with a Stop button; click the final notification to see the result in Explorer.
 
-Not yet on Windows: HEIC and AVIF output, animated WebP, video and audio (they arrive with ffmpeg), and the old
-binary `.doc` format. Documents keep headings, paragraphs, lists, bold, italic, underline, links and code; images
+Not yet on Windows: HEIC output, animated WebP and the old binary `.doc` format. Documents keep headings, paragraphs, lists, bold, italic, underline, links and code; images
 and tables inside documents are not carried over.
 
 ### Tools (Ctrl)
@@ -57,7 +61,12 @@ as `photo (cropped).jpg`, `photo (edited).jpg` and so on.
 - **Pages** (PDF): reorder, rotate, duplicate and delete pages.
 - **Extract** an archive, **PDF from images**, **Merge** PDFs.
 
-Video and audio tools are shown greyed out and arrive with ffmpeg.
+Video and audio tools work on a timeline with frames or the waveform:
+
+- **Trim** and **Split** (fast mode copies without re-encoding), **Frames** saves stills as PNG.
+- **Speed** with or without keeping the pitch, **Volume** (EBU R128 loudness normalisation, listen first), **Channels**.
+- **Compress** video and audio by quality, height or a target size, with an estimate; **Join** clips; **Crop video**.
+- **Bleep** words and listen before saving; **Hide** areas of a video during chosen moments; **Visualizer** turns a song into an MP4.
 
 ### Actions (Alt)
 
@@ -70,7 +79,7 @@ Video and audio tools are shown greyed out and arrive with ffmpeg.
 
 ## Download
 
-There is no installer yet. Every push builds a self-contained `Mangosteen.exe` (Windows 10 and 11, x64, no .NET install needed):
+There is no installer yet. Every push builds a self-contained `Mangosteen.exe` (Windows 10 and 11, x64, no .NET install needed). It is about 170 MB because it carries FFmpeg, which is unpacked into `%LOCALAPPDATA%\Mangosteen\ffmpeg` on first use:
 
 1. Open the [Actions tab](https://github.com/SpaceCadet0/Mangosteen-Windows/actions/workflows/build.yml) and click the latest green run.
 2. Under **Artifacts**, download **Mangosteen-win-x64** (you need to be signed in to GitHub) and unzip it.
@@ -96,5 +105,5 @@ The image conversion tests (`tests/Mangosteen.Windows.Tests`) need Windows and r
 
 ## License
 
-[MIT](LICENSE). Copyright (c) 2026 Igor Rusakov (SpaceCadet). Open-source components and their licenses are
-listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+[MIT](LICENSE). Copyright (c) 2026 Igor Rusakov (SpaceCadet). The exe bundles [FFmpeg](https://ffmpeg.org) (GPL v3) as a
+separate program. Open-source components and their licenses are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

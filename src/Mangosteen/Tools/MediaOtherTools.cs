@@ -129,10 +129,8 @@ internal sealed class JoinTool : ToolWindow
         _jobs = jobs;
         foreach (var file in files.Where(f => FileFormats.Detect(f)?.Category() == FormatCategory.Video))
         {
-            _list.Items.Add(file);
+            _list.Items.Add(new ListBoxItem { Content = Path.GetFileName(file), Tag = file, ToolTip = file });
         }
-        _list.DisplayMemberPath = null;
-        _list.ItemTemplate = null;
         _list.SelectedIndex = 0;
         var up = new Button { Content = L("Move up"), Margin = new Thickness(0, 0, 0, 8), MinWidth = 110 };
         var down = new Button { Content = L("Move down"), MinWidth = 110 };
@@ -168,9 +166,9 @@ internal sealed class JoinTool : ToolWindow
 
     protected override void Run()
     {
-        var inputs = _list.Items.Cast<string>().ToList();
+        var inputs = _list.Items.Cast<ListBoxItem>().Select(i => (string)i.Tag).ToList();
         Close();
-        _jobs.RunOnce(L("Joining"), L("Joined"), WheelCatalog.FileCount(inputs.Count), () => MediaTools.Join(inputs, _ => { }, CancellationToken.None));
+        _jobs.RunEach(L("Joining"), L("Joined"), [WheelCatalog.FileCount(inputs.Count)], (_, token, progress) => MediaTools.Join(inputs, progress, token));
     }
 }
 
@@ -265,10 +263,17 @@ internal sealed class VisualizerTool : MediaToolWindow
     private readonly Image _picture = new() { Stretch = Stretch.Uniform };
     private readonly PreviewScheduler<BitmapSource> _scheduler;
     private string? _image;
+    private bool _drawn;
+
+    public override bool IsSettled => base.IsSettled && (_drawn || Info?.HasAudio != true);
 
     public VisualizerTool(IReadOnlyList<string> files, Jobs jobs) : base(L("Visualizer"), files, L("Create video"), jobs, selection: false)
     {
-        _scheduler = new PreviewScheduler<BitmapSource>(Dispatcher, image => _picture.Source = image);
+        _scheduler = new PreviewScheduler<BitmapSource>(Dispatcher, image =>
+        {
+            _picture.Source = image;
+            _drawn = true;
+        }, _ => _drawn = true);
         _styles = [Radio(L("Waveform"), "style", true), Radio(L("Spectrum"), "style"), Radio(L("Picture"), "style")];
         _shapes = [Radio(L("Landscape 16:9"), "shape", true), Radio(L("Vertical 9:16"), "shape"), Radio(L("Square"), "shape")];
         var styles = new StackPanel { Orientation = Orientation.Horizontal };

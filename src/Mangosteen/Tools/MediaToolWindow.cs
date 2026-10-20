@@ -25,7 +25,7 @@ internal abstract class MediaToolWindow : ToolWindow
         Input = Media.FirstOrDefault();
         IsVideo = Input is not null && FileFormats.Detect(Input)?.Category() == FormatCategory.Video;
         Timeline = new Timeline { ShowSelection = selection, Width = TimelineWidth, Margin = new Thickness(0, 10, 0, 0) };
-        (FramePane, FrameImage) = PreviewPane(TimelineWidth, 330);
+        (FramePane, FrameImage) = PreviewPane(TimelineWidth, 290);
         _frames = new PreviewScheduler<BitmapSource>(Dispatcher, image => FrameImage.Source = image);
         Timeline.PlayheadChanged += time =>
         {
