@@ -1,32 +1,54 @@
+using System.Runtime.InteropServices;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Mangosteen.Core;
+using SkiaSharp;
 
 namespace Mangosteen.Conversion;
 
 /// <summary>
-/// Converts images between PNG, JPG, TIFF, BMP and GIF with WIC (System.Windows.Media.Imaging).
-/// The result goes next to the original under a free name; the original is never touched.
+/// Converts images with WIC (System.Windows.Media.Imaging): PNG, JPG, TIFF, BMP and GIF; WebP through SkiaSharp
+/// (Windows has a WebP decoder but no encoder); PDF through PDFsharp.
 /// </summary>
 /// <remarks>Multi-frame GIF and TIFF inputs are converted from their first frame.</remarks>
 internal static class ImageConverter
 {
+    public const int WebpQuality = 80;
+
     public static bool CanWrite(FileFormat format) => FormatCatalog.ImageOutputs.Contains(format);
 
-    /// <summary>Converts <paramref name="source"/> and returns the path of the new file.</summary>
+    /// <summary>Converts <paramref name="source"/> next to itself and returns the path of the new file.</summary>
     public static string Convert(string source, FileFormat target)
     {
         if (!CanWrite(target))
         {
             throw new NotSupportedException($"{target.DisplayName()} is not supported yet.");
         }
-        var image = Decode(source);
         var directory = Path.GetDirectoryName(Path.GetFullPath(source))!;
-        return OutputNaming.WriteAtomically(directory, OutputNaming.BaseName(source), target.Extension(), temp =>
+        return OutputNaming.WriteAtomically(directory, OutputNaming.BaseName(source), target.Extension(),
+            output => Write(source, target, output));
+    }
+
+    /// <summary>Converts <paramref name="input"/> into a new file at <paramref name="output"/>.</summary>
+    public static void Write(string input, FileFormat target, string output)
+    {
+        if (!CanWrite(target))
         {
-            using var stream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-            Encode(image, target, stream);
-        });
+            throw new NotSupportedException($"{target.DisplayName()} is not supported yet.");
+        }
+        var image = Decode(input);
+        if (target == FileFormat.Pdf)
+        {
+            PdfWriter.ImagesToPdf([(image, FileFormats.Detect(input) == FileFormat.Jpg)], output);
+            return;
+        }
+        WriteImage(image, target, output);
+    }
+
+    public static void WriteImage(BitmapSource image, FileFormat target, string output)
+    {
+        using var stream = new FileStream(output, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        Encode(image, target, stream);
     }
 
     internal static BitmapSource Decode(string path)
@@ -42,6 +64,11 @@ internal static class ImageConverter
 
     internal static void Encode(BitmapSource image, FileFormat target, Stream output)
     {
+        if (target == FileFormat.Webp)
+        {
+            EncodeWebp(image, output);
+            return;
+        }
         BitmapEncoder encoder = target switch
         {
             FileFormat.Png => new PngBitmapEncoder(),
@@ -56,6 +83,34 @@ internal static class ImageConverter
         var frame = target is FileFormat.Jpg or FileFormat.Bmp or FileFormat.Gif ? FlattenOnWhite(image) : image;
         encoder.Frames.Add(BitmapFrame.Create(frame));
         encoder.Save(output);
+    }
+
+    /// <summary>Lossy WebP at quality 80 with the alpha channel kept, like cwebp on the Mac.</summary>
+    private static void EncodeWebp(BitmapSource image, Stream output)
+    {
+        var (pixels, width, height) = Bgra(image);
+        var info = new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Unpremul);
+        var handle = GCHandle.Alloc(pixels, GCHandleType.Pinned);
+        try
+        {
+            using var skImage = SKImage.FromPixelCopy(info, handle.AddrOfPinnedObject(), width * 4)
+                ?? throw new InvalidOperationException("Could not prepare the image for WebP.");
+            using var data = skImage.Encode(SKEncodedImageFormat.Webp, WebpQuality)
+                ?? throw new InvalidOperationException("Could not encode WebP.");
+            data.SaveTo(output);
+        }
+        finally
+        {
+            handle.Free();
+        }
+    }
+
+    private static (byte[] Pixels, int Width, int Height) Bgra(BitmapSource image)
+    {
+        var bgra = new FormatConvertedBitmap(image, PixelFormats.Bgra32, null, 0);
+        var pixels = new byte[bgra.PixelWidth * bgra.PixelHeight * 4];
+        bgra.CopyPixels(pixels, bgra.PixelWidth * 4, 0);
+        return (pixels, bgra.PixelWidth, bgra.PixelHeight);
     }
 
     /// <summary>EXIF orientation (1-8), or 1 when the file has none.</summary>
@@ -95,12 +150,9 @@ internal static class ImageConverter
         return new TransformedBitmap(image, transform);
     }
 
-    private static BitmapSource FlattenOnWhite(BitmapSource image)
+    internal static BitmapSource FlattenOnWhite(BitmapSource image)
     {
-        var bgra = new FormatConvertedBitmap(image, PixelFormats.Bgra32, null, 0);
-        int width = bgra.PixelWidth, height = bgra.PixelHeight;
-        var source = new byte[width * height * 4];
-        bgra.CopyPixels(source, width * 4, 0);
+        var (source, width, height) = Bgra(image);
         var stride = (width * 3 + 3) & ~3;
         var output = new byte[stride * height];
         for (var y = 0; y < height; y++)

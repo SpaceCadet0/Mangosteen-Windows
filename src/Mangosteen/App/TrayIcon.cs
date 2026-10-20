@@ -10,7 +10,9 @@ internal sealed class TrayIcon : IDisposable
 {
     private readonly Forms.NotifyIcon _icon;
 
-    public TrayIcon(Action<WheelKind> chooseFiles, Action quit)
+    private string? _reveal;
+
+    public TrayIcon(Action<WheelKind> chooseFiles, Action toggleShelf, Action quit)
     {
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add(new Forms.ToolStripMenuItem($"Mangosteen {Program.Version}") { Enabled = false });
@@ -22,6 +24,7 @@ internal sealed class TrayIcon : IDisposable
         choose.DropDownItems.Add("Tools…", null, (_, _) => chooseFiles(WheelKind.Tools));
         choose.DropDownItems.Add("Actions…", null, (_, _) => chooseFiles(WheelKind.Actions));
         menu.Items.Add(choose);
+        menu.Items.Add("Float shelf", null, (_, _) => toggleShelf());
 
         menu.Items.Add("Open log", null, (_, _) => OpenLog());
         menu.Items.Add(new Forms.ToolStripSeparator());
@@ -35,10 +38,22 @@ internal sealed class TrayIcon : IDisposable
             ContextMenuStrip = menu,
             Visible = true,
         };
+        // Clicking a "done" notification selects the result in Explorer.
+        _icon.BalloonTipClicked += (_, _) =>
+        {
+            if (_reveal is { } path && (File.Exists(path) || Directory.Exists(path)))
+            {
+                FileActions.Reveal(path);
+            }
+        };
     }
 
-    public void Notify(string title, string text, bool error = false) =>
-        _icon.ShowBalloonTip(4000, title, text, error ? Forms.ToolTipIcon.Error : Forms.ToolTipIcon.None);
+    /// <param name="reveal">A file or folder to select in Explorer when the notification is clicked.</param>
+    public void Notify(string title, string text, bool error = false, string? reveal = null)
+    {
+        _reveal = reveal;
+        _icon.ShowBalloonTip(4000, title, text.Length == 0 ? " " : text, error ? Forms.ToolTipIcon.Error : Forms.ToolTipIcon.None);
+    }
 
     public void Dispose()
     {

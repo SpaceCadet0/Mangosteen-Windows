@@ -98,7 +98,7 @@ public sealed class ImageConverterTests : IDisposable
     public void UnsupportedTargetThrowsAndWritesNothing()
     {
         var source = WritePng("photo.png");
-        Assert.Throws<NotSupportedException>(() => ImageConverter.Convert(source, FileFormat.Webp));
+        Assert.Throws<NotSupportedException>(() => ImageConverter.Convert(source, FileFormat.Heic));
         Assert.Single(Directory.GetFiles(_dir));
     }
 

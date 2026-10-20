@@ -15,7 +15,9 @@ internal sealed class AppController : IDisposable
 {
     private readonly Dispatcher _dispatcher;
     private readonly InputHooks _hooks = new();
+    private readonly FloatShelf _shelf = new();
     private TrayIcon? _tray;
+    private Jobs? _jobs;
     private WheelWindow? _wheel;
     private WheelKind _wheelKind;
     private IReadOnlyList<string> _wheelPaths = [];
@@ -24,7 +26,8 @@ internal sealed class AppController : IDisposable
 
     public void Start()
     {
-        _tray = new TrayIcon(ChooseFiles, Quit);
+        _tray = new TrayIcon(ChooseFiles, _shelf.Toggle, Quit);
+        _jobs = new Jobs(_dispatcher, _tray);
         // The hook thread only posts; everything below runs on the UI thread.
         _hooks.Armed += click => _dispatcher.BeginInvoke(() => OnArmed(click));
         _hooks.Triggered += (click, up) => _dispatcher.BeginInvoke(() => OnTriggered(click, up));
@@ -186,69 +189,68 @@ internal sealed class AppController : IDisposable
     private void Perform(WheelItem item, IReadOnlyList<string> paths)
     {
         Log.Write($"chose {item.Id} for {paths.Count} items");
-        if (item.Target is { } target)
+        if (_tray is not { } tray || _jobs is not { } jobs)
         {
-            Convert(paths, target);
             return;
         }
-        switch (item.Id)
+        if (item.Target is { } target)
         {
-            case "action.copyPath":
-                try
-                {
-                    Clipboard.SetText(string.Join(Environment.NewLine, paths));
-                    _tray?.Notify("Path copied", paths.Count == 1 ? paths[0] : $"{paths.Count} paths");
-                }
-                catch (Exception error)
-                {
-                    Log.Error("copy path", error);
-                    _tray?.Notify("Could not copy the path", error.Message, error: true);
-                }
-                break;
-            default:
-                _tray?.Notify(item.Title, "Coming in a later version of Mangosteen for Windows.");
-                break;
+            // Items that cannot become the target (or already are it) are skipped, as the wheel promised.
+            var inputs = paths.Where(p => FormatCatalog.Conversion(p) is var c && c.Source != target && c.Targets.Contains(target)).ToList();
+            jobs.RunEach($"Converting to {target.DisplayName()}", $"Converted to {target.DisplayName()}", inputs,
+                (input, token) => Converter.Convert(input, target, token));
+            return;
         }
-    }
-
-    private void Convert(IReadOnlyList<string> paths, FileFormat target)
-    {
-        var inputs = paths
-            .Where(p => FileFormats.Detect(p) is { } f && f != target && FormatCatalog.Targets(f).Contains(target))
-            .ToList();
-        Task.Run(() =>
+        try
         {
-            var done = new List<string>();
-            var failed = new List<string>();
-            foreach (var input in inputs)
+            switch (item.Id)
             {
-                var clock = Stopwatch.StartNew();
-                try
-                {
-                    var output = ImageConverter.Convert(input, target);
-                    done.Add(output);
-                    Log.Write($"converted {input} -> {output} in {clock.ElapsedMilliseconds} ms");
-                }
-                catch (Exception error)
-                {
-                    failed.Add($"{Path.GetFileName(input)}: {error.Message}");
-                    Log.Error($"convert {input} to {target}", error);
-                }
+                case "tool.extract":
+                    var archives = paths.Where(p => FileFormats.Detect(p)?.Category() == FormatCategory.Archive).ToList();
+                    jobs.RunEach("Extracting", "Extracted", archives, (input, _) => Archives.ExtractNextToArchive(input));
+                    break;
+                case "tool.createPDF":
+                    jobs.RunOnce("Creating PDF", "PDF created", () => Converter.CreatePdf(paths));
+                    break;
+                case "tool.mergePDF":
+                    jobs.RunOnce("Merging PDFs", "PDFs merged", () => Converter.MergePdfs(paths));
+                    break;
+                case "action.float":
+                    _shelf.Add(paths);
+                    break;
+                case "action.copy":
+                    FileActions.Copy(paths);
+                    tray.Notify("Copied", paths.Count == 1 ? $"{Path.GetFileName(paths[0])}: paste it in a folder or a message." : $"{paths.Count} items: paste them in a folder or a message.");
+                    break;
+                case "action.copyPath":
+                    FileActions.CopyPaths(paths);
+                    tray.Notify("Path copied", paths.Count == 1 ? paths[0] : $"{paths.Count} paths");
+                    break;
+                case "action.move":
+                    if (FileActions.Move(paths) is var (moved, failed))
+                    {
+                        if (failed.Count > 0)
+                        {
+                            tray.Notify($"{failed.Count} of {moved.Count + failed.Count} not moved", string.Join("\n", failed.Take(3)), error: true);
+                        }
+                        else if (moved.Count > 0)
+                        {
+                            tray.Notify("Moved", moved.Count == 1 ? Path.GetFileName(moved[0]) : $"{moved.Count} items", reveal: moved[^1]);
+                        }
+                    }
+                    break;
+                case "action.terminal":
+                    FileActions.OpenTerminal(paths);
+                    break;
+                default:
+                    tray.Notify(item.Title, "Coming in a later version of Mangosteen for Windows.");
+                    break;
             }
-            _dispatcher.BeginInvoke(() => ReportConversion(target, done, failed));
-        });
-    }
-
-    private void ReportConversion(FileFormat target, List<string> done, List<string> failed)
-    {
-        if (failed.Count == 0)
-        {
-            _tray?.Notify($"Converted to {target.DisplayName()}",
-                done.Count == 1 ? Path.GetFileName(done[0]) : $"{done.Count} files");
         }
-        else
+        catch (Exception error)
         {
-            _tray?.Notify($"{failed.Count} of {failed.Count + done.Count} not converted", string.Join("\n", failed.Take(3)), error: true);
+            Log.Error(item.Id, error);
+            tray.Notify(item.Title, error.Message, error: true);
         }
     }
 

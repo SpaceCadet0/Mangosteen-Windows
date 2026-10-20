@@ -1,0 +1,105 @@
+using System.Diagnostics;
+using System.Windows.Threading;
+using Mangosteen.Platform;
+
+namespace Mangosteen;
+
+/// <summary>
+/// Runs file jobs off the UI thread, one file at a time, with the progress panel for anything that takes longer
+/// than a moment, a Stop button, and one notification at the end.
+/// </summary>
+internal sealed class Jobs(Dispatcher dispatcher, TrayIcon tray)
+{
+    private static readonly TimeSpan HudDelay = TimeSpan.FromMilliseconds(400);
+
+    /// <summary>Applies <paramref name="work"/> to each input. Work returns the new file or folder, or null when there was nothing to do.</summary>
+    public void RunEach(string title, string doneTitle, IReadOnlyList<string> inputs, Func<string, CancellationToken, string?> work)
+    {
+        var cancel = new CancellationTokenSource();
+        ProgressHud? hud = null;
+        var finished = false;
+        var timer = new DispatcherTimer(HudDelay, DispatcherPriority.Normal, (_, _) => { }, dispatcher);
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            if (!finished)
+            {
+                hud = new ProgressHud(title);
+                hud.StopRequested += cancel.Cancel;
+                hud.Show();
+            }
+        };
+        timer.Start();
+
+        Task.Run(() =>
+        {
+            var outputs = new List<string>();
+            var failures = new List<string>();
+            var done = 0;
+            foreach (var input in inputs)
+            {
+                if (cancel.IsCancellationRequested)
+                {
+                    break;
+                }
+                var name = Path.GetFileName(Path.TrimEndingDirectorySeparator(input));
+                var index = done;
+                dispatcher.BeginInvoke(() => hud?.Report(index, inputs.Count, name));
+                var clock = Stopwatch.StartNew();
+                try
+                {
+                    if (work(input, cancel.Token) is { } output)
+                    {
+                        outputs.Add(output);
+                        Log.Write($"{title}: {input} -> {output} in {clock.ElapsedMilliseconds} ms");
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (Exception error)
+                {
+                    failures.Add($"{name}: {error.Message}");
+                    Log.Error($"{title}: {input}", error);
+                }
+                done++;
+            }
+            var stopped = cancel.IsCancellationRequested;
+            dispatcher.BeginInvoke(() =>
+            {
+                finished = true;
+                timer.Stop();
+                hud?.Close();
+                Report(doneTitle, outputs, failures, stopped ? $"Stopped after {done} of {inputs.Count}." : null);
+                cancel.Dispose();
+            });
+        });
+    }
+
+    /// <summary>One job that turns all inputs into a single result.</summary>
+    public void RunOnce(string title, string doneTitle, Func<string> work) =>
+        RunEach(title, doneTitle, ["selection"], (_, _) => work());
+
+    private void Report(string doneTitle, List<string> outputs, List<string> failures, string? stoppedNote)
+    {
+        if (failures.Count > 0)
+        {
+            var total = failures.Count + outputs.Count;
+            tray.Notify(total == 1 ? $"{doneTitle}: failed" : $"{failures.Count} of {total} failed",
+                string.Join("\n", failures.Take(3)), error: true);
+            return;
+        }
+        if (stoppedNote is not null)
+        {
+            tray.Notify($"{doneTitle}: stopped", stoppedNote, reveal: outputs.LastOrDefault());
+            return;
+        }
+        if (outputs.Count == 0)
+        {
+            tray.Notify(doneTitle, "Nothing to do: the files already have that format.");
+            return;
+        }
+        tray.Notify(doneTitle, outputs.Count == 1 ? Path.GetFileName(outputs[0]) : $"{outputs.Count} files", reveal: outputs[^1]);
+    }
+}

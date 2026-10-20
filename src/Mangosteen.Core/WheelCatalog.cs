@@ -53,14 +53,17 @@ public static class WheelCatalog
 
     private static readonly IReadOnlyList<WheelItem> ActionItems =
     [
-        new("action.float", "Float", WheelIcon.Float, false),
-        new("action.copy", "Copy", WheelIcon.Copy, false),
-        new("action.move", "Move", WheelIcon.Move, false),
+        new("action.float", "Float", WheelIcon.Float, true),
+        new("action.copy", "Copy", WheelIcon.Copy, true),
+        new("action.move", "Move", WheelIcon.Move, true),
         new("action.copyPath", "Path", WheelIcon.Path, true),
-        new("action.terminal", "Terminal", WheelIcon.Terminal, false),
+        new("action.terminal", "Terminal", WheelIcon.Terminal, true),
     ];
 
-    /// <summary>Same rules and order as the macOS Tools wheel. Tools arrive in later phases.</summary>
+    /// <summary>Tools that already work on Windows; the others are shown greyed out until their phase.</summary>
+    private static readonly HashSet<string> AvailableTools = ["tool.extract", "tool.createPDF", "tool.mergePDF"];
+
+    /// <summary>Same rules and order as the macOS Tools wheel.</summary>
     private static List<WheelItem> ToolItems(IReadOnlyList<string> paths)
     {
         var formats = paths.Select(FileFormats.Detect).OfType<FileFormat>().ToList();
@@ -77,7 +80,7 @@ public static class WheelCatalog
         {
             if (condition)
             {
-                items.Add(new WheelItem(id, title, icon, false));
+                items.Add(new WheelItem(id, title, icon, AvailableTools.Contains(id)));
             }
         }
         Add(media, "tool.trimMedia", "Trim", WheelIcon.Trim);
