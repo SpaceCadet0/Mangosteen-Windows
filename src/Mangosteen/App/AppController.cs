@@ -103,17 +103,37 @@ internal sealed class AppController : IDisposable
             return;
         }
 
-        ShowWheel(click.Kind, selection.Paths, up);
+        var wheel = ShowWheel(click.Kind, selection.Paths, up);
+        wheel.Opened += _ => ReleaseStuckRightButton(wheel, threadId);
+    }
 
-        // A swallowed button-up may leave Windows thinking the right button is still down. Release it now that
-        // the wheel is under the cursor, so the extra button-up lands on the wheel, which ignores it.
-        info = new GUITHREADINFO { cbSize = Marshal.SizeOf<GUITHREADINFO>() };
-        var stillCaptured = GetGUIThreadInfo(threadId, ref info) && info.hwndCapture != IntPtr.Zero;
-        if (IsDown(VK_RBUTTON) && !stillCaptured)
+    /// <summary>
+    /// A swallowed button-up may leave Windows thinking the right button is still down. Once the wheel is fully
+    /// visible (a layered window at opacity 0 is click-through) and is the window under the cursor, an extra
+    /// button-up lands on the wheel, which ignores it. Otherwise it could open Explorer's menu, so it is skipped.
+    /// </summary>
+    private static void ReleaseStuckRightButton(WheelWindow wheel, uint explorerThread)
+    {
+        if (!IsDown(VK_RBUTTON))
         {
-            Log.Write("right button still reads as down: releasing it on the wheel");
-            SendRightButton(MOUSEEVENTF_RIGHTUP);
+            Log.Write("right button reads as up: nothing to release");
+            return;
         }
+        var info = new GUITHREADINFO { cbSize = Marshal.SizeOf<GUITHREADINFO>() };
+        if (GetGUIThreadInfo(explorerThread, ref info) && info.hwndCapture != IntPtr.Zero)
+        {
+            Log.Write($"right button reads as down, but Explorer still has capture ({ClassName(info.hwndCapture)}): not releasing");
+            return;
+        }
+        GetCursorPos(out var cursor);
+        var under = GetAncestor(WindowFromPoint(cursor), GA_ROOT);
+        if (under != wheel.Handle)
+        {
+            Log.Write($"right button reads as down, but the cursor is over {ClassName(under)}, not the wheel: not releasing");
+            return;
+        }
+        Log.Write("right button reads as down: releasing it on the wheel");
+        SendRightButton(MOUSEEVENTF_RIGHTUP);
     }
 
     private void ChooseFiles(WheelKind kind)
@@ -128,7 +148,7 @@ internal sealed class AppController : IDisposable
         ShowWheel(kind, dialog.FileNames, cursor);
     }
 
-    private void ShowWheel(WheelKind kind, IReadOnlyList<string> paths, POINT at)
+    private WheelWindow ShowWheel(WheelKind kind, IReadOnlyList<string> paths, POINT at)
     {
         CloseWheel("new wheel");
         var items = WheelCatalog.Items(kind, paths);
@@ -146,6 +166,7 @@ internal sealed class AppController : IDisposable
         };
         _wheel = wheel;
         wheel.Show();
+        return wheel;
     }
 
     private void CloseWheel(string reason)

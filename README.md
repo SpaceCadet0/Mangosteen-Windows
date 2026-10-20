@@ -16,7 +16,7 @@ This is an early prototype (version 0.1). The two repositories share no code; ea
 
 Right-clicks without one of these keys, and right-clicks anywhere else, open the usual context menu.
 
-Pick a segment with a left click. Esc or a click outside the wheel closes it. If several files are selected, right-click one of them to use the whole selection.
+Pick a segment with a left click. Esc or a click outside the wheel closes it. With several files selected, right-clicking one of them is meant to use the whole selection (not yet confirmed on real PCs: Shift and Ctrl may change the selection in Explorer).
 
 For other apps, use the tray icon: **Choose files…** opens a file dialog and then shows the wheel at the cursor.
 
