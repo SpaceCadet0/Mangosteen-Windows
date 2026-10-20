@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # the release step attaches Mangosteen.exe to a GitHub release when a v* tag is pushed
+  contents: write # the release step attaches Mangosteen-win-x64.zip to a GitHub release when a v* tag is pushed
 
 jobs:
   windows:
@@ -65,18 +65,13 @@ jobs:
           # Start the published exe as a user would (tray icon and hooks, welcome already seen) and measure it idle.
           New-Item -ItemType Directory -Force (Join-Path $env:LOCALAPPDATA 'Mangosteen') | Out-Null
           Set-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/settings.json') '{"Language":"en","WelcomeShown":true}'
-          # Experiment: the same app published without single-file compression.
-          dotnet publish src/Mangosteen/Mangosteen.csproj -c Release -r win-x64 -o publish-plain -p:EnableCompressionInSingleFile=false | Out-Null
-          Write-Host ("uncompressed exe: {0:N1} MB" -f ((Get-Item publish-plain/Mangosteen.exe).Length / 1MB))
-          foreach ($exe in @('publish/Mangosteen.exe', 'publish-plain/Mangosteen.exe')) {
-            $process = Start-Process $exe -PassThru
-            Start-Sleep -Seconds 25
-            $process.Refresh()
-            Write-Host ("memory idle ({3}): working set {0:N1} MB, private {1:N1} MB, peak working set {2:N1} MB" -f `
-              ($process.WorkingSet64 / 1MB), ($process.PrivateMemorySize64 / 1MB), ($process.PeakWorkingSet64 / 1MB), $exe)
-            Stop-Process $process -Force
-            Start-Sleep -Seconds 2
-          }
+          $process = Start-Process publish/Mangosteen.exe -PassThru
+          Start-Sleep -Seconds 25
+          $process.Refresh()
+          Write-Host ("memory idle: working set {0:N1} MB, private {1:N1} MB, peak working set {2:N1} MB" -f `
+            ($process.WorkingSet64 / 1MB), ($process.PrivateMemorySize64 / 1MB), ($process.PeakWorkingSet64 / 1MB))
+          Stop-Process $process -Force
+          if ($process.PrivateMemorySize64 -gt 80MB) { throw "Idle private memory is above 80 MB" }
 
       - name: Tool window snapshots
         shell: pwsh
@@ -152,4 +147,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = '${{ github.ref_name }}'
-          gh release create $tag publish/Mangosteen.exe --title "Mangosteen for Windows $($tag.TrimStart('v'))" --notes-file "docs/releases/$tag.md"
+          Compress-Archive publish/Mangosteen.exe Mangosteen-win-x64.zip -CompressionLevel Optimal
+          gh release create $tag Mangosteen-win-x64.zip --title "Mangosteen for Windows $($tag.TrimStart('v'))" --notes-file "docs/releases/$tag.md"

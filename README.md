@@ -116,9 +116,10 @@ Every tool opens a small window with a live preview. Close it and nothing is cha
 
 ## Download
 
-Download `Mangosteen.exe` from the [latest release](https://github.com/SpaceCadet0/Mangosteen-Windows/releases/latest) and
-run it. It is about 170 MB because it carries FFmpeg, which is unpacked into `%LOCALAPPDATA%\Mangosteen\ffmpeg` on first
-use. Windows 10 and 11, x64.
+Download `Mangosteen-win-x64.zip` from the [latest release](https://github.com/SpaceCadet0/Mangosteen-Windows/releases/latest)
+(about 170 MB), unzip it anywhere and run `Mangosteen.exe`. The exe is about 300 MB on disk because it carries the .NET
+runtime and FFmpeg, which is unpacked into `%LOCALAPPDATA%\Mangosteen\ffmpeg` on first use. In the background it uses
+about 75 MB of memory (under 20 MB of it private). Windows 10 and 11, x64.
 
 The build is not signed, so SmartScreen may warn you: click **More info**, then **Run anyway**. Microsoft Defender may
 look at it closely the first time, because an unsigned app that unpacks programs and watches the mouse is unusual.

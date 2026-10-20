@@ -116,9 +116,10 @@ Windows-версия [Mangosteen](https://github.com/SpaceCadet0/Mangosteen) д�
 
 ## Скачать
 
-Скачайте `Mangosteen.exe` из [последнего релиза](https://github.com/SpaceCadet0/Mangosteen-Windows/releases/latest) и
-запустите. Он весит около 170 МБ, потому что несёт в себе FFmpeg; при первом использовании тот распаковывается в
-`%LOCALAPPDATA%\Mangosteen\ffmpeg`. Windows 10 и 11, x64.
+Скачайте `Mangosteen-win-x64.zip` из [последнего релиза](https://github.com/SpaceCadet0/Mangosteen-Windows/releases/latest)
+(около 170 МБ), распакуйте в любую папку и запустите `Mangosteen.exe`. На диске exe занимает около 300 МБ, потому что
+несёт в себе .NET и FFmpeg; FFmpeg при первом использовании распаковывается в `%LOCALAPPDATA%\Mangosteen\ffmpeg`. В фоне
+приложение занимает около 75 МБ памяти (из них частной меньше 20 МБ). Windows 10 и 11, x64.
 
 Сборка не подписана, поэтому SmartScreen может предупредить: нажмите **Подробнее**, затем **Выполнить в любом случае**.
 Защитник Windows может в первый раз проверять его дольше: неподписанное приложение, которое распаковывает программы и

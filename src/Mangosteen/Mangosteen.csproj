@@ -19,7 +19,9 @@
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <!-- No single-file compression: a compressed bundle is unpacked into memory at start (about 200 MB idle instead
+         of about 75 MB). The release zips the exe instead, so the download stays the same size. -->
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
   </PropertyGroup>
   <ItemGroup>
     <!-- WPF and WinForms share type names (Application, Point, MessageBox); WinForms is only used for the tray icon. -->
