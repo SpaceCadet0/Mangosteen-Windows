@@ -32,7 +32,8 @@ public static class OutputNaming
 
     /// <summary>
     /// Runs <paramref name="produce"/> against a hidden temporary file in <paramref name="directory"/>, then
-    /// moves the result to a unique final name. Nothing visible is left behind if <paramref name="produce"/> throws.
+    /// moves the result to a unique final name. <paramref name="produce"/> may create a file or a folder at the
+    /// temporary path. Nothing is left behind if <paramref name="produce"/> throws.
     /// </summary>
     public static string WriteAtomically(string directory, string baseName, string extension, Action<string> produce)
     {
@@ -40,21 +41,28 @@ public static class OutputNaming
         try
         {
             produce(temp);
-            if (!File.Exists(temp))
+            var isFolder = Directory.Exists(temp);
+            if (!isFolder && !File.Exists(temp))
             {
                 throw new IOException("The converter produced no file.");
             }
-            File.SetAttributes(temp, File.GetAttributes(temp) & ~FileAttributes.Hidden);
             // Another job may claim the same name between choosing and moving; retry with the next one.
             for (var attempt = 0; attempt < 20; attempt++)
             {
                 var final = UniquePath(directory, baseName, extension);
                 try
                 {
-                    File.Move(temp, final, overwrite: false);
+                    if (isFolder)
+                    {
+                        Directory.Move(temp, final);
+                    }
+                    else
+                    {
+                        File.Move(temp, final, overwrite: false);
+                    }
                     return final;
                 }
-                catch (IOException) when (File.Exists(final))
+                catch (IOException) when (File.Exists(final) || Directory.Exists(final))
                 {
                 }
             }
@@ -65,6 +73,10 @@ public static class OutputNaming
             if (File.Exists(temp))
             {
                 File.Delete(temp);
+            }
+            else if (Directory.Exists(temp))
+            {
+                Directory.Delete(temp, recursive: true);
             }
         }
     }

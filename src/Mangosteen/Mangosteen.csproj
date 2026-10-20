@@ -35,4 +35,8 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Mangosteen.Windows.Tests" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="PDFsharp-MigraDoc" Version="6.5.0" />
+    <PackageReference Include="SkiaSharp" Version="4.153.1" />
+  </ItemGroup>
 </Project>

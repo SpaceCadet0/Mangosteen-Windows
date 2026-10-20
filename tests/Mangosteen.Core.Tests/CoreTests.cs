@@ -24,12 +24,12 @@ public class FormatCatalogTests
 {
     [Fact]
     public void PngOffersOtherImageFormats() =>
-        Assert.Equal([FileFormat.Jpg, FileFormat.Tiff, FileFormat.Bmp, FileFormat.Gif],
+        Assert.Equal([FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Bmp, FileFormat.Gif, FileFormat.Pdf],
             FormatCatalog.Targets(["a.png"]));
 
     [Fact]
     public void MixedImagesOfferEveryFormatSomeItemNeeds() =>
-        Assert.Equal([FileFormat.Png, FileFormat.Jpg, FileFormat.Tiff, FileFormat.Bmp, FileFormat.Gif],
+        Assert.Equal([FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Bmp, FileFormat.Gif, FileFormat.Pdf],
             FormatCatalog.Targets(["a.png", "b.jpg"]));
 
     [Fact]
@@ -38,10 +38,10 @@ public class FormatCatalogTests
 
     [Fact]
     public void UnsupportedFilesAreIgnored() =>
-        Assert.Equal(FormatCatalog.Targets(["a.png"]), FormatCatalog.Targets(["a.png", "notes.txt", "folder"]));
+        Assert.Equal(FormatCatalog.Targets(["a.png"]), FormatCatalog.Targets(["a.png", "clip.mp4", "no-such-folder"]));
 
     [Fact]
-    public void NothingConvertibleGivesNothing() => Assert.Empty(FormatCatalog.Targets(["notes.txt", "clip.mp4"]));
+    public void NothingConvertibleGivesNothing() => Assert.Empty(FormatCatalog.Targets(["song.mp3", "clip.mp4", "old.doc"]));
 }
 
 public class WheelCatalogTests

@@ -1,12 +1,21 @@
 namespace Mangosteen.Core;
 
 /// <summary>Which output formats are offered for which inputs on Windows.</summary>
-/// <remarks>Only formats that Mangosteen for Windows can already write are listed; the catalog grows phase by phase.</remarks>
+/// <remarks>
+/// Only formats Mangosteen for Windows can already write are listed; the catalog grows phase by phase. HEIC and
+/// AVIF output have no dependable encoder on Windows yet, and video and audio arrive with ffmpeg.
+/// </remarks>
 public static class FormatCatalog
 {
-    /// <summary>Written through WIC (System.Windows.Media.Imaging).</summary>
     public static readonly IReadOnlyList<FileFormat> ImageOutputs =
-        [FileFormat.Png, FileFormat.Jpg, FileFormat.Tiff, FileFormat.Bmp, FileFormat.Gif];
+        [FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Bmp, FileFormat.Gif, FileFormat.Pdf];
+    public static readonly IReadOnlyList<FileFormat> PdfOutputs =
+        [FileFormat.Png, FileFormat.Jpg, FileFormat.Txt, FileFormat.Md, FileFormat.Rtf, FileFormat.Docx, FileFormat.Html];
+    public static readonly IReadOnlyList<FileFormat> DocumentOutputs =
+        [FileFormat.Pdf, FileFormat.Docx, FileFormat.Odt, FileFormat.Rtf, FileFormat.Txt, FileFormat.Md, FileFormat.Html];
+    public static readonly IReadOnlyList<FileFormat> SubtitleOutputs = [FileFormat.Srt, FileFormat.Vtt, FileFormat.Txt];
+    public static readonly IReadOnlyList<FileFormat> TableOutputs = [FileFormat.Csv, FileFormat.Tsv, FileFormat.Xlsx];
+    public static readonly IReadOnlyList<FileFormat> ArchiveOutputs = [FileFormat.Zip, FileFormat.Tar, FileFormat.Tgz];
 
     /// <summary>Image inputs WIC can decode. WebP, HEIC and AVIF need the codecs from the Microsoft Store.</summary>
     public static readonly IReadOnlySet<FileFormat> ImageInputs = new HashSet<FileFormat>
@@ -15,8 +24,47 @@ public static class FormatCatalog
         FileFormat.Ico, FileFormat.Webp, FileFormat.Heic, FileFormat.Avif,
     };
 
+    /// <summary>Formats Mangosteen can read as a conversion source.</summary>
+    public static bool CanRead(FileFormat format) => format.Category() switch
+    {
+        FormatCategory.Image => ImageInputs.Contains(format),
+        FormatCategory.Document => format != FileFormat.Doc,
+        FormatCategory.Video or FormatCategory.Audio => false,
+        _ => true,
+    };
+
+    /// <summary>Order of segments on the wheel when the selection mixes kinds of files.</summary>
+    private static readonly IReadOnlyList<FileFormat> DisplayOrder =
+    [
+        FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Bmp, FileFormat.Gif, FileFormat.Pdf,
+        FileFormat.Docx, FileFormat.Odt, FileFormat.Rtf, FileFormat.Txt, FileFormat.Md, FileFormat.Html,
+        FileFormat.Srt, FileFormat.Vtt, FileFormat.Csv, FileFormat.Tsv, FileFormat.Xlsx,
+        FileFormat.Zip, FileFormat.Tar, FileFormat.Tgz,
+    ];
+
+    public static IReadOnlyList<FileFormat> Outputs(FormatCategory category) => category switch
+    {
+        FormatCategory.Image => ImageOutputs,
+        FormatCategory.Pdf => PdfOutputs,
+        FormatCategory.Document => DocumentOutputs,
+        FormatCategory.Subtitle => SubtitleOutputs,
+        FormatCategory.Table => TableOutputs,
+        FormatCategory.Archive => ArchiveOutputs,
+        _ => [],
+    };
+
     public static IReadOnlyList<FileFormat> Targets(FileFormat source) =>
-        ImageInputs.Contains(source) ? ImageOutputs.Where(f => f != source).ToList() : [];
+        CanRead(source) ? Outputs(source.Category()).Where(f => f != source).ToList() : [];
+
+    /// <summary>The detected format of an item (null for folders) and what it can become.</summary>
+    public static (FileFormat? Source, IReadOnlyList<FileFormat> Targets) Conversion(string path)
+    {
+        if (FileFormats.Detect(path) is { } source)
+        {
+            return (source, Targets(source));
+        }
+        return (null, Directory.Exists(path) ? ArchiveOutputs : []);
+    }
 
     /// <summary>
     /// Formats offered for a selection. A format is offered when every convertible item can either be
@@ -25,19 +73,16 @@ public static class FormatCatalog
     /// </summary>
     public static IReadOnlyList<FileFormat> Targets(IEnumerable<string> paths)
     {
-        var items = paths
-            .Select(FileFormats.Detect)
-            .Where(f => f is not null)
-            .Select(f => (Source: f!.Value, Targets: Targets(f.Value)))
-            .Where(i => i.Targets.Count > 0)
-            .ToList();
+        var items = paths.Select(Conversion).Where(i => i.Targets.Count > 0).ToList();
         if (items.Count == 0)
         {
             return [];
         }
-        return ImageOutputs
-            .Where(target => items.All(i => i.Source == target || i.Targets.Contains(target))
-                && items.Any(i => i.Source != target))
+        // A single kind of file keeps that kind's own order.
+        var categories = items.Select(i => i.Source?.Category() ?? FormatCategory.Archive).Distinct().ToList();
+        var order = categories.Count == 1 ? Outputs(categories[0]) : DisplayOrder;
+        return order
+            .Where(target => items.All(i => i.Source == target || i.Targets.Contains(target)) && items.Any(i => i.Source != target))
             .ToList();
     }
 }
