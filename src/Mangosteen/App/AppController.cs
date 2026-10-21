@@ -161,6 +161,8 @@ internal sealed class AppController : IDisposable
         var wheel = new WheelWindow(kind, items, paths.Count, at);
         wheel.Placed += circle => _hooks.Wheel = circle;
         wheel.Chosen += item => Perform(item, paths);
+        // A click on the centre goes to the next wheel: Convert, Tools, Actions, Convert…
+        wheel.HubClicked += () => SwitchWheel((WheelKind)(((int)_wheelKind + 1) % 3));
         wheel.Closed += (_, _) =>
         {
             if (ReferenceEquals(_wheel, wheel))

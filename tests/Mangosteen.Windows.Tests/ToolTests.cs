@@ -146,6 +146,23 @@ public sealed class ToolTests : IDisposable
     }
 
     [Fact]
+    public void PdfSplitWritesPartsInAFolder()
+    {
+        var pdf = Converter.CreatePdf([Photo("1.jpg", 200, 100, false), Photo("2.jpg", 100, 200, false), Photo("3.jpg", 100, 100, false)]);
+        var folder = PdfSplitTool.Save(PdfSplit.Documents(3, [0], [2]), pdf);
+        Assert.Equal(PathOf("Images (parts)"), folder);
+        Assert.Equal(["Images 1.pdf", "Images 2.pdf"], Directory.GetFiles(folder).Select(Path.GetFileName).Order());
+        using (var second = PdfDocument.Open(Path.Combine(folder, "Images 2.pdf")))
+        {
+            Assert.Equal(1, second.NumberOfPages);
+        }
+        var single = PdfSplitTool.Save(PdfSplit.Documents(3, [], [0]), pdf);
+        Assert.Equal(PathOf("Images (pages).pdf"), single);
+        using var document = PdfDocument.Open(single);
+        Assert.Equal(2, document.NumberOfPages);
+    }
+
+    [Fact]
     public void BackgroundAndCollageSizes()
     {
         var photo = ImageConverter.Decode(Photo("p.jpg", 400, 300, false));

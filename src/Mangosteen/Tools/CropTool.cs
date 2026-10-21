@@ -4,15 +4,17 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using Mangosteen.Core;
 using Mangosteen.Core.Imaging;
-using Path = System.Windows.Shapes.Path;
+using Path = System.IO.Path;
 using Point = System.Windows.Point;
 
 namespace Mangosteen.Tools;
 
 /// <summary>
-/// Crop: drag the frame or its handles, pick proportions, or enter an exact output size. With several images the
-/// frame drawn on the first one is used as is; the others get a centred crop of the same proportions.
+/// Crop: drag the frame or its handles, pick proportions, or enter an exact output size. Images can also be turned
+/// and mirrored, and cut into a grid of parts along lines that can be dragged. With several images the frame drawn on
+/// the first one is used as is; the others get a centred crop of the same proportions, and the same turn and grid.
 /// </summary>
 internal sealed class CropTool : ToolWindow
 {
@@ -23,9 +25,19 @@ internal sealed class CropTool : ToolWindow
     private readonly Canvas _overlay = new();
     private readonly Image _image = new() { Stretch = Stretch.Fill };
     private readonly Grid _surface = new();
-    private readonly Path _shade = new() { Fill = new SolidColorBrush(Color.FromArgb(0x90, 0, 0, 0)), IsHitTestVisible = false };
+    private readonly System.Windows.Shapes.Path _shade = new() { Fill = new SolidColorBrush(Color.FromArgb(0x90, 0, 0, 0)), IsHitTestVisible = false };
     private readonly Rectangle _border = new() { Stroke = Brushes.White, StrokeThickness = 2, IsHitTestVisible = false };
     private readonly List<(Rectangle Handle, CropMath.Edges Edges)> _handles = [];
+    private readonly Canvas _cutLayer = new();
+    private readonly TextBlock _acrossText = new() { VerticalAlignment = VerticalAlignment.Center, MinWidth = 70, TextAlignment = TextAlignment.Center };
+    private readonly TextBlock _downText = new() { VerticalAlignment = VerticalAlignment.Center, MinWidth = 70, TextAlignment = TextAlignment.Center };
+    private BitmapSource? _preview;
+    private int _sourceWidth = 1, _sourceHeight = 1;
+    private ImageTransform _transform;
+    // Cut lines as fractions of the crop frame, for "Split into parts".
+    private List<double> _columnCuts = [];
+    private List<double> _rowCuts = [];
+    private (bool Vertical, int Index)? _cutDrag;
     private readonly ComboBox _aspect = new() { MinWidth = 180 };
     private readonly TextBox _exactWidth = new() { Text = "1080", Width = 70 };
     private readonly TextBox _exactHeight = new() { Text = "1080", Width = 70 };
@@ -36,7 +48,7 @@ internal sealed class CropTool : ToolWindow
     private (Point Start, UnitRect Rect, CropMath.Edges? Edges)? _drag;
     private bool _loaded;
 
-    public CropTool(IReadOnlyList<string> files, Jobs jobs) : base(IsVideo(files) ? L("Reframe") : L("Crop"), files, IsVideo(files) ? L("Reframe") : L("Crop"))
+    public CropTool(IReadOnlyList<string> files, Jobs jobs) : base(IsVideo(files) ? L("Reframe") : L("Crop"), files, IsVideo(files) ? L("Reframe") : L("Save"))
     {
         _images = ToolOutput.Images(files);
         // Crop video: the frame is drawn on a still from the video.
@@ -47,6 +59,7 @@ internal sealed class CropTool : ToolWindow
         _surface.Children.Add(_overlay);
         _overlay.Children.Add(_shade);
         _overlay.Children.Add(_border);
+        _overlay.Children.Add(_cutLayer);
         foreach (var edges in new[] { CropMath.Edges.TopLeft, CropMath.Edges.Top, CropMath.Edges.TopRight, CropMath.Edges.Right,
                      CropMath.Edges.BottomRight, CropMath.Edges.Bottom, CropMath.Edges.BottomLeft, CropMath.Edges.Left })
         {
@@ -70,6 +83,7 @@ internal sealed class CropTool : ToolWindow
         _overlay.MouseLeftButtonUp += (_, _) =>
         {
             _drag = null;
+            _cutDrag = null;
             _overlay.ReleaseMouseCapture();
         };
 
@@ -101,8 +115,10 @@ internal sealed class CropTool : ToolWindow
         reset.Click += (_, _) =>
         {
             _aspect.SelectedIndex = 0;
-            _rect = UnitRect.Full;
-            Redraw();
+            _transform = default;
+            _columnCuts = [];
+            _rowCuts = [];
+            ShowTransformed();
         };
 
         var controls = new DockPanel { Margin = new Thickness(0, 14, 0, 0) };
@@ -120,6 +136,10 @@ internal sealed class CropTool : ToolWindow
         var stack = new StackPanel();
         stack.Children.Add(canvasFrame);
         stack.Children.Add(controls);
+        if (_video is null)
+        {
+            stack.Children.Add(ImageControls());
+        }
         if (_images.Count > 1)
         {
             stack.Children.Add(Note(L("The frame is drawn on the first image; the others get a centred crop of the same proportions.")));
@@ -154,15 +174,15 @@ internal sealed class CropTool : ToolWindow
                 Platform.Log.Error("crop preview", error);
                 return;
             }
-            var (preview, width, height) = task.Result;
-            _width = width;
-            _height = height;
-            _image.Source = preview;
-            _surface.Width = _overlay.Width = preview.PixelWidth;
-            _surface.Height = _overlay.Height = preview.PixelHeight;
+            (_preview, _sourceWidth, _sourceHeight) = task.Result;
+            if (MediaToolWindow.SnapshotDemo && _video is null)
+            {
+                // Snapshot check of the grid: two by two.
+                (_columnCuts, _rowCuts) = (CropMath.EvenCuts(2), CropMath.EvenCuts(2));
+            }
             _loaded = true;
             ActionEnabled = true;
-            Redraw();
+            ShowTransformed();
         }, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
@@ -207,6 +227,16 @@ internal sealed class CropTool : ToolWindow
             return;
         }
         var point = e.GetPosition(_overlay);
+        if (_cutDrag is { } cut)
+        {
+            var cuts = cut.Vertical ? _columnCuts : _rowCuts;
+            var position = cut.Vertical
+                ? (point.X / _overlay.Width - _rect.X) / _rect.Width
+                : (point.Y / _overlay.Height - _rect.Y) / _rect.Height;
+            cuts[cut.Index] = CropMath.ClampCut(cuts, cut.Index, position);
+            Redraw();
+            return;
+        }
         var dx = (point.X - drag.Start.X) / _overlay.Width;
         var dy = (point.Y - drag.Start.Y) / _overlay.Height;
         if (drag.Edges is { } edges)
@@ -249,6 +279,138 @@ internal sealed class CropTool : ToolWindow
         }
         var pixels = _rect.ToPixels(_width, _height);
         _pixels.Text = $"{pixels.Width} × {pixels.Height} px";
+        DrawCuts(frame, w);
+    }
+
+    private bool IsSplit => _columnCuts.Count > 0 || _rowCuts.Count > 0;
+
+    /// <summary>Turn, mirror and "Split into parts" (images only).</summary>
+    private FrameworkElement ImageControls()
+    {
+        var row = new WrapPanel { Margin = new Thickness(0, 12, 0, 0) };
+        Button Glyph(string glyph, string tip, Action action, bool mirrored = false, string? font = null)
+        {
+            var text = new TextBlock { Text = glyph, FontSize = 16, FontFamily = new FontFamily(font ?? Wheel.WheelGlyphs.FontFamily) };
+            if (mirrored)
+            {
+                text.RenderTransformOrigin = new Point(0.5, 0.5);
+                text.RenderTransform = new ScaleTransform(-1, 1);
+            }
+            var button = new Button { Content = text, ToolTip = tip, MinWidth = 40, Margin = new Thickness(0, 0, 6, 0) };
+            button.Click += (_, _) =>
+            {
+                action();
+                ShowTransformed();
+            };
+            return button;
+        }
+        row.Children.Add(Glyph("\uE7AD", L("Rotate left"), () => _transform = _transform.Rotate(clockwise: false), mirrored: true));
+        row.Children.Add(Glyph("\uE7AD", L("Rotate right"), () => _transform = _transform.Rotate(clockwise: true)));
+        row.Children.Add(Glyph("\u21C6", L("Flip horizontally"), () => _transform = _transform.Flip(horizontal: true), font: "Segoe UI Symbol"));
+        row.Children.Add(Glyph("\u21C5", L("Flip vertically"), () => _transform = _transform.Flip(horizontal: false), font: "Segoe UI Symbol"));
+        row.Children.Add(new TextBlock { Text = L("Split into parts:"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(18, 0, 8, 0) });
+        row.Children.Add(Stepper(_acrossText, () => _columnCuts.Count + 1, n => _columnCuts = CropMath.EvenCuts(n)));
+        row.Children.Add(new Border { Width = 10 });
+        row.Children.Add(Stepper(_downText, () => _rowCuts.Count + 1, n => _rowCuts = CropMath.EvenCuts(n)));
+        return row;
+    }
+
+    private FrameworkElement Stepper(TextBlock text, Func<int> get, Action<int> set)
+    {
+        var panel = new StackPanel { Orientation = Orientation.Horizontal };
+        foreach (var (label, step) in new[] { ("\u2212", -1), ("+", 1) })
+        {
+            var button = new Button { Content = label, MinWidth = 32, Padding = new Thickness(6, 2, 6, 4) };
+            button.Click += (_, _) =>
+            {
+                set(Math.Clamp(get() + step, 1, 10));
+                Redraw();
+            };
+            if (step > 0)
+            {
+                panel.Children.Add(text);
+            }
+            panel.Children.Add(button);
+        }
+        return panel;
+    }
+
+    /// <summary>Shows the preview turned and mirrored; the frame starts again from the whole picture.</summary>
+    private void ShowTransformed()
+    {
+        if (_preview is null)
+        {
+            return;
+        }
+        var shown = Transformed(_preview, _transform);
+        (_width, _height) = _transform.Size(_sourceWidth, _sourceHeight);
+        _image.Source = shown;
+        _surface.Width = _overlay.Width = shown.PixelWidth;
+        _surface.Height = _overlay.Height = shown.PixelHeight;
+        _rect = UnitRect.Full;
+        ApplyAspect();
+    }
+
+    private static BitmapSource Transformed(BitmapSource image, ImageTransform transform)
+    {
+        if (transform.IsIdentity)
+        {
+            return image;
+        }
+        // Turned first, then mirrored, as on screen.
+        var group = new TransformGroup();
+        group.Children.Add(new RotateTransform(90 * transform.QuarterTurns));
+        group.Children.Add(new ScaleTransform(transform.FlipHorizontal ? -1 : 1, transform.FlipVertical ? -1 : 1));
+        var result = new TransformedBitmap(image, group);
+        result.Freeze();
+        return result;
+    }
+
+    /// <summary>Dashed cut lines over the frame; each can be dragged.</summary>
+    private void DrawCuts(Rect frame, double width)
+    {
+        _acrossText.Text = string.Format(L("{0} across"), _columnCuts.Count + 1);
+        _downText.Text = string.Format(L("{0} down"), _rowCuts.Count + 1);
+        if (_video is null)
+        {
+            ActionTitle = IsSplit ? L("Split") : L("Save");
+        }
+        _cutLayer.Children.Clear();
+        var thickness = Math.Max(1, width / 400);
+        var grab = Math.Max(10, width / 60);
+        foreach (var (vertical, cuts) in new[] { (true, _columnCuts), (false, _rowCuts) })
+        {
+            for (var i = 0; i < cuts.Count; i++)
+            {
+                var at = vertical ? frame.Left + cuts[i] * frame.Width : frame.Top + cuts[i] * frame.Height;
+                foreach (var (brush, dash) in new[] { (Brushes.Black, 0.0), (Brushes.White, 4.0) })
+                {
+                    _cutLayer.Children.Add(new Line
+                    {
+                        X1 = vertical ? at : frame.Left, X2 = vertical ? at : frame.Right,
+                        Y1 = vertical ? frame.Top : at, Y2 = vertical ? frame.Bottom : at,
+                        Stroke = brush, StrokeThickness = thickness, StrokeDashArray = dash > 0 ? [dash, dash] : null,
+                        Opacity = dash > 0 ? 1 : 0.5, IsHitTestVisible = false,
+                    });
+                }
+                var hit = new Rectangle
+                {
+                    Fill = Brushes.Transparent, Cursor = vertical ? Cursors.SizeWE : Cursors.SizeNS,
+                    Width = vertical ? grab : frame.Width, Height = vertical ? frame.Height : grab,
+                };
+                Canvas.SetLeft(hit, vertical ? at - grab / 2 : frame.Left);
+                Canvas.SetTop(hit, vertical ? frame.Top : at - grab / 2);
+                var index = i;
+                hit.MouseLeftButtonDown += (_, e) =>
+                {
+                    _drag = (e.GetPosition(_overlay), _rect, null);
+                    _cutDrag = (vertical, index);
+                    _overlay.CaptureMouse();
+                    e.Handled = true;
+                };
+                _cutLayer.Children.Add(hit);
+            }
+        }
     }
 
     protected override void Run()
@@ -266,19 +428,42 @@ internal sealed class CropTool : ToolWindow
             _jobs.RunEach(L("Cropping"), L("Cropped"), [video], (path, token, progress) => Media.MediaTools.CropVideo(path, firstRect, exact, progress, token));
             return;
         }
+        var (transform, columnCuts, rowCuts) = (_transform, _columnCuts.ToList(), _rowCuts.ToList());
         _jobs.RunEach(L("Cropping"), L("Cropped"), _images, (input, _) =>
         {
-            var image = ImageIO.Load(input);
+            var image = Transformed(ImageIO.Load(input), transform);
             var rect = input == first ? firstRect
                 : CropMath.CenteredRect(lockedFirst ?? frameAspect, image.PixelWidth, image.PixelHeight);
             var pixels = rect.ToPixels(image.PixelWidth, image.PixelHeight);
+            var isCrop = exact is not null || pixels.Width != image.PixelWidth || pixels.Height != image.PixelHeight;
             BitmapSource cropped = new CroppedBitmap(image, new Int32Rect(pixels.X, pixels.Y, pixels.Width, pixels.Height));
             if (exact is { } size)
             {
                 cropped = ImageIO.Resize(cropped, size.Item1, size.Item2);
             }
             var format = ToolOutput.KeepFormat(input);
-            return ToolOutput.Write(input, L("cropped"), format, ImageIO.Encode(cropped, format, 0.92, ImageIO.ReadMetadata(input)));
+            var metadata = ImageIO.ReadMetadata(input);
+            if (columnCuts.Count > 0 || rowCuts.Count > 0)
+            {
+                // The parts, row by row from the top-left, in a "name (parts)" folder.
+                var tiles = CropMath.Tiles(columnCuts, rowCuts, cropped.PixelWidth, cropped.PixelHeight);
+                var full = Path.GetFullPath(input);
+                var baseName = Core.OutputNaming.BaseName(full);
+                var digits = tiles.Count.ToString().Length;
+                return Core.OutputNaming.WriteAtomically(Path.GetDirectoryName(full)!, $"{baseName} ({L("parts")})", "", folder =>
+                {
+                    Directory.CreateDirectory(folder);
+                    for (var i = 0; i < tiles.Count; i++)
+                    {
+                        var tile = tiles[i];
+                        var part = new CroppedBitmap(cropped, new Int32Rect(tile.X, tile.Y, tile.Width, tile.Height));
+                        var name = $"{baseName} {(i + 1).ToString().PadLeft(digits, '0')}.{format.Extension()}";
+                        File.WriteAllBytes(Path.Combine(folder, name), ImageIO.Encode(part, format, 0.92, metadata));
+                    }
+                });
+            }
+            var suffix = isCrop || transform.IsIdentity ? L("cropped") : L("changed");
+            return ToolOutput.Write(input, suffix, format, ImageIO.Encode(cropped, format, 0.92, metadata));
         });
     }
 }

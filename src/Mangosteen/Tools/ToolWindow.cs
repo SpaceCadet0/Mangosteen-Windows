@@ -113,6 +113,12 @@ internal abstract class ToolWindow : Window
         _action.IsCancel = true;
     }
 
+    /// <summary>The main button's text, for tools whose action changes (Crop becomes Split).</summary>
+    protected string ActionTitle
+    {
+        set => _action.Content = value;
+    }
+
     protected bool ActionEnabled
     {
         set => _action.IsEnabled = value;

@@ -55,7 +55,9 @@ internal abstract class MediaToolWindow : ToolWindow
 
     public override bool IsSettled => _settled;
 
-    /// <summary>For the README screenshots: select the middle of the file once it is loaded, as a person would.</summary>
+    /// <summary>
+    /// For screenshots: select the middle of the file once it is loaded, as a person would (Crop shows a 2 × 2 grid).
+    /// </summary>
     public static bool SnapshotDemo { get; set; }
 
     /// <summary>The standard layout: the frame (for video), the timeline, then the tool's own controls.</summary>

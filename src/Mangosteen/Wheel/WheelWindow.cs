@@ -14,7 +14,8 @@ namespace Mangosteen.Wheel;
 
 /// <summary>
 /// The round wheel shown at the cursor: dark ring segments with small gaps, the brand colour on the
-/// segment under the mouse, and the wheel name with the file count in the centre.
+/// segment under the mouse, and the wheel name with the file count in the centre. Clicking the centre switches to
+/// the next wheel; under the mouse the centre and the outer ring take the brand colour.
 /// </summary>
 /// <remarks>
 /// The window never takes focus (WS_EX_NOACTIVATE), so Explorer stays active and no foreground rules
@@ -43,10 +44,14 @@ internal sealed class WheelWindow : Window
 
     private readonly POINT _anchor;
     private readonly Canvas _layer = new() { Width = WindowSize, Height = WindowSize };
+    private Ellipse? _disc;
     private bool _closing;
 
     /// <summary>Raised when a segment is clicked. The window closes itself first.</summary>
     public event Action<WheelItem>? Chosen;
+
+    /// <summary>Raised when the centre is clicked: the controller shows the next wheel.</summary>
+    public event Action? HubClicked;
 
     /// <summary>Raised once the window is placed: the disc in physical screen pixels.</summary>
     public event Action<ScreenCircle>? Placed;
@@ -73,10 +78,11 @@ internal sealed class WheelWindow : Window
 
         // The disc stays; the segments and the centre live in a layer that is replaced when the wheel switches.
         var canvas = new Canvas { Width = WindowSize, Height = WindowSize };
-        canvas.Children.Add(Circle(Center, DiscRadius, DiscBrush, DiscBorderBrush, effect: new DropShadowEffect
+        _disc = Circle(Center, DiscRadius, DiscBrush, DiscBorderBrush, effect: new DropShadowEffect
         {
             BlurRadius = 14, ShadowDepth = 3, Direction = 270, Opacity = 0.45, Color = Colors.Black,
-        }));
+        });
+        canvas.Children.Add(_disc);
         canvas.Children.Add(_layer);
         _layer.Children.Add(BuildLayer(kind, items, fileCount));
 
@@ -112,7 +118,16 @@ internal sealed class WheelWindow : Window
             AddSegment(layer, Center, items[i], i, items.Count);
         }
 
-        layer.Children.Add(Circle(Center, CenterRadius, CenterBrush, null));
+        var hub = Circle(Center, CenterRadius, CenterBrush, null);
+        hub.Cursor = System.Windows.Input.Cursors.Hand;
+        hub.MouseEnter += (_, _) => HighlightHub(hub, true);
+        hub.MouseLeave += (_, _) => HighlightHub(hub, false);
+        hub.MouseLeftButtonUp += (_, args) =>
+        {
+            args.Handled = true;
+            HubClicked?.Invoke();
+        };
+        layer.Children.Add(hub);
         var centerText = new StackPanel { Width = CenterRadius * 2 - 12, IsHitTestVisible = false };
         centerText.Children.Add(new TextBlock
         {
@@ -128,6 +143,17 @@ internal sealed class WheelWindow : Window
         });
         PlaceCentered(layer, centerText, Center, CenterRadius * 2 - 12, 44);
         return layer;
+    }
+
+    /// <summary>The centre and the outer ring in the brand colour while the mouse is over the centre.</summary>
+    private void HighlightHub(Ellipse hub, bool on)
+    {
+        hub.Fill = on ? HighlightBrush : CenterBrush;
+        if (_disc is { } disc)
+        {
+            disc.Stroke = on ? HighlightBrush : DiscBorderBrush;
+            disc.StrokeThickness = on ? 6 : 1;
+        }
     }
 
     public void CloseWheel()

@@ -61,7 +61,7 @@ public static class WheelCatalog
     ];
 
     /// <summary>Tools that already work on Windows; the others are shown greyed out until their phase.</summary>
-    private static readonly HashSet<string> AvailableTools = ["tool.extract", "tool.createPDF", "tool.mergePDF", "tool.crop", "tool.compress", "tool.metadata", "tool.frame", "tool.collage", "tool.organizePDF", "tool.edit", "tool.redact", "tool.annotate"];
+    private static readonly HashSet<string> AvailableTools = ["tool.extract", "tool.createPDF", "tool.mergePDF", "tool.crop", "tool.compress", "tool.metadata", "tool.frame", "tool.collage", "tool.organizePDF", "tool.splitPDF", "tool.edit", "tool.redact", "tool.annotate"];
 
     /// <summary>Video and audio tools; they need the bundled FFmpeg.</summary>
     private static readonly HashSet<string> MediaTools =
@@ -109,7 +109,8 @@ public static class WheelCatalog
         Add(images, "tool.edit", "Editor", WheelIcon.Edit);
         Add(images, "tool.annotate", "Annotate", WheelIcon.Annotate);
         Add(images, "tool.redact", "Hide", WheelIcon.Hide);
-        Add(pdf, "tool.organizePDF", "Pages", WheelIcon.Pages);
+        Add(pdf, "tool.organizePDF", "Page order", WheelIcon.Pages);
+        Add(pdf, "tool.splitPDF", "Split", WheelIcon.Split);
         Add(images, "tool.frame", "Background", WheelIcon.Background);
         Add(Count(f => f.Category() == FormatCategory.Image) >= 2, "tool.collage", "Collage", WheelIcon.Collage);
         var rasterImages = Any(f => f.Category() == FormatCategory.Image && f != FileFormat.Svg);

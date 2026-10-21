@@ -115,4 +115,51 @@ public static class CropMath
         }
         return result;
     }
+
+    /// <summary>Cut positions (0…1) that divide a side into <paramref name="parts"/> equal pieces.</summary>
+    public static List<double> EvenCuts(int parts) => Enumerable.Range(1, Math.Max(parts, 1) - 1).Select(i => (double)i / parts).ToList();
+
+    /// <summary>
+    /// Pixel edges of the parts along a side of <paramref name="length"/> pixels, cut at <paramref name="cuts"/>
+    /// (fractions of the side) rounded to the nearest pixel; empty parts are dropped. Starts at 0, ends at the length.
+    /// </summary>
+    public static List<int> TileEdges(IEnumerable<double> cuts, int length)
+    {
+        var edges = new List<int> { 0 };
+        foreach (var edge in cuts.Where(c => c > 0 && c < 1).Order().Select(c => (int)Math.Round(c * length, MidpointRounding.AwayFromZero)).Append(length))
+        {
+            if (edge > edges[^1])
+            {
+                edges.Add(edge);
+            }
+        }
+        return edges;
+    }
+
+    /// <summary>The parts of a grid, row by row from the top-left.</summary>
+    public static List<PixelRect> Tiles(IEnumerable<double> columnCuts, IEnumerable<double> rowCuts, int width, int height)
+    {
+        var xs = TileEdges(columnCuts, width);
+        var ys = TileEdges(rowCuts, height);
+        var tiles = new List<PixelRect>();
+        for (var row = 0; row < ys.Count - 1; row++)
+        {
+            for (var column = 0; column < xs.Count - 1; column++)
+            {
+                tiles.Add(new PixelRect(xs[column], ys[row], xs[column + 1] - xs[column], ys[row + 1] - ys[row]));
+            }
+        }
+        return tiles;
+    }
+
+    /// <summary>
+    /// Moves cut <paramref name="index"/> to <paramref name="position"/>, kept at least <paramref name="gap"/> away
+    /// from its neighbours and from the edges.
+    /// </summary>
+    public static double ClampCut(IReadOnlyList<double> cuts, int index, double position, double gap = 0.02)
+    {
+        var low = (index > 0 ? cuts[index - 1] : 0) + gap;
+        var high = (index < cuts.Count - 1 ? cuts[index + 1] : 1) - gap;
+        return low > high ? cuts[index] : Math.Clamp(position, low, high);
+    }
 }

@@ -123,6 +123,9 @@ jobs:
             @{ id = 'tool.frame'; files = @('photo.jpg') },
             @{ id = 'tool.collage'; files = @('photo.jpg', 'portrait.jpg', 'photo.jpg') },
             @{ id = 'tool.organizePDF'; files = @('document.pdf') },
+            @{ id = 'tool.splitPDF'; files = @('document.pdf') },
+            @{ id = 'tool.splitPDF'; files = @('document.pdf'); language = 'ru'; name = 'ru.tool.splitPDF' },
+            @{ id = 'tool.crop'; files = @('photo.jpg'); demo = $true; name = 'tool.crop.split' },
             @{ id = 'tool.edit'; files = @('photo.jpg') },
             @{ id = 'tool.redact'; files = @('photo.jpg', 'portrait.jpg') },
             @{ id = 'tool.annotate'; files = @('photo.jpg') },
@@ -152,6 +155,7 @@ jobs:
             $name = if ($tool.name) { $tool.name } else { $tool.id }
             $output = Join-Path (Resolve-Path snapshots) ($name + '.png')
             $env:MANGOSTEEN_LANGUAGE = if ($tool.language) { $tool.language } else { 'en' }
+            $env:MANGOSTEEN_SNAPSHOT_DEMO = if ($tool.demo) { '1' } else { '' }
             $arguments = @('--snapshot', $tool.id, $output) + ($tool.files | ForEach-Object { Join-Path $fixtures $_ })
             $process = Start-Process publish/Mangosteen.exe -ArgumentList $arguments -Wait -PassThru
             if ($process.ExitCode -ne 0) {

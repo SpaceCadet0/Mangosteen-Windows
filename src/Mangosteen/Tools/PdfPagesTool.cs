@@ -10,7 +10,7 @@ using PdfSharp.Pdf.IO;
 
 namespace Mangosteen.Tools;
 
-/// <summary>PDF Pages: reorder, rotate, duplicate and delete pages across one or more PDFs.</summary>
+/// <summary>Page order: reorder, rotate, duplicate and delete pages across one or more PDFs.</summary>
 internal sealed class PdfPagesTool : ToolWindow
 {
     /// <summary>One page of the result: which file and page it comes from, and its extra clockwise turn.</summary>
@@ -27,7 +27,7 @@ internal sealed class PdfPagesTool : ToolWindow
     private Point _pressedAt;
     private bool _settled;
 
-    public PdfPagesTool(IReadOnlyList<string> files, Jobs jobs) : base(L("PDF pages"), files, L("Save"))
+    public PdfPagesTool(IReadOnlyList<string> files, Jobs jobs) : base(L("Page order"), files, L("Save"))
     {
         _pdfs = files.Where(f => FileFormats.Detect(f) == FileFormat.Pdf).ToList();
         _jobs = jobs;

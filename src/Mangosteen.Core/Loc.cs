@@ -50,6 +50,7 @@ public static class Loc
         ["part"] = (["part", "parts"], ["часть", "части", "частей"], ["parte", "partes"]),
         ["page"] = (["page", "pages"], ["страница", "страницы", "страниц"], ["página", "páginas"]),
         ["frame"] = (["frame", "frames"], ["кадр", "кадра", "кадров"], ["fotograma", "fotogramas"]),
+        ["document"] = (["document", "documents"], ["документ", "документа", "документов"], ["documento", "documentos"]),
         ["bleep"] = (["bleep", "bleeps"], ["писк", "писка", "писков"], ["pitido", "pitidos"]),
     };
 

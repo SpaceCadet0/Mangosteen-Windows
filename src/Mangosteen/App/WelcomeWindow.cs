@@ -31,7 +31,7 @@ internal sealed class WelcomeWindow : ToolWindow
         {
             L("Hold Shift, Ctrl or Alt: each key opens its own wheel."),
             L("Right-click a file in Explorer or on the desktop: the wheel opens at the cursor."),
-            L("Click a segment. The result appears next to the original; the original is not changed."),
+            L("Click a segment. The result appears next to the original file; the original itself is never changed."),
         })
         {
             steps.Children.Add(Step(number++, text));
@@ -82,7 +82,7 @@ internal sealed class WelcomeWindow : ToolWindow
         titles.Children.Add(new TextBlock { Text = L("Welcome to Mangosteen"), FontSize = 22, FontWeight = FontWeights.SemiBold });
         titles.Children.Add(new TextBlock
         {
-            Text = L("Converting and file tools right at your right-click. Everything runs on this PC, with no limits."),
+            Text = L("Converters and tools for your files, at a right-click. Everything runs locally, with no third-party services and no limits."),
             TextWrapping = TextWrapping.Wrap, Opacity = 0.75, FontSize = 14, Margin = new Thickness(0, 4, 0, 0),
         });
         Grid.SetColumn(titles, 1);

@@ -214,3 +214,59 @@ public class LocTests
         }
     }
 }
+
+public class TransformAndTilesTests
+{
+    [Fact]
+    public void RotateSwapsTheFlipAxes()
+    {
+        var transform = new ImageTransform().Flip(horizontal: true).Rotate(clockwise: true);
+        Assert.Equal(new ImageTransform(1, FlipHorizontal: false, FlipVertical: true), transform);
+        Assert.Equal((200, 400), transform.Size(400, 200));
+        Assert.True(new ImageTransform().Rotate(true).Rotate(false).IsIdentity);
+        Assert.Equal(3, new ImageTransform().Rotate(clockwise: false).QuarterTurns);
+    }
+
+    [Fact]
+    public void TilesAreCutAtWholePixelsRowByRow()
+    {
+        var tiles = CropMath.Tiles(CropMath.EvenCuts(3), CropMath.EvenCuts(2), 100, 51);
+        Assert.Equal(6, tiles.Count);
+        Assert.Equal(new PixelRect(0, 0, 33, 26), tiles[0]);
+        Assert.Equal(new PixelRect(33, 0, 34, 26), tiles[1]);
+        Assert.Equal(new PixelRect(67, 26, 33, 25), tiles[5]);
+        Assert.Equal(100 * 51, tiles.Sum(t => t.Width * t.Height));
+    }
+
+    [Fact]
+    public void CutsKeepAGap()
+    {
+        var cuts = new List<double> { 0.3, 0.6 };
+        Assert.Equal(0.58, CropMath.ClampCut(cuts, 0, 0.9), 6);
+        Assert.Equal(0.02, CropMath.ClampCut(cuts, 0, -1), 6);
+        Assert.Equal(0.98, CropMath.ClampCut(cuts, 1, 1.5), 6);
+    }
+}
+
+public class PdfSplitTests
+{
+    [Fact]
+    public void CutsAndExcludedPages()
+    {
+        var documents = PdfSplit.Documents(6, [1, 3], [2]);
+        Assert.Equal([[0, 1], [3], [4, 5]], documents);
+        Assert.Equal("1–2, 4, 6", PdfSplit.Ranges([0, 1, 3, 5]));
+    }
+
+    [Fact]
+    public void EmptyPartsAreDropped() => Assert.Equal([[2]], PdfSplit.Documents(3, [0, 1], [0, 1]));
+
+    [Fact]
+    public void Presets()
+    {
+        Assert.Equal([0, 1, 2], PdfSplit.EveryPage(4).Order());
+        Assert.Equal([2], PdfSplit.InHalf(5));
+        Assert.Equal([1, 3], PdfSplit.EveryN(5, 2).Order());
+        Assert.Equal(3, PdfSplit.Documents(5, PdfSplit.EveryN(5, 2), []).Count);
+    }
+}
