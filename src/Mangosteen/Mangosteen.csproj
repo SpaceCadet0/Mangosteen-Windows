@@ -33,6 +33,8 @@
   <ItemGroup>
     <Resource Include="Assets\Mangosteen.ico" />
     <EmbeddedResource Include="Assets\Mangosteen.ico" LogicalName="Mangosteen.ico" />
+    <!-- The demo in the welcome window; MediaElement plays only files, so it is written out on first use. -->
+    <EmbeddedResource Include="Assets\welcome-demo.mp4" LogicalName="welcome-demo.mp4" />
     <!-- FFmpeg (GPLv3) is bundled when build/fetch-ffmpeg.ps1 has run: the archive lives in Mangosteen.FFmpeg.dll, and
          its hash is recorded here so Mangosteen knows about it without loading that assembly. -->
     <AssemblyMetadata Include="FFmpegHash" Value="$(FFmpegHash)" Condition="'$(FFmpegHash)' != ''" />

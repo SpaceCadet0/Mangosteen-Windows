@@ -10,11 +10,13 @@ namespace Mangosteen;
 
 /// <summary>
 /// Shown on the first launch (and from the tray menu): how to open a wheel, what the three wheels do, and whether
-/// Mangosteen starts with Windows. The layout follows the macOS welcome window.
+/// Mangosteen starts with Windows. The layout follows the macOS welcome window: the header and the steps on the left,
+/// a looping demo video on the right, the three wheels below.
 /// </summary>
 internal sealed class WelcomeWindow : ToolWindow
 {
-    private const double ContentWidth = 720;
+    private const double ContentWidth = 920;
+    private const double VideoWidth = 440, VideoHeight = 275;
     private static readonly Brush StepBrush = new SolidColorBrush(Color.FromRgb(0xC0, 0x5A, 0x80));
     private static readonly Brush CardBrush = new SolidColorBrush(Color.FromArgb(0x1C, 0x80, 0x80, 0x80));
     private static readonly Brush TileBrush = new SolidColorBrush(Color.FromArgb(0x30, 0x80, 0x80, 0x80));
@@ -23,7 +25,8 @@ internal sealed class WelcomeWindow : ToolWindow
     {
         HideCancel();
         var stack = new StackPanel { Width = ContentWidth, Margin = new Thickness(4, 4, 4, 0) };
-        stack.Children.Add(Header());
+        var left = new StackPanel();
+        left.Children.Add(Header());
 
         var steps = new StackPanel { Margin = new Thickness(0, 22, 0, 0) };
         var number = 1;
@@ -36,7 +39,17 @@ internal sealed class WelcomeWindow : ToolWindow
         {
             steps.Children.Add(Step(number++, text));
         }
-        stack.Children.Add(steps);
+        left.Children.Add(steps);
+        var top = new Grid();
+        top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        top.Children.Add(left);
+        if (DemoVideo() is { } video)
+        {
+            Grid.SetColumn(video, 1);
+            top.Children.Add(video);
+        }
+        stack.Children.Add(top);
 
         var cards = new UniformGrid { Columns = 3, Margin = new Thickness(-6, 18, -6, 0) };
         cards.Children.Add(Card("", L("Convert"), "Shift",
@@ -61,6 +74,64 @@ internal sealed class WelcomeWindow : ToolWindow
     }
 
     protected override void Run() => Close();
+
+    /// <summary>
+    /// The demo: looping, muted, without controls, playing while the window is open. Hidden when the video cannot be
+    /// written out or played (for example on Windows N without the Media Feature Pack).
+    /// </summary>
+    private FrameworkElement? DemoVideo()
+    {
+        string path;
+        try
+        {
+            path = System.IO.Path.Combine(Platform.Log.Directory, "welcome-demo.mp4");
+            using var resource = typeof(WelcomeWindow).Assembly.GetManifestResourceStream("welcome-demo.mp4");
+            if (resource is null)
+            {
+                return null;
+            }
+            if (!File.Exists(path) || new FileInfo(path).Length != resource.Length)
+            {
+                Directory.CreateDirectory(Platform.Log.Directory);
+                using var file = File.Create(path);
+                resource.CopyTo(file);
+            }
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            Platform.Log.Error("welcome video", error);
+            return null;
+        }
+        var media = new MediaElement
+        {
+            Source = new Uri(path), LoadedBehavior = MediaState.Manual, UnloadedBehavior = MediaState.Close, IsMuted = true,
+            Stretch = Stretch.UniformToFill, Width = VideoWidth, Height = VideoHeight,
+        };
+        var frame = new Border
+        {
+            Width = VideoWidth, Height = VideoHeight, Margin = new Thickness(24, 0, 0, 0), VerticalAlignment = VerticalAlignment.Top,
+            Background = new SolidColorBrush(Color.FromRgb(0x16, 0x14, 0x16)), Child = media,
+            Clip = new RectangleGeometry(new Rect(0, 0, VideoWidth, VideoHeight), 10, 10),
+        };
+        media.MediaEnded += (_, _) =>
+        {
+            media.Position = TimeSpan.Zero;
+            media.Play();
+        };
+        media.MediaFailed += (_, e) =>
+        {
+            Platform.Log.Error("welcome video", e.ErrorException);
+            media.Close();
+            frame.Visibility = Visibility.Collapsed;
+        };
+        Loaded += (_, _) => media.Play();
+        Closed += (_, _) =>
+        {
+            media.Stop();
+            media.Close();
+        };
+        return frame;
+    }
 
     private static FrameworkElement Header()
     {
