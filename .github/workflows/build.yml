@@ -152,6 +152,10 @@ jobs:
             $env:MANGOSTEEN_LANGUAGE = if ($tool.language) { $tool.language } else { 'en' }
             $arguments = @('--snapshot', $tool.id, $output) + ($tool.files | ForEach-Object { Join-Path $fixtures $_ })
             $process = Start-Process publish/Mangosteen.exe -ArgumentList $arguments -Wait -PassThru
+            if ($process.ExitCode -ne 0) {
+              Write-Host ("snapshot {0} exited with 0x{1:X8}; trying again" -f $tool.id, $process.ExitCode)
+              $process = Start-Process publish/Mangosteen.exe -ArgumentList $arguments -Wait -PassThru
+            }
             if ($process.ExitCode -ne 0 -or -not (Test-Path $output)) {
               Get-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/mangosteen.log') -Tail 40
               throw "Snapshot of $($tool.id) failed"
@@ -190,7 +194,12 @@ jobs:
             $env:MANGOSTEEN_LANGUAGE = $language
             foreach ($shot in $shots) {
               $output = Join-Path $folder.FullName ($shot.id.Replace('tool.', '') + '.png')
-              $process = Start-Process publish/Mangosteen.exe -ArgumentList (@('--snapshot', $shot.id, $output) + $shot.files) -Wait -PassThru
+              $arguments = @('--snapshot', $shot.id, $output) + $shot.files
+              $process = Start-Process publish/Mangosteen.exe -ArgumentList $arguments -Wait -PassThru
+              if ($process.ExitCode -ne 0) {
+                Write-Host ("snapshot {0} exited with 0x{1:X8}; trying again" -f $shot.id, $process.ExitCode)
+                $process = Start-Process publish/Mangosteen.exe -ArgumentList $arguments -Wait -PassThru
+              }
               if ($process.ExitCode -ne 0 -or -not (Test-Path $output)) {
                 Get-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/mangosteen.log') -Tail 40
                 throw "README screenshot of $($shot.id) ($language) failed"
