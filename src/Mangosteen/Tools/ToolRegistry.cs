@@ -92,9 +92,9 @@ internal static class ToolRegistry
                         SaveScreen(window, Path.ChangeExtension(output, ".screen.png"));
                     }
                     Log.Write($"snapshot {id} -> {output}");
-                    // Exit at once: the PDF pages window sometimes crashed in WPF's shutdown (0xC000000D) after the
-                    // image was already saved, which failed the CI step for nothing.
-                    Environment.Exit(0);
+                    // End the process at once: after the PDF pages window the normal exit crashes while unloading
+                    // (0xC000000D in WPF's shutdown, 0xC0000005 in Environment.Exit), after the image is saved.
+                    Native.TerminateProcess(Native.GetCurrentProcess(), 0);
                 }
                 catch (Exception error)
                 {
