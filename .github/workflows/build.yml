@@ -189,6 +189,7 @@ jobs:
           )
           $env:MANGOSTEEN_THEME = 'dark'
           $env:MANGOSTEEN_SNAPSHOT_DEMO = '1'
+          $env:MANGOSTEEN_SCREEN = '1'
           foreach ($language in @('en', 'ru')) {
             $folder = New-Item -ItemType Directory -Force (Join-Path 'readme-screenshots' $language)
             $env:MANGOSTEEN_LANGUAGE = $language

@@ -87,7 +87,10 @@ internal static class ToolRegistry
                 try
                 {
                     Save(window, output);
-                    SaveScreen(window, Path.ChangeExtension(output, ".screen.png"));
+                    if (Environment.GetEnvironmentVariable("MANGOSTEEN_SCREEN") == "1")
+                    {
+                        SaveScreen(window, Path.ChangeExtension(output, ".screen.png"));
+                    }
                     Log.Write($"snapshot {id} -> {output}");
                     Application.Current.Shutdown(0);
                 }
@@ -148,8 +151,8 @@ internal static class ToolRegistry
     }
 
     /// <summary>
-    /// Also copies the window from the screen, title bar included, when the machine has a visible desktop (CI runners
-    /// do). Best effort: nothing is written when the capture fails.
+    /// With MANGOSTEEN_SCREEN=1 (the README screenshots), also copies the window from the screen, title bar included;
+    /// CI runners have a visible desktop. Best effort: nothing is written when the capture fails.
     /// </summary>
     private static void SaveScreen(Window window, string output)
     {
