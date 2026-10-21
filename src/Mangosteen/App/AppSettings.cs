@@ -15,6 +15,9 @@ internal sealed class AppSettings
 
     public bool WelcomeShown { get; set; }
 
+    /// <summary>"Mangosteen" in Explorer's right-click menu.</summary>
+    public bool ExplorerMenu { get; set; } = true;
+
     public static AppSettings Load()
     {
         try

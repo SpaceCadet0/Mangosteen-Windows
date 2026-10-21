@@ -429,41 +429,51 @@ internal sealed class CropTool : ToolWindow
             return;
         }
         var (transform, columnCuts, rowCuts) = (_transform, _columnCuts.ToList(), _rowCuts.ToList());
-        _jobs.RunEach(L("Cropping"), L("Cropped"), _images, (input, _) =>
+        _jobs.RunEach(L("Cropping"), L("Cropped"), _images, (input, _) => CropFile(input, transform,
+            (width, height) => input == first ? firstRect : CropMath.CenteredRect(lockedFirst ?? frameAspect, width, height),
+            exact, columnCuts, rowCuts));
+    }
+
+    /// <summary>
+    /// Turns and mirrors the image, crops it (<paramref name="rect"/> gets the turned size), scales it to
+    /// <paramref name="exact"/> when given, and writes "name (cropped).ext", or "name (changed).ext" for a turn alone.
+    /// With cut lines the result is cut into parts in a "name (parts)" folder. The format, pixel format (grey, CMYK,
+    /// 16 bits), colour profile and metadata of the original are kept.
+    /// </summary>
+    internal static string CropFile(string input, ImageTransform transform, Func<int, int, UnitRect> rect, (int, int)? exact,
+        IReadOnlyList<double> columnCuts, IReadOnlyList<double> rowCuts)
+    {
+        var image = Transformed(ImageIO.Load(input), transform);
+        var pixels = rect(image.PixelWidth, image.PixelHeight).ToPixels(image.PixelWidth, image.PixelHeight);
+        var isCrop = exact is not null || pixels.Width != image.PixelWidth || pixels.Height != image.PixelHeight;
+        BitmapSource cropped = isCrop ? new CroppedBitmap(image, new Int32Rect(pixels.X, pixels.Y, pixels.Width, pixels.Height)) : image;
+        if (exact is { } size)
         {
-            var image = Transformed(ImageIO.Load(input), transform);
-            var rect = input == first ? firstRect
-                : CropMath.CenteredRect(lockedFirst ?? frameAspect, image.PixelWidth, image.PixelHeight);
-            var pixels = rect.ToPixels(image.PixelWidth, image.PixelHeight);
-            var isCrop = exact is not null || pixels.Width != image.PixelWidth || pixels.Height != image.PixelHeight;
-            BitmapSource cropped = new CroppedBitmap(image, new Int32Rect(pixels.X, pixels.Y, pixels.Width, pixels.Height));
-            if (exact is { } size)
+            cropped = ImageIO.Resize(cropped, size.Item1, size.Item2);
+        }
+        var format = ToolOutput.KeepFormat(input);
+        var metadata = ImageIO.ReadMetadata(input);
+        var colors = ImageIO.ReadColorContexts(input);
+        if (columnCuts.Count > 0 || rowCuts.Count > 0)
+        {
+            // The parts, row by row from the top-left, in a "name (parts)" folder.
+            var tiles = CropMath.Tiles(columnCuts, rowCuts, cropped.PixelWidth, cropped.PixelHeight);
+            var full = Path.GetFullPath(input);
+            var baseName = Core.OutputNaming.BaseName(full);
+            var digits = tiles.Count.ToString().Length;
+            return Core.OutputNaming.WriteAtomically(Path.GetDirectoryName(full)!, $"{baseName} ({L("parts")})", "", folder =>
             {
-                cropped = ImageIO.Resize(cropped, size.Item1, size.Item2);
-            }
-            var format = ToolOutput.KeepFormat(input);
-            var metadata = ImageIO.ReadMetadata(input);
-            if (columnCuts.Count > 0 || rowCuts.Count > 0)
-            {
-                // The parts, row by row from the top-left, in a "name (parts)" folder.
-                var tiles = CropMath.Tiles(columnCuts, rowCuts, cropped.PixelWidth, cropped.PixelHeight);
-                var full = Path.GetFullPath(input);
-                var baseName = Core.OutputNaming.BaseName(full);
-                var digits = tiles.Count.ToString().Length;
-                return Core.OutputNaming.WriteAtomically(Path.GetDirectoryName(full)!, $"{baseName} ({L("parts")})", "", folder =>
+                Directory.CreateDirectory(folder);
+                for (var i = 0; i < tiles.Count; i++)
                 {
-                    Directory.CreateDirectory(folder);
-                    for (var i = 0; i < tiles.Count; i++)
-                    {
-                        var tile = tiles[i];
-                        var part = new CroppedBitmap(cropped, new Int32Rect(tile.X, tile.Y, tile.Width, tile.Height));
-                        var name = $"{baseName} {(i + 1).ToString().PadLeft(digits, '0')}.{format.Extension()}";
-                        File.WriteAllBytes(Path.Combine(folder, name), ImageIO.Encode(part, format, 0.92, metadata));
-                    }
-                });
-            }
-            var suffix = isCrop || transform.IsIdentity ? L("cropped") : L("changed");
-            return ToolOutput.Write(input, suffix, format, ImageIO.Encode(cropped, format, 0.92, metadata));
-        });
+                    var tile = tiles[i];
+                    var part = new CroppedBitmap(cropped, new Int32Rect(tile.X, tile.Y, tile.Width, tile.Height));
+                    var name = $"{baseName} {(i + 1).ToString().PadLeft(digits, '0')}.{format.Extension()}";
+                    File.WriteAllBytes(Path.Combine(folder, name), ImageIO.Encode(part, format, 0.92, metadata, colors));
+                }
+            });
+        }
+        var suffix = isCrop || transform.IsIdentity ? L("cropped") : L("changed");
+        return ToolOutput.Write(input, suffix, format, ImageIO.Encode(cropped, format, 0.92, metadata, colors));
     }
 }

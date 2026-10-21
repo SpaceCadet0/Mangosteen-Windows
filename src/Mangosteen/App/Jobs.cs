@@ -75,7 +75,7 @@ internal sealed class Jobs(Dispatcher dispatcher, TrayIcon tray)
                 }
                 catch (Exception error)
                 {
-                    failures.Add($"{name}: {error.Message}");
+                    failures.Add(Describe(error, name));
                     Log.Error($"{title}: {input}", error);
                 }
                 done++;
@@ -96,8 +96,30 @@ internal sealed class Jobs(Dispatcher dispatcher, TrayIcon tray)
     public void RunOnce(string title, string doneTitle, string label, Func<string> work) =>
         RunEach(title, doneTitle, [label], (_, _) => work());
 
+    /// <summary>The failure as shown in the notification; a PDF under a password says so instead of a reader error.</summary>
+    internal static string Describe(Exception error, string name)
+    {
+        if (error is Tools.ShownException)
+        {
+            return error.Message;
+        }
+        for (var e = error; e is not null; e = e.InnerException)
+        {
+            var text = e.GetType().Name + " " + e.Message;
+            // 0x8007052B: ERROR_WRONG_PASSWORD from Windows.Data.Pdf.
+            if (e.HResult == unchecked((int)0x8007052B) || text.Contains("password", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("encrypt", StringComparison.OrdinalIgnoreCase))
+            {
+                return string.Format(L("“{0}” is locked with a password."), name);
+            }
+        }
+        return $"{name}: {error.Message}";
+    }
+
     private void Report(string doneTitle, List<string> outputs, List<string> failures, string? stoppedNote)
     {
+        // Every tool and conversion reports here, so this is where "Recent Results" learns about new files.
+        RecentResults.Record(doneTitle, outputs);
         if (failures.Count > 0)
         {
             var total = failures.Count + outputs.Count;

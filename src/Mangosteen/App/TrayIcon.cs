@@ -25,6 +25,7 @@ internal sealed class TrayIcon : IDisposable
             menu.AddItem(L("Tools…"), "\uE90F", () => chooseFiles(WheelKind.Tools), indent: true);
             menu.AddItem(L("Actions…"), "\uE8B7", () => chooseFiles(WheelKind.Actions), indent: true);
             menu.AddSeparator();
+            menu.AddSubmenu(L("Recent Results"), "\uE81C", FillRecent);
             menu.AddItem(L("Float shelf"), "\uE718", toggleShelf);
             menu.AddItem(L("Settings…"), "\uE713", settings);
             menu.AddItem(L("Welcome…"), "\uE946", welcome);
@@ -70,6 +71,36 @@ internal sealed class TrayIcon : IDisposable
         _icon.Visible = false;
         _icon.Dispose();
     }
+
+    /// <summary>The "Recent Results" submenu: the last results, each with Show, Open and Delete; then Clear History.</summary>
+    public static void FillRecent(TrayMenu menu)
+    {
+        var entries = RecentResults.Live();
+        if (entries.Count == 0)
+        {
+            menu.AddNote(L("Nothing here yet"));
+            return;
+        }
+        foreach (var entry in entries)
+        {
+            menu.AddSubmenu(RecentResults.Label(entry), Directory.Exists(entry.Outputs[0]) ? "\uE8B7" : "\uE8A5",
+                actions => FillResult(actions, entry), tooltip: $"{entry.Title} · {When(entry)}");
+        }
+        menu.AddSeparator();
+        menu.AddItem(L("Clear History"), "\uE894", RecentResults.Clear);
+    }
+
+    /// <summary>One result's submenu: what made it and when, then Show in Explorer, Open and Delete Result.</summary>
+    public static void FillResult(TrayMenu menu, Core.ResultEntry entry)
+    {
+        menu.AddHeader(entry.Title, When(entry));
+        menu.AddSeparator();
+        menu.AddItem(L("Show in Explorer"), "\uEC50", () => RecentResults.Reveal(entry));
+        menu.AddItem(L("Open"), "\uE8E5", () => RecentResults.Open(entry));
+        menu.AddItem(L("Delete Result"), "\uE74D", () => RecentResults.Delete(entry));
+    }
+
+    private static string When(Core.ResultEntry entry) => entry.Time.ToString("g", System.Globalization.CultureInfo.CurrentCulture);
 
     private static void OpenLog()
     {

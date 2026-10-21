@@ -162,6 +162,102 @@ public sealed class ToolTests : IDisposable
         Assert.Equal(2, document.NumberOfPages);
     }
 
+    private string Encoded(string name, PixelFormat format, BitmapEncoder encoder, bool profile = false)
+    {
+        var (width, height) = (4, 2);
+        var stride = (width * format.BitsPerPixel + 7) / 8;
+        var pixels = new byte[stride * height];
+        new Random(3).NextBytes(pixels);
+        var image = BitmapSource.Create(width, height, 96, 96, format, null, pixels, stride);
+        var colors = profile ? new System.Collections.ObjectModel.ReadOnlyCollection<ColorContext>([new ColorContext(PixelFormats.Bgr24)]) : null;
+        encoder.Frames.Add(BitmapFrame.Create(image, null, null, colors));
+        using (var stream = File.Create(PathOf(name)))
+        {
+            encoder.Save(stream);
+        }
+        return PathOf(name);
+    }
+
+    private static BitmapFrame Open(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat | BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.OnLoad).Frames[0];
+    }
+
+    private static string Turn(string path) =>
+        CropTool.CropFile(path, new ImageTransform().Rotate(clockwise: true), (_, _) => UnitRect.Full, null, [], []);
+
+    [Fact]
+    public void TurningKeeps16Bits()
+    {
+        var output = Turn(Encoded("deep.png", PixelFormats.Rgba64, new PngBitmapEncoder()));
+        Assert.Equal(PathOf("deep (changed).png"), output);
+        var frame = Open(output);
+        Assert.Equal((2, 4), (frame.PixelWidth, frame.PixelHeight));
+        Assert.True(frame.Format.BitsPerPixel >= 48, $"pixel format {frame.Format}");
+    }
+
+    [Fact]
+    public void TurningKeepsGreyAndCmyk()
+    {
+        Assert.Equal(PixelFormats.Gray8, Open(Turn(Encoded("grey.jpg", PixelFormats.Gray8, new JpegBitmapEncoder()))).Format);
+        Assert.Equal(PixelFormats.Cmyk32, Open(Turn(Encoded("print.tif", PixelFormats.Cmyk32, new TiffBitmapEncoder()))).Format);
+    }
+
+    [Fact]
+    public void TurningKeepsTheColourProfile()
+    {
+        var input = Encoded("profiled.jpg", PixelFormats.Bgr24, new JpegBitmapEncoder(), profile: true);
+        var before = Open(input).ColorContexts?.Count ?? 0;
+        Assert.Equal(before, Open(Turn(input)).ColorContexts?.Count ?? 0);
+    }
+
+    private string TextPage(string name, string text)
+    {
+        var visual = new DrawingVisual();
+        using (var context = visual.RenderOpen())
+        {
+            context.DrawRectangle(Brushes.White, null, new System.Windows.Rect(0, 0, 1400, 300));
+            context.DrawText(new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture, System.Windows.FlowDirection.LeftToRight,
+                new Typeface("Arial"), 72, Brushes.Black, 1), new System.Windows.Point(40, 100));
+        }
+        var bitmap = new RenderTargetBitmap(1400, 300, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(visual);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using var stream = File.Create(PathOf(name));
+        encoder.Save(stream);
+        return PathOf(name);
+    }
+
+    [Fact]
+    public void TextIsRecognisedFromImagesAndPdfPages()
+    {
+        if (global::Windows.Media.Ocr.OcrEngine.TryCreateFromUserProfileLanguages() is null)
+        {
+            return; // no recognition language on this machine
+        }
+        var (first, second) = Sta.Run(() => (TextPage("first.png", "Mangosteen fruit"), TextPage("second.png", "Second page")));
+        var output = TextRecognition.RecognizeFile(first, CancellationToken.None);
+        Assert.Equal(PathOf("first (text).txt"), output);
+        Assert.Contains("Mangosteen", File.ReadAllText(output));
+        var pdf = Converter.CreatePdf([first, second]);
+        var text = File.ReadAllText(TextRecognition.RecognizeFile(pdf, CancellationToken.None));
+        Assert.Contains("\f", text);
+        Assert.Contains("Second", text);
+        var blank = Sta.Run(() => TextPage("blank.png", " "));
+        var error = Assert.Throws<ShownException>(() => TextRecognition.RecognizeFile(blank, CancellationToken.None));
+        Assert.Contains("blank.png", error.Message);
+    }
+
+    [Fact]
+    public void LockedPdfSaysSo()
+    {
+        var message = Jobs.Describe(new InvalidDataException("a.pdf is protected with a password."), "a.pdf");
+        Assert.Equal("“a.pdf” is locked with a password.", message);
+        Assert.Equal("b.txt: broken", Jobs.Describe(new IOException("broken"), "b.txt"));
+    }
+
     [Fact]
     public void BackgroundAndCollageSizes()
     {

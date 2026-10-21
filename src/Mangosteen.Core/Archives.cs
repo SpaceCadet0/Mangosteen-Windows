@@ -105,6 +105,34 @@ public static class Archives
         }
     }
 
+    /// <summary>The largest unpacked size of one part of a document package, and of all parts together.</summary>
+    public const long MaxPartBytes = 256L << 20, MaxTotalBytes = 1L << 30;
+
+    /// <summary>
+    /// Refuses an Office or OpenDocument file (a ZIP package) whose parts unpack to more than the limits, before
+    /// anything is inflated, so a crafted file cannot fill the memory. The sizes come from the archive; .NET stops
+    /// reading a part that inflates beyond its declared size, so a forged size cannot get past either. Parts that
+    /// are never read (pictures, thumbnails) are named in <paramref name="skipped"/> and do not count.
+    /// </summary>
+    public static void CheckUnpackedSize(string path, params string[] skipped)
+    {
+        using var zip = ZipFile.OpenRead(path);
+        long total = 0;
+        foreach (var entry in zip.Entries)
+        {
+            if (skipped.Any(prefix => entry.FullName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+            total += entry.Length;
+            if (entry.Length > MaxPartBytes || total > MaxTotalBytes)
+            {
+                throw new InvalidDataException(
+                    $"{Path.GetFileName(path)} is too large to read: {entry.FullName} unpacks to {entry.Length / (1 << 20)} MB.");
+            }
+        }
+    }
+
     /// <summary>True when every entry name stored without the UTF-8 flag is still valid UTF-8.</summary>
     internal static bool LegacyNamesAreUtf8(string archive)
     {

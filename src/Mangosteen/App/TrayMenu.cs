@@ -12,6 +12,7 @@ namespace Mangosteen;
 /// <summary>
 /// The tray icon's menu, drawn by Mangosteen: rounded corners, a light or dark background that follows the Windows
 /// theme, and the brand colour on the item under the mouse. It closes when you click elsewhere or press Esc.
+/// Submenus open beside their item when the mouse rests on it; they never take the focus, so the menu stays open.
 /// </summary>
 internal sealed class TrayMenu : Window
 {
@@ -22,6 +23,9 @@ internal sealed class TrayMenu : Window
     private readonly Brush _secondary;
     private readonly Brush _line;
     private bool _closing;
+    private TrayMenu? _parent;
+    private TrayMenu? _child;
+    private Rect? _anchor; // the item a submenu belongs to, in screen DIPs
 
     /// <param name="light">Forces the light or dark look (snapshots); null follows Windows.</param>
     public TrayMenu(bool? light = null)
@@ -50,7 +54,7 @@ internal sealed class TrayMenu : Window
         };
         Deactivated += (_, _) =>
         {
-            if (!KeepOpen)
+            if (!KeepOpen && _parent is null)
             {
                 CloseMenu();
             }
@@ -62,15 +66,40 @@ internal sealed class TrayMenu : Window
                 CloseMenu();
             }
         };
-        Loaded += (_, _) => PlaceAtCursor();
+        Loaded += (_, _) => Place();
         // SizeToContent may settle on the final size after the first layout pass.
         SizeChanged += (_, _) =>
         {
             if (IsLoaded)
             {
-                PlaceAtCursor();
+                Place();
             }
         };
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        if (_parent is not null)
+        {
+            // A submenu must not take the focus from the menu, or the menu would close.
+            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
+        }
+    }
+
+    private TrayMenu Root => _parent?.Root ?? this;
+
+    private void Place()
+    {
+        if (_anchor is { } anchor)
+        {
+            PlaceBeside(anchor);
+        }
+        else
+        {
+            PlaceAtCursor();
+        }
     }
 
     /// <summary>Windows' "app mode" setting (Settings › Personalisation › Colours).</summary>
@@ -94,38 +123,114 @@ internal sealed class TrayMenu : Window
     public void AddCaption(string text) =>
         _items.Children.Add(new TextBlock { Text = text, Foreground = _secondary, FontSize = 12, Margin = new Thickness(12, 6, 12, 2) });
 
-    public void AddItem(string text, string glyph, Action action, bool indent = false)
+    public void AddItem(string text, string glyph, Action action, bool indent = false, string? tooltip = null) =>
+        AddRow(text, glyph, indent, tooltip, submenu: null, action);
+
+    /// <summary>An item that opens a submenu, filled by <paramref name="fill"/> each time it opens.</summary>
+    public void AddSubmenu(string text, string glyph, Action<TrayMenu> fill, string? tooltip = null) =>
+        AddRow(text, glyph, false, tooltip, fill, null);
+
+    /// <summary>A line of grey text that does nothing (an empty submenu).</summary>
+    public void AddNote(string text) =>
+        _items.Children.Add(new TextBlock { Text = text, Foreground = _secondary, FontSize = 13, Margin = new Thickness(12, 7, 16, 7) });
+
+    private void AddRow(string text, string glyph, bool indent, string? tooltip, Action<TrayMenu>? submenu, Action? action)
     {
         var icon = new TextBlock
         {
             Text = glyph, FontFamily = new FontFamily(WheelGlyphs.FontFamily), FontSize = 15, Width = 22, Foreground = _text,
             VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0),
         };
-        var label = new TextBlock { Text = text, Foreground = _text, FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
-        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        var label = new TextBlock
+        {
+            Text = text, Foreground = _text, FontSize = 13, VerticalAlignment = VerticalAlignment.Center,
+            MaxWidth = 320, TextTrimming = TextTrimming.CharacterEllipsis,
+        };
+        var chevron = new TextBlock
+        {
+            Text = submenu is null ? "" : "\uE76C", FontFamily = new FontFamily(WheelGlyphs.FontFamily), FontSize = 10,
+            Foreground = _secondary, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(16, 0, 0, 0),
+        };
+        var row = new DockPanel();
+        DockPanel.SetDock(chevron, Dock.Right);
+        row.Children.Add(chevron);
         row.Children.Add(icon);
         row.Children.Add(label);
         var item = new Border
         {
-            Child = row, CornerRadius = new CornerRadius(6), Padding = new Thickness(indent ? 30 : 10, 7, 16, 7),
-            Background = Brushes.Transparent, Cursor = Cursors.Hand,
+            Child = row, CornerRadius = new CornerRadius(6), Padding = new Thickness(indent ? 30 : 10, 7, submenu is null ? 16 : 10, 7),
+            Background = Brushes.Transparent, Cursor = Cursors.Hand, ToolTip = tooltip,
         };
+        void Lit(bool on)
+        {
+            item.Background = on ? Highlight : Brushes.Transparent;
+            icon.Foreground = label.Foreground = on ? Brushes.White : _text;
+            chevron.Foreground = on ? Brushes.White : _secondary;
+        }
         item.MouseEnter += (_, _) =>
         {
-            item.Background = Highlight;
-            icon.Foreground = label.Foreground = Brushes.White;
+            Lit(true);
+            if (submenu is not null)
+            {
+                OpenChild(item, submenu, () => Lit(false));
+            }
+            else
+            {
+                CloseChild();
+            }
         };
         item.MouseLeave += (_, _) =>
         {
-            item.Background = Brushes.Transparent;
-            icon.Foreground = label.Foreground = _text;
+            if (submenu is null || _child is null)
+            {
+                Lit(false);
+            }
         };
         item.MouseLeftButtonUp += (_, _) =>
         {
-            CloseMenu();
-            Dispatcher.BeginInvoke(action);
+            if (submenu is not null)
+            {
+                OpenChild(item, submenu, () => Lit(false));
+                return;
+            }
+            Root.CloseMenu();
+            if (action is not null)
+            {
+                Dispatcher.BeginInvoke(action);
+            }
         };
         _items.Children.Add(item);
+    }
+
+    private void OpenChild(FrameworkElement item, Action<TrayMenu> fill, Action closed)
+    {
+        CloseChild();
+        var child = new TrayMenu(_light) { _parent = this, KeepOpen = KeepOpen, Topmost = true };
+        fill(child);
+        var toDip = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
+        var topLeft = toDip.Transform(item.PointToScreen(new Point(0, 0)));
+        var bottomRight = toDip.Transform(item.PointToScreen(new Point(item.ActualWidth, item.ActualHeight)));
+        child._anchor = new Rect(topLeft, bottomRight);
+        child.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_child, child))
+            {
+                _child = null;
+            }
+            closed();
+        };
+        _child = child;
+        child.ShowActivated = false;
+        child.Show();
+    }
+
+    private void CloseChild()
+    {
+        if (_child is { } child)
+        {
+            _child = null;
+            child.CloseMenu();
+        }
     }
 
     /// <summary>For snapshots: stay open without focus.</summary>
@@ -142,8 +247,27 @@ internal sealed class TrayMenu : Window
         if (!_closing)
         {
             _closing = true;
+            CloseChild();
             Close();
         }
+    }
+
+    /// <summary>A submenu: to the right of its item, or to the left of the menu when there is no room.</summary>
+    private void PlaceBeside(Rect anchor)
+    {
+        var center = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformToDevice.Transform(anchor.TopLeft) ?? anchor.TopLeft;
+        var work = WorkArea(new POINT { X = (int)center.X, Y = (int)center.Y });
+        var toDip = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
+        var area = new Rect(toDip.Transform(new Point(work.Left, work.Top)), toDip.Transform(new Point(work.Right, work.Bottom)));
+        const double shadow = 14, inset = 5; // the border's margin holds the shadow; the item sits inside the menu's padding
+        var left = anchor.Right + inset - shadow;
+        if (left + ActualWidth - shadow > area.Right)
+        {
+            left = anchor.Left - inset - ActualWidth + shadow;
+        }
+        var top = anchor.Top - inset - shadow;
+        Left = Math.Clamp(left, area.Left - shadow, Math.Max(area.Left, area.Right - ActualWidth + shadow));
+        Top = Math.Clamp(top, area.Top - shadow, Math.Max(area.Top, area.Bottom - ActualHeight + shadow));
     }
 
     /// <summary>Opens towards the screen's inside from the cursor, like the system menu, kept within the work area.</summary>

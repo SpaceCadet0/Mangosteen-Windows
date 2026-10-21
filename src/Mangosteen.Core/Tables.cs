@@ -137,8 +137,10 @@ public static class Tables
 
     public static List<Sheet> ReadXlsx(string path)
     {
+        Archives.CheckUnpackedSize(path, "xl/media/", "docProps/thumbnail");
         using var document = SpreadsheetDocument.Open(path, isEditable: false);
         var workbook = document.WorkbookPart ?? throw new InvalidDataException("The workbook has no sheets.");
+        var date1904 = workbook.Workbook?.WorkbookProperties?.Date1904?.Value == true;
         var shared = workbook.SharedStringTablePart?.SharedStringTable?.Elements<SharedStringItem>().Select(s => s.InnerText).ToList() ?? [];
         var dateStyles = DateStyleIndexes(workbook);
         var sheets = new List<Sheet>();
@@ -164,7 +166,7 @@ public static class Tables
                     {
                         values.Add("");
                     }
-                    values.Add(CellText(cell, shared, dateStyles));
+                    values.Add(CellText(cell, shared, dateStyles, date1904));
                 }
                 while (values.Count > 0 && values[^1].Length == 0)
                 {
@@ -245,7 +247,7 @@ public static class Tables
         return clean.Length > 31 ? clean[..31] : clean;
     }
 
-    private static string CellText(Cell cell, List<string> shared, HashSet<uint> dateStyles)
+    private static string CellText(Cell cell, List<string> shared, HashSet<uint> dateStyles, bool date1904)
     {
         var raw = cell.CellValue?.Text ?? "";
         var type = cell.DataType?.Value;
@@ -266,11 +268,34 @@ public static class Tables
             && double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var serial)
             && serial is > 0 and < 2958466)
         {
-            var date = DateTime.FromOADate(serial);
-            return date.TimeOfDay == TimeSpan.Zero ? date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
-                : date.ToString(serial < 1 ? "HH:mm:ss" : "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+            return ExcelDate(serial, date1904);
         }
         return raw;
+    }
+
+    /// <summary>
+    /// A date serial as text. In the 1900 system Excel counts the non-existent 29 February 1900 (serial 60), so
+    /// serials before it are one day later than OLE dates; the 1904 system starts on 1 January 1904.
+    /// </summary>
+    public static string ExcelDate(double serial, bool date1904 = false)
+    {
+        var day = Math.Floor(serial);
+        var time = TimeSpan.FromDays(serial - day);
+        string? text = null;
+        if (date1904)
+        {
+            text = new DateTime(1904, 1, 1).AddDays(day).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        }
+        else if (day == 60)
+        {
+            text = "1900-02-29";
+        }
+        else if (day >= 1)
+        {
+            text = new DateTime(1899, 12, 31).AddDays(day < 60 ? day : day - 1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        }
+        var clock = new DateTime(time.Ticks).ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+        return text is null ? clock : time == TimeSpan.Zero ? text : $"{text} {clock}";
     }
 
     /// <summary>Cell styles whose number format shows a date or time.</summary>

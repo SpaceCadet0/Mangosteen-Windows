@@ -12,6 +12,7 @@ internal sealed class SettingsWindow : ToolWindow
     private readonly AppSettings _settings;
     private readonly ComboBox _language = new();
     private readonly CheckBox _autostart = new() { Content = L("Start Mangosteen when I sign in to Windows") };
+    private readonly CheckBox _explorer = new() { Content = L("Show Mangosteen in Explorer's right-click menu"), Margin = new Thickness(0, 8, 0, 0) };
 
     public SettingsWindow(AppSettings settings) : base(L("Settings"), [], L("Save"))
     {
@@ -24,10 +25,13 @@ internal sealed class SettingsWindow : ToolWindow
         var index = Loc.Languages.ToList().FindIndex(l => l.Code == settings.Language);
         _language.SelectedIndex = index < 0 ? 0 : index + 1;
         _autostart.IsChecked = AppSettings.StartsWithWindows;
+        _explorer.IsChecked = settings.ExplorerMenu;
         StatusText = $"Mangosteen {Program.Version}";
         var stack = new StackPanel { Width = 460 };
         stack.Children.Add(Row(L("Language"), _language));
         stack.Children.Add(_autostart);
+        stack.Children.Add(_explorer);
+        stack.Children.Add(Note(L("On Windows 11 it is under “Show more options”.")));
         stack.Children.Add(new Border { Height = 10 });
         stack.Children.Add(Note(L("The keys: hold Shift for Convert, Ctrl for Tools, Alt for Actions, and right-click a file.")));
         Body = stack;
@@ -39,7 +43,16 @@ internal sealed class SettingsWindow : ToolWindow
         var language = _language.SelectedIndex <= 0 ? "system" : Loc.Languages[_language.SelectedIndex - 1].Code;
         var changed = language != _settings.Language;
         _settings.Language = language;
+        _settings.ExplorerMenu = _explorer.IsChecked == true;
         _settings.Save();
+        if (_settings.ExplorerMenu)
+        {
+            ExplorerMenu.Register();
+        }
+        else
+        {
+            ExplorerMenu.Unregister();
+        }
         try
         {
             AppSettings.StartsWithWindows = _autostart.IsChecked == true;

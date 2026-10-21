@@ -21,6 +21,7 @@ public static class OdtFormat
 
     public static RichDocument Read(string path)
     {
+        Archives.CheckUnpackedSize(path, "Pictures/", "Thumbnails/");
         using var zip = ZipFile.OpenRead(path);
         var content = Load(zip, "content.xml") ?? throw new InvalidDataException("The document has no content.");
         var styles = new Dictionary<string, TextStyle>();

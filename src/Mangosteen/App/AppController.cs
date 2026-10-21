@@ -42,6 +42,11 @@ internal sealed class AppController : IDisposable
         _hooks.DismissWheel += reason => _dispatcher.BeginInvoke(() => CloseWheel(reason));
         _hooks.SwitchWheel += kind => _dispatcher.BeginInvoke(() => SwitchWheel(kind));
         _hooks.Start();
+        if (_settings.ExplorerMenu)
+        {
+            ExplorerMenu.Register();
+        }
+        ExplorerMenu.Listen((kind, path) => _dispatcher.BeginInvoke(() => OpenFromExplorer(kind, path)));
         _dispatcher.BeginInvoke(ShellHitTest.WarmUp, DispatcherPriority.ApplicationIdle);
         if (!_settings.WelcomeShown)
         {
@@ -57,6 +62,38 @@ internal sealed class AppController : IDisposable
         {
             _tray.Notify("Mangosteen", L("Could not install the mouse hook. See the log in the tray menu."), error: true);
         }
+    }
+
+    private readonly List<string> _explorerPaths = [];
+    private WheelKind _explorerKind;
+    private DispatcherTimer? _explorerTimer;
+
+    /// <summary>
+    /// A request from Explorer's right-click menu. Explorer starts one process per selected item, so the paths that
+    /// arrive within a moment of each other open one wheel together.
+    /// </summary>
+    public void OpenFromExplorer(WheelKind kind, string path)
+    {
+        if (_explorerPaths.Count > 0 && kind != _explorerKind)
+        {
+            _explorerPaths.Clear();
+        }
+        _explorerKind = kind;
+        if (!_explorerPaths.Contains(path, StringComparer.OrdinalIgnoreCase))
+        {
+            _explorerPaths.Add(path);
+        }
+        _explorerTimer ??= new DispatcherTimer(TimeSpan.FromMilliseconds(350), DispatcherPriority.Normal, (_, _) =>
+        {
+            _explorerTimer!.Stop();
+            var paths = _explorerPaths.ToList();
+            _explorerPaths.Clear();
+            GetCursorPos(out var cursor);
+            Log.Write($"explorer menu: {_explorerKind} for {paths.Count} items");
+            ShowWheel(_explorerKind, paths, cursor);
+        }, _dispatcher);
+        _explorerTimer.Stop();
+        _explorerTimer.Start();
     }
 
     public void Dispose()
@@ -227,6 +264,10 @@ internal sealed class AppController : IDisposable
                     break;
                 case "tool.createPDF":
                     jobs.RunOnce(L("Creating PDF"), L("PDF created"), WheelCatalog.FileCount(paths.Count), () => Converter.CreatePdf(paths));
+                    break;
+                case "tool.recognizeText":
+                    jobs.RunEach(L("Recognising text"), L("Text recognised"), paths.Where(Tools.TextRecognition.Accepts).ToList(),
+                        (input, token) => Tools.TextRecognition.RecognizeFile(input, token));
                     break;
                 case "tool.mergePDF":
                     jobs.RunOnce(L("Merging PDFs"), L("PDFs merged"), WheelCatalog.FileCount(paths.Count), () => Converter.MergePdfs(paths));

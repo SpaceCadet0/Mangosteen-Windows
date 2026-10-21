@@ -77,8 +77,15 @@ internal static class ImageIO
         return false;
     }
 
-    /// <summary>Encodes in memory. <paramref name="quality"/> (0…1) applies to JPG and WebP.</summary>
-    public static byte[] Encode(BitmapSource image, FileFormat format, double quality = 0.9, BitmapMetadata? metadata = null)
+    /// <summary>Pixel formats JPEG stores as they are; anything else (alpha, 16 bits) is flattened on white.</summary>
+    private static readonly HashSet<PixelFormat> JpegFormats = [PixelFormats.Gray8, PixelFormats.Bgr24, PixelFormats.Bgr32, PixelFormats.Cmyk32];
+
+    /// <summary>
+    /// Encodes in memory. <paramref name="quality"/> (0…1) applies to JPG and WebP. JPG, PNG and TIFF keep the pixel
+    /// format (grey, CMYK, 16 bits where the format allows) and the colour profiles in <paramref name="colors"/>.
+    /// </summary>
+    public static byte[] Encode(BitmapSource image, FileFormat format, double quality = 0.9, BitmapMetadata? metadata = null,
+        IReadOnlyList<ColorContext>? colors = null)
     {
         using var stream = new MemoryStream();
         switch (format)
@@ -103,7 +110,15 @@ internal static class ImageIO
             case FileFormat.Jpg:
             {
                 var encoder = new JpegBitmapEncoder { QualityLevel = Math.Clamp((int)Math.Round(quality * 100), 1, 100) };
-                encoder.Frames.Add(Frame(ImageConverter.FlattenOnWhite(image), metadata));
+                var pixels = JpegFormats.Contains(image.Format) ? image : ImageConverter.FlattenOnWhite(image);
+                encoder.Frames.Add(Frame(pixels, metadata, colors));
+                encoder.Save(stream);
+                break;
+            }
+            case FileFormat.Png or FileFormat.Tiff when colors is { Count: > 0 }:
+            {
+                BitmapEncoder encoder = format == FileFormat.Png ? new PngBitmapEncoder() : new TiffBitmapEncoder { Compression = TiffCompressOption.Lzw };
+                encoder.Frames.Add(Frame(image, null, colors));
                 encoder.Save(stream);
                 break;
             }
@@ -115,19 +130,31 @@ internal static class ImageIO
     }
 
     /// <summary>A frame with the original metadata when the format accepts it; otherwise without.</summary>
-    private static BitmapFrame Frame(BitmapSource image, BitmapMetadata? metadata)
+    private static BitmapFrame Frame(BitmapSource image, BitmapMetadata? metadata, IReadOnlyList<ColorContext>? colors = null)
     {
-        if (metadata is null)
-        {
-            return BitmapFrame.Create(image);
-        }
+        var profiles = colors is { Count: > 0 } ? new System.Collections.ObjectModel.ReadOnlyCollection<ColorContext>(colors.ToList()) : null;
         try
         {
-            return BitmapFrame.Create(image, null, (BitmapMetadata)metadata.Clone(), null);
+            return BitmapFrame.Create(image, null, (BitmapMetadata?)metadata?.Clone(), profiles);
         }
         catch (Exception error) when (error is ArgumentException or InvalidOperationException or NotSupportedException)
         {
             return BitmapFrame.Create(image);
+        }
+    }
+
+    /// <summary>The colour profiles of the first frame (embedded ICC), or none.</summary>
+    public static IReadOnlyList<ColorContext> ReadColorContexts(string path)
+    {
+        try
+        {
+            using var stream = File.OpenRead(path);
+            var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat | BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.OnLoad);
+            return decoder.Frames[0].ColorContexts?.ToList() ?? [];
+        }
+        catch (Exception error) when (error is IOException or NotSupportedException or FileFormatException or InvalidOperationException)
+        {
+            return [];
         }
     }
 

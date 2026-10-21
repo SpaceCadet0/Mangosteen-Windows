@@ -37,6 +37,7 @@ internal static class WheelGlyphs
         WheelIcon.CreatePdf => "",
         WheelIcon.Extract => "",
         WheelIcon.Merge => "",
+        WheelIcon.Text => "\uE8D2",
         WheelIcon.Float => "",
         WheelIcon.Copy => "",
         WheelIcon.Move => "",

@@ -13,7 +13,7 @@ public enum WheelIcon
 {
     Image, Document, Film, Music, Archive, Table, Subtitle,
     Trim, Split, Speed, Volume, Bleep, Channels, Visualizer, Hide, Crop, Join, Compress, Frames,
-    Edit, Annotate, Pages, Background, Collage, Info, CreatePdf, Extract, Merge,
+    Edit, Annotate, Pages, Background, Collage, Info, CreatePdf, Extract, Merge, Text,
     Float, Copy, Move, Path, Terminal,
 }
 
@@ -61,7 +61,7 @@ public static class WheelCatalog
     ];
 
     /// <summary>Tools that already work on Windows; the others are shown greyed out until their phase.</summary>
-    private static readonly HashSet<string> AvailableTools = ["tool.extract", "tool.createPDF", "tool.mergePDF", "tool.crop", "tool.compress", "tool.metadata", "tool.frame", "tool.collage", "tool.organizePDF", "tool.splitPDF", "tool.edit", "tool.redact", "tool.annotate"];
+    private static readonly HashSet<string> AvailableTools = ["tool.extract", "tool.createPDF", "tool.mergePDF", "tool.crop", "tool.compress", "tool.metadata", "tool.frame", "tool.collage", "tool.organizePDF", "tool.splitPDF", "tool.recognizeText", "tool.edit", "tool.redact", "tool.annotate"];
 
     /// <summary>Video and audio tools; they need the bundled FFmpeg.</summary>
     private static readonly HashSet<string> MediaTools =
@@ -109,11 +109,13 @@ public static class WheelCatalog
         Add(images, "tool.edit", "Editor", WheelIcon.Edit);
         Add(images, "tool.annotate", "Annotate", WheelIcon.Annotate);
         Add(images, "tool.redact", "Hide", WheelIcon.Hide);
+        // With media in the selection there is a "Split" for video too; say which one this is.
+        Add(pdf, "tool.splitPDF", media ? "Split PDF" : "Split", WheelIcon.Split);
         Add(pdf, "tool.organizePDF", "Page order", WheelIcon.Pages);
-        Add(pdf, "tool.splitPDF", "Split", WheelIcon.Split);
+        var rasterImages = Any(f => f.Category() == FormatCategory.Image && f != FileFormat.Svg);
+        Add(rasterImages || pdf, "tool.recognizeText", "Text", WheelIcon.Text);
         Add(images, "tool.frame", "Background", WheelIcon.Background);
         Add(Count(f => f.Category() == FormatCategory.Image) >= 2, "tool.collage", "Collage", WheelIcon.Collage);
-        var rasterImages = Any(f => f.Category() == FormatCategory.Image && f != FileFormat.Svg);
         Add(rasterImages, "tool.metadata", "Metadata", WheelIcon.Info);
         Add(rasterImages, "tool.createPDF", "PDF from images", WheelIcon.CreatePdf);
         Add(Any(f => f.Category() == FormatCategory.Archive), "tool.extract", "Extract", WheelIcon.Extract);

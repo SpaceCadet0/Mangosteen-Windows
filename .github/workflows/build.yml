@@ -144,6 +144,8 @@ jobs:
             @{ id = 'welcome'; files = @() },
             @{ id = 'traymenu'; files = @() },
             @{ id = 'traymenu-dark'; files = @(); language = 'ru' },
+            @{ id = 'traymenu-recent-dark'; files = @('photo.jpg', 'portrait.jpg', 'document.pdf'); language = 'ru' },
+            @{ id = 'traymenu-result'; files = @('photo.jpg') },
             @{ id = 'settings'; files = @() },
             @{ id = 'tool.compress'; files = @('photo.jpg'); language = 'ru'; name = 'ru.tool.compress' },
             @{ id = 'tool.trimMedia'; files = @('clip.mp4'); language = 'ru'; name = 'ru.tool.trimMedia' },

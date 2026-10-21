@@ -14,6 +14,7 @@ public static class DocxFormat
 
     public static RichDocument Read(string path)
     {
+        Archives.CheckUnpackedSize(path, "word/media/", "docProps/thumbnail");
         using var word = WordprocessingDocument.Open(path, isEditable: false);
         var main = word.MainDocumentPart ?? throw new InvalidDataException("The document has no body.");
         var body = main.Document?.Body ?? throw new InvalidDataException("The document has no body.");

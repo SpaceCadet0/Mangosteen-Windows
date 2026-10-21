@@ -46,7 +46,25 @@ internal static class ToolRegistry
     public static void Snapshot(string id, string output, IReadOnlyList<string> files)
     {
         Window window;
-        if (id.StartsWith("traymenu", StringComparison.Ordinal))
+        if (id.StartsWith("traymenu-recent", StringComparison.Ordinal) || id.StartsWith("traymenu-result", StringComparison.Ordinal))
+        {
+            // The files given become results, as if jobs had made them.
+            foreach (var file in files)
+            {
+                RecentResults.Record(string.Format(L("Converted to {0}"), "PNG"), [file]);
+            }
+            var menu = new TrayMenu(light: !id.EndsWith("dark", StringComparison.Ordinal)) { KeepOpen = true };
+            if (id.StartsWith("traymenu-recent", StringComparison.Ordinal))
+            {
+                TrayIcon.FillRecent(menu);
+            }
+            else
+            {
+                TrayIcon.FillResult(menu, RecentResults.Live()[0]);
+            }
+            window = menu;
+        }
+        else if (id.StartsWith("traymenu", StringComparison.Ordinal))
         {
             var menu = new TrayMenu(light: !id.EndsWith("dark", StringComparison.Ordinal)) { KeepOpen = true };
             menu.AddHeader($"Mangosteen {Program.Version}", L("Shift / Ctrl / Alt + right-click a file"));
@@ -55,6 +73,7 @@ internal static class ToolRegistry
             menu.AddItem(L("Convert…"), "\uE8AB", () => { }, indent: true);
             menu.AddItem(L("Tools…"), "\uE90F", () => { }, indent: true);
             menu.AddSeparator();
+            menu.AddSubmenu(L("Recent Results"), "\uE81C", _ => { });
             menu.AddItem(L("Settings…"), "\uE713", () => { });
             menu.AddItem(L("Quit Mangosteen"), "\uE7E8", () => { });
             window = menu;

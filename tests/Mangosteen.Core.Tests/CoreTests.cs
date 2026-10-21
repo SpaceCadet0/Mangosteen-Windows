@@ -59,7 +59,7 @@ public class WheelCatalogTests
     public void ImageToolsMatchMacOrder()
     {
         var ids = WheelCatalog.Items(WheelKind.Tools, ["a.png", "b.jpg"]).Select(i => i.Id);
-        Assert.Equal(["tool.compress", "tool.crop", "tool.edit", "tool.annotate", "tool.redact", "tool.frame",
+        Assert.Equal(["tool.compress", "tool.crop", "tool.edit", "tool.annotate", "tool.redact", "tool.recognizeText", "tool.frame",
             "tool.collage", "tool.metadata", "tool.createPDF"], ids);
     }
 
@@ -119,5 +119,29 @@ public sealed class OutputNamingTests : IDisposable
                 throw new InvalidOperationException();
             }));
         Assert.Empty(Directory.GetFileSystemEntries(_dir));
+    }
+}
+
+public class ResultHistoryTests : TempFolderTest
+{
+    [Fact]
+    public void KeepsTheNewestAndForgetsWhatIsGone()
+    {
+        var file = PathOf("history.json");
+        var history = ResultHistory.Load(file);
+        File.WriteAllText(PathOf("a.txt"), "a");
+        for (var i = 0; i < 25; i++)
+        {
+            history.Add($"Job {i}", [PathOf(i % 2 == 0 ? "a.txt" : "gone.txt")], new DateTime(2026, 1, 1).AddMinutes(i));
+        }
+        Assert.Equal(ResultHistory.Kept, ResultHistory.Load(file).Entries.Count);
+        var live = history.Live();
+        Assert.Equal("Job 24", live[0].Title);
+        Assert.All(live, e => Assert.Equal([PathOf("a.txt")], e.Outputs));
+        Assert.Equal(10, ResultHistory.Load(file).Entries.Count);
+        history.Remove(live[0]);
+        Assert.Equal("Job 22", ResultHistory.Load(file).Live()[0].Title);
+        history.Clear();
+        Assert.Empty(ResultHistory.Load(file).Entries);
     }
 }
