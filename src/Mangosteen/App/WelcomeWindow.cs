@@ -15,8 +15,8 @@ namespace Mangosteen;
 /// </summary>
 internal sealed class WelcomeWindow : ToolWindow
 {
-    private const double ContentWidth = 920;
-    private const double VideoWidth = 440, VideoHeight = 275;
+    private const double ContentWidth = 780;
+    private const double VideoWidth = 300, VideoHeight = 300;
     private static readonly Brush StepBrush = new SolidColorBrush(Color.FromRgb(0xC0, 0x5A, 0x80));
     private static readonly Brush CardBrush = new SolidColorBrush(Color.FromArgb(0x1C, 0x80, 0x80, 0x80));
     private static readonly Brush TileBrush = new SolidColorBrush(Color.FromArgb(0x30, 0x80, 0x80, 0x80));
