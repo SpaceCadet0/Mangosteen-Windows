@@ -83,8 +83,8 @@ lossless. Text in the old Windows Cyrillic encoding is read correctly, and CSV f
 Every tool opens a small window with a live preview. Close it and nothing is changed.
 
 <p align="center">
-  <img src="docs/images/en/annotate.png" width="38.6%" alt="Annotate">
-  <img src="docs/images/en/frame.png" width="59.4%" alt="Background">
+  <img src="docs/images/en/annotate.png" width="38.5%" alt="Annotate">
+  <img src="docs/images/en/frame.png" width="59.5%" alt="Background">
 </p>
 
 ### Images and PDF

@@ -18,14 +18,16 @@ ROOT = Path(__file__).resolve().parent.parent
 PAIRS = [("annotate", "frame"), ("edit", "compress"), ("trimMedia", "bleep")]
 SINGLES = {"welcome": 1440}  # widest size kept, in pixels
 ROW = 98  # per cent of the README width a row of two takes (a little room for the gap)
-CORNER = 8  # Windows 11 window corner radius, in pixels at 100 %
+CORNER = 10  # a little more than the 8 px Windows 11 window corner, so no desktop shows in the corners
 
 
 def window(source: Path, name: str) -> Image.Image:
     screen = source / f"{name}.screen.png"
     if not screen.exists():
         return Image.open(source / f"{name}.png").convert("RGBA")
+    # The outer pixel is the window border, lit unevenly by the desktop behind it; it is cut off.
     image = Image.open(screen).convert("RGBA")
+    image = image.crop((1, 1, image.width - 1, image.height - 1))
     mask = Image.new("L", image.size, 0)
     ImageDraw.Draw(mask).rounded_rectangle((0, 0, image.width - 1, image.height - 1), CORNER, fill=255)
     image.putalpha(mask)
