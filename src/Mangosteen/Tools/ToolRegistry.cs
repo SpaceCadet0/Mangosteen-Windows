@@ -92,7 +92,9 @@ internal static class ToolRegistry
                         SaveScreen(window, Path.ChangeExtension(output, ".screen.png"));
                     }
                     Log.Write($"snapshot {id} -> {output}");
-                    Application.Current.Shutdown(0);
+                    // Exit at once: the PDF pages window sometimes crashed in WPF's shutdown (0xC000000D) after the
+                    // image was already saved, which failed the CI step for nothing.
+                    Environment.Exit(0);
                 }
                 catch (Exception error)
                 {
