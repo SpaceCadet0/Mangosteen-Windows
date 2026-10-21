@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
 PAIRS = [("annotate", "frame"), ("edit", "compress"), ("trimMedia", "bleep")]
-SINGLES = {"welcome": 1440, "redactVideo": 1440}  # widest size kept, in pixels
+SINGLES = {"welcome": 1440}  # widest size kept, in pixels
 ROW = 98  # per cent of the README width a row of two takes (a little room for the gap)
 CORNER = 8  # Windows 11 window corner radius, in pixels at 100 %
 

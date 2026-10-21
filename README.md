@@ -19,6 +19,18 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-671E38" alt="MIT License"></a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/SpaceCadet0/Mangosteen-Windows/releases/latest"><b>Download the latest version</b></a>
+</p>
+
+```
+0.0 % CPU at rest · ≈13 MB private memory · 163 MB download, one exe · no admin rights, nothing asked at launch
+```
+
+<sub>Measured by CI on a GitHub windows-latest runner (Windows Server 2025, 4 cores): the published exe idle for 60 s
+after start. Memory is the private working set that Task Manager shows (73 MB working set in all). The exe is 298 MB
+unpacked, as it carries .NET and FFmpeg; FFmpeg runs as a separate process only while a video or audio job does.</sub>
+
 ---
 
 The Windows sibling of [Mangosteen](https://github.com/SpaceCadet0/Mangosteen) for macOS. It lives in the notification
@@ -27,7 +39,7 @@ round wheel opens at the cursor. Pick a segment and the result appears next to t
 save dialogs, no uploads, no limits. The two apps share no code; each has its own releases.
 
 <p align="center">
-  <img src="docs/images/en/welcome.png" width="720" alt="The three wheels">
+  <img src="docs/images/en/welcome.png" width="720" alt="The welcome window">
 </p>
 
 | Hold and right-click | Wheel | What it does |
@@ -71,13 +83,13 @@ lossless. Text in the old Windows Cyrillic encoding is read correctly, and CSV f
 Every tool opens a small window with a live preview. Close it and nothing is changed.
 
 <p align="center">
-  <img src="docs/images/en/annotate.png" width="49%" alt="Annotate">
-  <img src="docs/images/en/frame.png" width="49%" alt="Background">
+  <img src="docs/images/en/annotate.png" width="38.6%" alt="Annotate">
+  <img src="docs/images/en/frame.png" width="59.4%" alt="Background">
 </p>
 
 ### Images and PDF
 
-- **Annotate** — arrows, shapes, text, numbered steps, pencil, highlighter, magnifier and pasted pictures.
+- **Annotate** — pencil, arrows, shapes, text, numbered steps, highlighter, magnifier and pasted pictures.
 - **Background** — a photo on a colour, gradient, image or a blurred copy of itself, with margin, corners and shadow.
 - **Editor** — light, colour, detail and effects; hold the preview to compare, double-click a slider to reset it.
 - **Compress** — presets, quality, target file size, resize and format; works for PDF too.
@@ -88,18 +100,18 @@ Every tool opens a small window with a live preview. Close it and nothing is cha
 - **Pages** — reorder, rotate, duplicate and delete PDF pages; **Merge** PDFs; **PDF from images**.
 
 <p align="center">
-  <img src="docs/images/en/edit.png" width="49%" alt="Photo editor">
-  <img src="docs/images/en/compress.png" width="49%" alt="Compress">
+  <img src="docs/images/en/edit.png" width="47.9%" alt="Photo editor">
+  <img src="docs/images/en/compress.png" width="50.1%" alt="Compress">
 </p>
 
 ### Video and audio
 
 <p align="center">
-  <img src="docs/images/en/trimMedia.png" width="49%" alt="Trim">
-  <img src="docs/images/en/bleep.png" width="49%" alt="Bleep">
+  <img src="docs/images/en/trimMedia.png" width="50.9%" alt="Trim">
+  <img src="docs/images/en/bleep.png" width="47.1%" alt="Bleep">
 </p>
 
-- **Trim** and **Split** on a zoomable timeline with frame previews; fast mode copies without re-encoding.
+- **Trim** and **Split** on a zoomable timeline with frame previews; the selection is framed in yellow; fast mode copies without re-encoding.
 - **Speed**, **Volume** (EBU R128 loudness normalisation, listen first) and **Compress** with a size estimate.
 - **Bleep** — mark words on the timeline and listen to the bleeped version before saving.
 - **Hide on video** — cover areas with a fill, blur or pixels, each with its own time range.
@@ -117,9 +129,9 @@ Every tool opens a small window with a live preview. Close it and nothing is cha
 ## Download
 
 Download `Mangosteen-win-x64.zip` from the [latest release](https://github.com/SpaceCadet0/Mangosteen-Windows/releases/latest)
-(about 170 MB), unzip it anywhere and run `Mangosteen.exe`. The exe is about 300 MB on disk because it carries the .NET
-runtime and FFmpeg, which is unpacked into `%LOCALAPPDATA%\Mangosteen\ffmpeg` on first use. In the background it uses
-about 75 MB of memory (under 20 MB of it private). Windows 10 and 11, x64.
+(163 MB), unzip it anywhere and run `Mangosteen.exe`. The exe is 298 MB on disk because it carries the .NET runtime
+and FFmpeg, which is unpacked into `%LOCALAPPDATA%\Mangosteen\ffmpeg` on first use. In the background it uses no CPU
+and about 13 MB of private memory (73 MB working set). It runs without administrator rights. Windows 10 and 11, x64.
 
 The build is not signed, so SmartScreen may warn you: click **More info**, then **Run anyway**. Microsoft Defender may
 look at it closely the first time, because an unsigned app that unpacks programs and watches the mouse is unusual.
