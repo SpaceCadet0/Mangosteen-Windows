@@ -45,7 +45,7 @@ Windows-версия [Mangosteen](https://github.com/SpaceCadet0/Mangosteen) д�
 </p>
 
 <p align="center">
-  <img src="docs/images/ru/welcome.png" width="720" alt="Окно приветствия">
+  <img src="docs/images/ru/welcome.png" width="860" alt="Окно приветствия">
 </p>
 
 | Зажать и правый щелчок | Колесо | Что делает |
