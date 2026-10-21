@@ -40,6 +40,11 @@ Windows-версия [Mangosteen](https://github.com/SpaceCadet0/Mangosteen) д�
 сохранения, загрузок в интернет и ограничений. У двух приложений нет общего кода, у каждого свои релизы.
 
 <p align="center">
+  <img src="docs/images/demo.webp" width="100%" alt="Mangosteen для Windows в работе: колёса конвертации, инструментов и действий"><br>
+  <sub><a href="docs/media/mangosteen-demo.mp4">Смотреть в MP4</a></sub>
+</p>
+
+<p align="center">
   <img src="docs/images/ru/welcome.png" width="720" alt="Окно приветствия">
 </p>
 

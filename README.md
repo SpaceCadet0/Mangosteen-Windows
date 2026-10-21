@@ -39,6 +39,11 @@ round wheel opens at the cursor. Pick a segment and the result appears next to t
 save dialogs, no uploads, no limits. The two apps share no code; each has its own releases.
 
 <p align="center">
+  <img src="docs/images/demo.webp" width="100%" alt="Mangosteen for Windows in action: the Convert, Tools and Actions wheels"><br>
+  <sub><a href="docs/media/mangosteen-demo.mp4">Watch it as MP4</a></sub>
+</p>
+
+<p align="center">
   <img src="docs/images/en/welcome.png" width="720" alt="The welcome window">
 </p>
 
