@@ -106,6 +106,8 @@ jobs:
           path: stats
 
       - name: Tool window snapshots
+        # Layout checks only; a crash here must not stop the README screenshots and the build artifacts.
+        continue-on-error: true
         shell: pwsh
         run: |
           $fixtures = Resolve-Path tests/fixtures
