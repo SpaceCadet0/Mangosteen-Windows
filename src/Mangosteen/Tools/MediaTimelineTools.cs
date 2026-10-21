@@ -28,7 +28,7 @@ internal sealed class TrimTool : MediaToolWindow
         };
         _start.LostFocus += (_, _) => TypedTimes();
         _end.LostFocus += (_, _) => TypedTimes();
-        Body = Layout(row, _fast, Note(L("Drag the white handles to choose the part to keep.")));
+        Body = Layout(row, _fast, Note(L("Drag the yellow handles to choose the part to keep.")));
     }
 
     protected override void MediaLoaded(MediaInfo info) => Timeline.SetSelection(0, info.Duration ?? 0);

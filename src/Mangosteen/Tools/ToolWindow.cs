@@ -19,6 +19,7 @@ internal abstract class ToolWindow : Window
     private readonly Button _action;
     private readonly Button _cancel;
     private readonly TextBlock _status;
+    private readonly DockPanel _footer;
     private readonly ContentControl _body = new();
 
     protected ToolWindow(string title, IReadOnlyList<string> files, string actionTitle)
@@ -58,7 +59,7 @@ internal abstract class ToolWindow : Window
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         buttons.Children.Add(cancel);
         buttons.Children.Add(_action);
-        var footer = new DockPanel { Margin = new Thickness(0, 14, 0, 0), LastChildFill = true };
+        var footer = _footer = new DockPanel { Margin = new Thickness(0, 14, 0, 0), LastChildFill = true };
         DockPanel.SetDock(buttons, Dock.Right);
         footer.Children.Add(buttons);
         footer.Children.Add(_status);
@@ -121,6 +122,16 @@ internal abstract class ToolWindow : Window
     protected string StatusText
     {
         set => _status.Text = value;
+    }
+
+    /// <summary>Puts a control (the welcome window's check box) in place of the file count, left of the buttons.</summary>
+    protected UIElement FooterStart
+    {
+        set
+        {
+            _footer.Children.Remove(_status);
+            _footer.Children.Add(value);
+        }
     }
 
     /// <summary>Called by the main button and by Enter.</summary>

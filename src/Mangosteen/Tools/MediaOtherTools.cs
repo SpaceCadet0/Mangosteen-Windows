@@ -203,7 +203,7 @@ internal sealed class BleepTool : MediaToolWindow
         var settings = new StackPanel { Width = 480 };
         settings.Children.Add(Row(L("Tone"), frequencyView));
         settings.Children.Add(Row(L("Tone volume"), volumeView));
-        Body = Layout(row, settings, Note(L("Select a word with the white handles, then bleep it. Listen plays the selection with a second around it.")));
+        Body = Layout(row, settings, Note(L("Select a word with the yellow handles, then bleep it. Listen plays the selection with a second around it.")));
         Change(() => { });
     }
 
@@ -436,7 +436,7 @@ internal sealed class VideoHideTool : MediaToolWindow
         settings.Children.Add(Row(L("Style"), styles));
         settings.Children.Add(Row(L("Colour"), _color));
         settings.Children.Add(clear);
-        Body = Layout(settings, Note(L("Choose the time with the white handles, then draw an area on the frame. Each area is hidden only during its time.")));
+        Body = Layout(settings, Note(L("Choose the time with the yellow handles, then draw an area on the frame. Each area is hidden only during its time.")));
     }
 
     private RadioButton Radio(string text, bool isChecked = false)

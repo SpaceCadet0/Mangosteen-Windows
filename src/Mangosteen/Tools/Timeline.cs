@@ -17,6 +17,12 @@ internal sealed class Timeline : Grid
 {
     private const double StripHeight = 72;
     private static readonly Brush Accent = new SolidColorBrush(Color.FromRgb(0xC0, 0x5A, 0x80));
+    // The selection is framed in yellow, as in the macOS version: bars along the top and bottom and a handle at each end.
+    private static readonly Brush SelectionYellow = new SolidColorBrush(Color.FromRgb(0xFF, 0xD6, 0x0A));
+    private static readonly Brush SelectionTint = new SolidColorBrush(Color.FromArgb(0x30, 0xFF, 0xD6, 0x0A));
+    private static readonly Brush Chevron = new SolidColorBrush(Color.FromRgb(0x5C, 0x4A, 0x00));
+    private const double HandleWidth = 10;
+    private const double BarHeight = 4;
     private readonly Canvas _strip = new() { Height = StripHeight, ClipToBounds = true, Background = new SolidColorBrush(Color.FromArgb(0x30, 0x80, 0x80, 0x80)) };
     private readonly Canvas _overlay = new() { Height = StripHeight, Background = Brushes.Transparent, Cursor = Cursors.IBeam };
     private readonly TextBlock _left = new() { FontSize = 11, Opacity = 0.7 };
@@ -148,12 +154,11 @@ internal sealed class Timeline : Grid
     private void Down(object sender, MouseButtonEventArgs e)
     {
         var x = e.GetPosition(_overlay).X;
-        const double grab = 8;
-        if (ShowSelection && Math.Abs(x - X(SelectionStart)) < grab)
+        if (ShowSelection && OnStartHandle(x))
         {
             _drag = Drag.Start;
         }
-        else if (ShowSelection && Math.Abs(x - X(SelectionEnd)) < grab)
+        else if (ShowSelection && OnEndHandle(x))
         {
             _drag = Drag.End;
         }
@@ -165,12 +170,17 @@ internal sealed class Timeline : Grid
         _overlay.CaptureMouse();
     }
 
+    // The handles sit inside the selection, so they stay visible when it spans the whole file.
+    private bool OnStartHandle(double x) => x >= X(SelectionStart) - 4 && x <= X(SelectionStart) + HandleWidth + 2;
+
+    private bool OnEndHandle(double x) => x >= X(SelectionEnd) - HandleWidth - 2 && x <= X(SelectionEnd) + 4;
+
     private void Move(object sender, MouseEventArgs e)
     {
         var x = e.GetPosition(_overlay).X;
         if (ShowSelection)
         {
-            var nearHandle = Math.Abs(x - X(SelectionStart)) < 8 || Math.Abs(x - X(SelectionEnd)) < 8;
+            var nearHandle = OnStartHandle(x) || OnEndHandle(x);
             _overlay.Cursor = nearHandle ? Cursors.SizeWE : Cursors.IBeam;
         }
         if (e.LeftButton != MouseButtonState.Pressed)
@@ -244,12 +254,25 @@ internal sealed class Timeline : Grid
         }
         if (ShowSelection)
         {
-            AddShade(0, X(SelectionStart));
-            AddShade(X(SelectionEnd), width);
-            foreach (var t in new[] { SelectionStart, SelectionEnd })
+            var (from, to) = (X(SelectionStart), X(SelectionEnd));
+            AddShade(0, from);
+            AddShade(to, width);
+            AddRect(from, to - from, 0, StripHeight, SelectionTint);
+            AddRect(from, to - from, 0, BarHeight, SelectionYellow);
+            AddRect(from, to - from, StripHeight - BarHeight, BarHeight, SelectionYellow);
+            foreach (var (left, glyph) in new[] { (from, "\u2039"), (to - HandleWidth, "\u203A") })
             {
-                var handle = new Rectangle { Width = 6, Height = StripHeight, Fill = Brushes.White, Stroke = Accent, StrokeThickness = 1.5, RadiusX = 2, RadiusY = 2, IsHitTestVisible = false };
-                Canvas.SetLeft(handle, X(t) - 3);
+                var handle = new Border
+                {
+                    Width = HandleWidth, Height = StripHeight, Background = SelectionYellow, IsHitTestVisible = false,
+                    CornerRadius = glyph == "\u2039" ? new CornerRadius(4, 0, 0, 4) : new CornerRadius(0, 4, 4, 0),
+                    Child = new TextBlock
+                    {
+                        Text = glyph, Foreground = Chevron, FontSize = 14, FontWeight = FontWeights.Bold,
+                        HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                    },
+                };
+                Canvas.SetLeft(handle, left);
                 _overlay.Children.Add(handle);
             }
         }
@@ -279,6 +302,14 @@ internal sealed class Timeline : Grid
         _center.Text = ShowSelection
             ? $"{MediaMath.Timecode(SelectionStart)} – {MediaMath.Timecode(SelectionEnd)}  ({MediaMath.Timecode(SelectionEnd - SelectionStart)})"
             : MediaMath.Timecode(Playhead);
+    }
+
+    private void AddRect(double left, double width, double top, double height, Brush fill)
+    {
+        var rect = new Rectangle { Width = Math.Max(0, width), Height = height, Fill = fill, IsHitTestVisible = false };
+        Canvas.SetLeft(rect, left);
+        Canvas.SetTop(rect, top);
+        _overlay.Children.Add(rect);
     }
 
     private void AddShade(double from, double to)

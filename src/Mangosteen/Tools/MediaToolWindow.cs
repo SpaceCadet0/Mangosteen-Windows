@@ -14,6 +14,7 @@ namespace Mangosteen.Tools;
 internal abstract class MediaToolWindow : ToolWindow
 {
     protected const int TimelineWidth = 760;
+    private const int FrameWidth = 800; // pixels; the pane is 760 wide
     private readonly PreviewScheduler<BitmapSource> _frames;
     private bool _settled;
 
@@ -31,7 +32,7 @@ internal abstract class MediaToolWindow : ToolWindow
         {
             if (IsVideo && Info?.HasVideo == true && Input is { } input)
             {
-                _frames.Request(token => MediaTools.Frame(input, time, 480, token), 120);
+                _frames.Request(token => MediaTools.Frame(input, time, FrameWidth, token), 120);
             }
             PlayheadMoved(time);
         };
@@ -53,6 +54,9 @@ internal abstract class MediaToolWindow : ToolWindow
     protected Image FrameImage { get; }
 
     public override bool IsSettled => _settled;
+
+    /// <summary>For the README screenshots: select the middle of the file once it is loaded, as a person would.</summary>
+    public static bool SnapshotDemo { get; set; }
 
     /// <summary>The standard layout: the frame (for video), the timeline, then the tool's own controls.</summary>
     protected FrameworkElement Layout(params UIElement[] controls)
@@ -91,7 +95,7 @@ internal abstract class MediaToolWindow : ToolWindow
             var duration = info.Duration ?? 0;
             var frames = info.HasVideo ? MediaTools.Thumbnails(input, duration, 10, 72, CancellationToken.None) : [];
             var peaks = !info.HasVideo && info.HasAudio ? MediaTools.Waveform(input, duration, 400, CancellationToken.None) : [];
-            var first = info.HasVideo ? MediaTools.Frame(input, Math.Min(duration / 2, 1), 480) : null;
+            var first = info.HasVideo ? MediaTools.Frame(input, SnapshotDemo ? duration * 0.45 : Math.Min(duration / 2, 1), FrameWidth) : null;
             return (info, duration, frames, peaks, first);
         }).ContinueWith(task =>
         {
@@ -111,6 +115,14 @@ internal abstract class MediaToolWindow : ToolWindow
                 }
                 ActionEnabled = true;
                 MediaLoaded(info);
+                if (SnapshotDemo)
+                {
+                    if (Timeline.ShowSelection)
+                    {
+                        Timeline.SetSelection(duration * 0.3, duration * 0.6);
+                    }
+                    Timeline.SetPlayhead(duration * 0.45);
+                }
             }
             _settled = true;
         }, TaskScheduler.FromCurrentSynchronizationContext());

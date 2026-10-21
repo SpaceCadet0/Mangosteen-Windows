@@ -22,9 +22,9 @@ internal sealed class AnnotateTool : ToolWindow
 
     private static readonly (Mode Mode, string Glyph, string Title)[] Modes =
     [
-        (Mode.Select, "", "Select"), (Mode.Arrow, "", "Arrow"), (Mode.Rectangle, "", "Rectangle"),
-        (Mode.Ellipse, "", "Oval"), (Mode.Text, "", "Text"), (Mode.Number, "", "Number"),
-        (Mode.Pen, "", "Pencil"), (Mode.Highlight, "", "Highlighter"), (Mode.Magnifier, "", "Magnifier"),
+        (Mode.Select, "", "Select"), (Mode.Pen, "", "Pencil"), (Mode.Arrow, "", "Arrow"),
+        (Mode.Rectangle, "", "Rectangle"), (Mode.Ellipse, "", "Oval"), (Mode.Text, "", "Text"),
+        (Mode.Number, "", "Number"), (Mode.Highlight, "", "Highlighter"), (Mode.Magnifier, "", "Magnifier"),
         (Mode.Picture, "", "Picture"),
     ];
 
@@ -44,7 +44,7 @@ internal sealed class AnnotateTool : ToolWindow
     private BitmapSource? _fullSizeSource;
     private double _scale = 1; // full-size pixels per preview pixel
     private int _fullWidth = 1, _fullHeight = 1;
-    private Mode _mode = Mode.Arrow;
+    private Mode _mode = Mode.Pen;
     private Annotation? _draft;
     private int? _selected;
     private Point _dragStart;
@@ -81,6 +81,7 @@ internal sealed class AnnotateTool : ToolWindow
         _width.ValueChanged += (_, _) => ApplyToSelected(a => a with { LineWidth = LineWidth });
         _font.ValueChanged += (_, _) => ApplyToSelected(a => a with { FontSize = FontSize });
 
+        _canvas.Cursor = Cursors.Cross;
         _canvas.Children.Add(_photoView);
         _canvas.Children.Add(_marks);
         _canvas.Children.Add(_selection);

@@ -2,50 +2,148 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Mangosteen.Tools;
 using Mangosteen.Wheel;
 
 namespace Mangosteen;
 
-/// <summary>Shown on the first launch (and from the tray menu): what the three wheels do.</summary>
+/// <summary>
+/// Shown on the first launch (and from the tray menu): how to open a wheel, what the three wheels do, and whether
+/// Mangosteen starts with Windows. The layout follows the macOS welcome window.
+/// </summary>
 internal sealed class WelcomeWindow : ToolWindow
 {
-    public WelcomeWindow() : base(L("Welcome to Mangosteen"), [], L("Got it"))
+    private const double ContentWidth = 720;
+    private static readonly Brush StepBrush = new SolidColorBrush(Color.FromRgb(0xC0, 0x5A, 0x80));
+    private static readonly Brush CardBrush = new SolidColorBrush(Color.FromArgb(0x1C, 0x80, 0x80, 0x80));
+    private static readonly Brush TileBrush = new SolidColorBrush(Color.FromArgb(0x30, 0x80, 0x80, 0x80));
+
+    public WelcomeWindow() : base(L("How to use Mangosteen"), [], L("Got it"))
     {
-        StatusText = "";
         HideCancel();
-        var columns = new UniformGrid();
-        columns.Columns = 3;
-        foreach (var (key, title, text, glyph) in new[]
+        var stack = new StackPanel { Width = ContentWidth, Margin = new Thickness(4, 4, 4, 0) };
+        stack.Children.Add(Header());
+
+        var steps = new StackPanel { Margin = new Thickness(0, 22, 0, 0) };
+        var number = 1;
+        foreach (var text in new[]
         {
-            ("Shift", L("Convert"), L("Turns files into another format: images, documents, PDF, tables, archives, video and audio."), ""),
-            ("Ctrl", L("Tools"), L("Opens an editor with a live preview: crop, compress, annotate, trim a video and more."), ""),
-            ("Alt", L("Actions"), L("Float shelf, copy, move, copy the path or open a terminal."), ""),
+            L("Hold Shift, Ctrl or Alt: each key opens its own wheel."),
+            L("Right-click a file in Explorer or on the desktop: the wheel opens at the cursor."),
+            L("Click a segment. The result appears next to the original; the original is not changed."),
         })
         {
-            var card = new StackPanel { Margin = new Thickness(0, 0, 16, 0), Width = 200 };
-            card.Children.Add(new TextBlock { Text = glyph, FontFamily = new FontFamily(WheelGlyphs.FontFamily), FontSize = 28, Foreground = new SolidColorBrush(WheelWindow.Brand) });
-            card.Children.Add(new TextBlock { Text = title, FontSize = 18, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 8, 0, 2) });
-            card.Children.Add(new Border
-            {
-                CornerRadius = new CornerRadius(4), Padding = new Thickness(6, 1, 6, 1), HorizontalAlignment = HorizontalAlignment.Left,
-                Background = new SolidColorBrush(Color.FromArgb(0x30, 0x80, 0x80, 0x80)), Margin = new Thickness(0, 0, 0, 8),
-                Child = new TextBlock { Text = key + " + " + L("right-click"), FontSize = 12 },
-            });
-            card.Children.Add(new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, Opacity = 0.8 });
-            columns.Children.Add(card);
+            steps.Children.Add(Step(number++, text));
         }
-        var stack = new StackPanel();
-        stack.Children.Add(new TextBlock
-        {
-            Text = L("Hold a key and right-click a file in Explorer or on the desktop: a wheel opens at the cursor. Results are saved next to the original; nothing is uploaded."),
-            TextWrapping = TextWrapping.Wrap, Width = 640, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 20), FontSize = 14,
-        });
-        stack.Children.Add(columns);
-        stack.Children.Add(Note(L("Picked the wrong wheel? While it is open, press Shift, Ctrl or Alt to switch. Mangosteen lives in the notification area by the clock.")));
+        stack.Children.Add(steps);
+
+        var cards = new UniformGrid { Columns = 3, Margin = new Thickness(-6, 18, -6, 0) };
+        cards.Children.Add(Card("", L("Convert"), "Shift",
+            L("Turns files into another format: images, documents, PDF, tables, archives, video and audio.")));
+        cards.Children.Add(Card("", L("Tools"), "Ctrl",
+            L("Opens an editor with a live preview: crop, compress, annotate, trim a video and more.")));
+        cards.Children.Add(Card("", L("Actions"), "Alt",
+            L("Float shelf, copy, move, copy the path or open a terminal.")));
+        stack.Children.Add(cards);
+
+        stack.Children.Add(Tip(L("Picked the wrong wheel? While it is open, press Shift, Ctrl or Alt to switch. Without the keys: click the Mangosteen icon by the clock and choose files.")));
         Body = stack;
+
+        var autostart = new CheckBox
+        {
+            Content = L("Start Mangosteen when I sign in to Windows"), VerticalAlignment = VerticalAlignment.Center,
+            IsChecked = AppSettings.StartsWithWindows,
+        };
+        autostart.Click += (_, _) => AppSettings.StartsWithWindows = autostart.IsChecked == true;
+        FooterStart = autostart;
         ActionEnabled = true;
     }
 
     protected override void Run() => Close();
+
+    private static FrameworkElement Header()
+    {
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var icon = new Image { Width = 64, Height = 64, Margin = new Thickness(0, 0, 18, 0), VerticalAlignment = VerticalAlignment.Center };
+        RenderOptions.SetBitmapScalingMode(icon, BitmapScalingMode.HighQuality);
+        try
+        {
+            var decoder = BitmapDecoder.Create(new Uri("pack://application:,,,/Assets/Mangosteen.ico"), BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+            icon.Source = decoder.Frames.MaxBy(frame => frame.PixelWidth);
+        }
+        catch (Exception error) when (error is IOException or UriFormatException or NotSupportedException)
+        {
+        }
+        grid.Children.Add(icon);
+        var titles = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        titles.Children.Add(new TextBlock { Text = L("Welcome to Mangosteen"), FontSize = 22, FontWeight = FontWeights.SemiBold });
+        titles.Children.Add(new TextBlock
+        {
+            Text = L("Converting and file tools right at your right-click. Everything runs on this PC, with no limits."),
+            TextWrapping = TextWrapping.Wrap, Opacity = 0.75, FontSize = 14, Margin = new Thickness(0, 4, 0, 0),
+        });
+        Grid.SetColumn(titles, 1);
+        grid.Children.Add(titles);
+        return grid;
+    }
+
+    private static FrameworkElement Step(int number, string text)
+    {
+        var row = new DockPanel { Margin = new Thickness(0, 0, 0, 10) };
+        var circle = new Border
+        {
+            Width = 24, Height = 24, CornerRadius = new CornerRadius(12), Background = StepBrush, Margin = new Thickness(0, 0, 12, 0),
+            VerticalAlignment = VerticalAlignment.Top,
+            Child = new TextBlock
+            {
+                Text = number.ToString(), Foreground = Brushes.White, FontWeight = FontWeights.SemiBold, FontSize = 13,
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+            },
+        };
+        row.Children.Add(circle);
+        row.Children.Add(new TextBlock { Text = text, FontSize = 14, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center });
+        return row;
+    }
+
+    private static FrameworkElement Card(string glyph, string title, string key, string text)
+    {
+        var heading = new DockPanel { Margin = new Thickness(0, 0, 0, 12) };
+        heading.Children.Add(new Border
+        {
+            Width = 40, Height = 40, CornerRadius = new CornerRadius(8), Background = TileBrush, Margin = new Thickness(0, 0, 12, 0),
+            Child = new TextBlock
+            {
+                Text = glyph, FontFamily = new FontFamily(WheelGlyphs.FontFamily), FontSize = 18,
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+            },
+        });
+        var titles = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        titles.Children.Add(new TextBlock { Text = title, FontSize = 16, FontWeight = FontWeights.SemiBold });
+        titles.Children.Add(new TextBlock { Text = key + " + " + L("right-click"), FontSize = 12, Opacity = 0.7, Margin = new Thickness(0, 1, 0, 0) });
+        heading.Children.Add(titles);
+
+        var content = new StackPanel();
+        content.Children.Add(heading);
+        content.Children.Add(new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, Opacity = 0.8, LineHeight = 19 });
+        return new Border
+        {
+            CornerRadius = new CornerRadius(8), Background = CardBrush, Padding = new Thickness(16, 14, 16, 16),
+            Margin = new Thickness(6, 0, 6, 0), Child = content,
+        };
+    }
+
+    private static FrameworkElement Tip(string text)
+    {
+        var row = new DockPanel { Margin = new Thickness(0, 18, 0, 0) };
+        row.Children.Add(new TextBlock
+        {
+            Text = "", FontFamily = new FontFamily(WheelGlyphs.FontFamily), FontSize = 16, Opacity = 0.7,
+            Margin = new Thickness(0, 1, 10, 0), VerticalAlignment = VerticalAlignment.Top,
+        });
+        row.Children.Add(new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, Opacity = 0.75, FontSize = 13 });
+        return row;
+    }
 }

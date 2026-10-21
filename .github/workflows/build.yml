@@ -59,19 +59,51 @@ jobs:
           Get-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/mangosteen.log') -Tail 15
           if ($process.ExitCode -ne 0) { throw "Media self-test failed with exit code $($process.ExitCode)" }
 
-      - name: Memory in the background
+      - name: Idle CPU, memory and size
         shell: pwsh
         run: |
-          # Start the published exe as a user would (tray icon and hooks, welcome already seen) and measure it idle.
+          # Start the published exe as a user would (tray icon and hooks, welcome already seen), let it settle, then
+          # measure it doing nothing. The numbers go to the job summary and to the stats artifact (README strip).
           New-Item -ItemType Directory -Force (Join-Path $env:LOCALAPPDATA 'Mangosteen') | Out-Null
           Set-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/settings.json') '{"Language":"en","WelcomeShown":true}'
           $process = Start-Process publish/Mangosteen.exe -PassThru
-          Start-Sleep -Seconds 25
+          Start-Sleep -Seconds 20
           $process.Refresh()
-          Write-Host ("memory idle: working set {0:N1} MB, private {1:N1} MB, peak working set {2:N1} MB" -f `
-            ($process.WorkingSet64 / 1MB), ($process.PrivateMemorySize64 / 1MB), ($process.PeakWorkingSet64 / 1MB))
+          $cpu0 = $process.TotalProcessorTime
+          $clock = [Diagnostics.Stopwatch]::StartNew()
+          Start-Sleep -Seconds 60
+          $process.Refresh()
+          $cpuSeconds = ($process.TotalProcessorTime - $cpu0).TotalSeconds
+          $elapsed = $clock.Elapsed.TotalSeconds
+          $privateWorkingSet = (Get-Counter "\Process(Mangosteen)\Working Set - Private").CounterSamples[0].CookedValue
+          $windows = if ($process.MainWindowHandle -eq 0) { 'none' } else { $process.MainWindowTitle }
+          $stats = [ordered]@{
+            'idle CPU, % of one core (60 s)' = '{0:N2}' -f ($cpuSeconds / $elapsed * 100)
+            'idle CPU, % of all cores (Task Manager)' = '{0:N2}' -f ($cpuSeconds / $elapsed * 100 / [Environment]::ProcessorCount)
+            'CPU time while idle, ms' = '{0:N0}' -f ($cpuSeconds * 1000)
+            'memory, private working set (Task Manager), MB' = '{0:N1}' -f ($privateWorkingSet / 1MB)
+            'memory, working set, MB' = '{0:N1}' -f ($process.WorkingSet64 / 1MB)
+            'memory, private bytes, MB' = '{0:N1}' -f ($process.PrivateMemorySize64 / 1MB)
+            'windows open at launch' = $windows
+            'Mangosteen.exe, MB' = '{0:N1}' -f ((Get-Item publish/Mangosteen.exe).Length / 1MB)
+          }
+          $private = $process.PrivateMemorySize64
           Stop-Process $process -Force
-          if ($process.PrivateMemorySize64 -gt 80MB) { throw "Idle private memory is above 80 MB" }
+          New-Item -ItemType Directory -Force stats | Out-Null
+          Compress-Archive publish/Mangosteen.exe stats/Mangosteen-win-x64.zip -CompressionLevel Optimal
+          $stats['Mangosteen-win-x64.zip, MB'] = '{0:N1}' -f ((Get-Item stats/Mangosteen-win-x64.zip).Length / 1MB)
+          Remove-Item stats/Mangosteen-win-x64.zip
+          $stats['runner'] = "$([Environment]::OSVersion.VersionString), $([Environment]::ProcessorCount) cores"
+          $lines = $stats.GetEnumerator() | ForEach-Object { "$($_.Key): $($_.Value)" }
+          $lines | Set-Content stats/stats.txt
+          $lines | ForEach-Object { Write-Host $_ }
+          "### Idle measurements`n" + (($stats.GetEnumerator() | ForEach-Object { "- $($_.Key): **$($_.Value)**" }) -join "`n") | Add-Content $env:GITHUB_STEP_SUMMARY
+          if ($private -gt 80MB) { throw "Idle private memory is above 80 MB" }
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: stats
+          path: stats
 
       - name: Tool window snapshots
         shell: pwsh
@@ -126,6 +158,54 @@ jobs:
             }
             Write-Host "snapshot: $($tool.id)"
           }
+
+      - name: README screenshots
+        shell: pwsh
+        run: |
+          # Real windows in the dark theme over the real photos in docs/images/source; the video is a slow zoom into
+          # the second photo with a sound track. A selection in the middle of the timeline, as a person would make.
+          $source = Resolve-Path docs/images/source
+          $ffmpeg = (Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Mangosteen/ffmpeg') -Recurse -Filter ffmpeg.exe | Select-Object -First 1).FullName
+          $video = Join-Path $source 'Mangosteen.mp4'
+          & $ffmpeg -hide_banner -loglevel error -y -i (Join-Path $source 'mangosteen-video.jpg') `
+            -f lavfi -i "aevalsrc=0.25*sin(2*PI*220*t)*(0.6+0.4*sin(2*PI*0.5*t))+0.18*sin(2*PI*277*t)+0.15*sin(2*PI*330*t)*abs(sin(2*PI*0.8*t)):d=30:s=44100" `
+            -filter_complex "[0:v]scale=2560:1440:force_original_aspect_ratio=increase,crop=2560:1440,zoompan=z=1+0.0003*on:x=iw/2-(iw/zoom/2):y=ih/2-(ih/zoom/2):d=750:s=1280x720:fps=25,format=yuv420p[v]" `
+            -map "[v]" -map 1:a -t 30 -c:v libx264 -preset veryfast -crf 22 -c:a aac -b:a 128k $video
+          if (-not (Test-Path $video)) { throw "The README video was not made" }
+          $photo = Join-Path $source 'mangosteen-still.jpg'
+          $shots = @(
+            @{ id = 'tool.annotate'; files = @($photo) },
+            @{ id = 'tool.frame'; files = @($photo) },
+            @{ id = 'tool.edit'; files = @($photo) },
+            @{ id = 'tool.compress'; files = @($photo) },
+            @{ id = 'tool.trimMedia'; files = @($video) },
+            @{ id = 'tool.bleep'; files = @($video) },
+            @{ id = 'tool.redactVideo'; files = @($video) },
+            @{ id = 'welcome'; files = @() }
+          )
+          $env:MANGOSTEEN_THEME = 'dark'
+          $env:MANGOSTEEN_SNAPSHOT_DEMO = '1'
+          foreach ($language in @('en', 'ru')) {
+            $folder = New-Item -ItemType Directory -Force (Join-Path 'readme-screenshots' $language)
+            $env:MANGOSTEEN_LANGUAGE = $language
+            foreach ($shot in $shots) {
+              $output = Join-Path $folder.FullName ($shot.id.Replace('tool.', '') + '.png')
+              $process = Start-Process publish/Mangosteen.exe -ArgumentList (@('--snapshot', $shot.id, $output) + $shot.files) -Wait -PassThru
+              if ($process.ExitCode -ne 0 -or -not (Test-Path $output)) {
+                Get-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/mangosteen.log') -Tail 40
+                throw "README screenshot of $($shot.id) ($language) failed"
+              }
+              Write-Host "readme: $language $($shot.id)"
+            }
+          }
+          Get-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/mangosteen.log') | Select-String 'snapshot background' | Select-Object -Last 3
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: readme-screenshots
+          path: readme-screenshots
+          if-no-files-found: ignore
 
       - uses: actions/upload-artifact@v7
         if: always()

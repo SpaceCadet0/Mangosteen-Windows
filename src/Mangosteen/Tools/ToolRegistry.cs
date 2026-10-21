@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -59,7 +60,16 @@ internal static class ToolRegistry
         }
         else
         {
-            window = Create(id, files, null!) ?? throw new ArgumentException($"Unknown tool {id}");
+            // README screenshots: the dark theme and a selection in the middle of the timeline.
+            MediaToolWindow.SnapshotDemo = Environment.GetEnvironmentVariable("MANGOSTEEN_SNAPSHOT_DEMO") == "1";
+            var tool = Create(id, files, null!) ?? throw new ArgumentException($"Unknown tool {id}");
+            if (Environment.GetEnvironmentVariable("MANGOSTEEN_THEME") == "dark")
+            {
+#pragma warning disable WPF0001 // Fluent theme is marked experimental in .NET 10.
+                tool.ThemeMode = ThemeMode.Dark;
+#pragma warning restore WPF0001
+            }
+            window = tool;
         }
         window.Show();
         var started = DateTime.UtcNow;
@@ -77,6 +87,7 @@ internal static class ToolRegistry
                 try
                 {
                     Save(window, output);
+                    SaveScreen(window, Path.ChangeExtension(output, ".screen.png"));
                     Log.Write($"snapshot {id} -> {output}");
                     Application.Current.Shutdown(0);
                 }
@@ -93,16 +104,17 @@ internal static class ToolRegistry
     private static void Save(Window window, string output)
     {
         window.UpdateLayout();
-        // The whole window is rendered, so effects such as shadows keep their place.
-        var width = (int)Math.Ceiling(window.ActualWidth);
-        var height = (int)Math.Ceiling(window.ActualHeight);
+        // The whole window is rendered, so effects such as shadows keep their place. Twice the size, for sharp
+        // screenshots on high-density screens.
+        const double scale = 2;
+        var width = Math.Ceiling(window.ActualWidth);
+        var height = Math.Ceiling(window.ActualHeight);
         var background = new DrawingVisual();
         using (var context = background.RenderOpen())
         {
-            var brush = window.Background is SolidColorBrush { Color.A: > 0 } solid ? solid : SystemColors.WindowBrush;
-            context.DrawRectangle(brush, null, new Rect(0, 0, width, height));
+            context.DrawRectangle(WindowBackground(window), null, new Rect(0, 0, width, height));
         }
-        var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        var bitmap = new RenderTargetBitmap((int)(width * scale), (int)(height * scale), 96 * scale, 96 * scale, PixelFormats.Pbgra32);
         bitmap.Render(background);
         bitmap.Render(window);
         var encoder = new PngBitmapEncoder();
@@ -110,5 +122,55 @@ internal static class ToolRegistry
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output))!);
         using var stream = File.Create(output);
         encoder.Save(stream);
+    }
+
+    /// <summary>
+    /// The colour behind the window's content. Fluent windows leave their background to the system backdrop (Mica),
+    /// which a rendered bitmap does not have, so the theme's own background colour stands in for it.
+    /// </summary>
+    private static Brush WindowBackground(Window window)
+    {
+        if (window.Background is SolidColorBrush { Color.A: 0xFF } solid)
+        {
+            return solid;
+        }
+        foreach (var key in new[] { "ApplicationBackgroundBrush", "SolidBackgroundFillColorBaseBrush", "WindowBackground" })
+        {
+            if (window.TryFindResource(key) is SolidColorBrush { Color.A: 0xFF } brush)
+            {
+                Log.Write($"snapshot background: {key} {brush.Color}");
+                return brush;
+            }
+        }
+#pragma warning disable WPF0001 // Fluent theme is marked experimental in .NET 10.
+        return window.ThemeMode == ThemeMode.Dark ? new SolidColorBrush(Color.FromRgb(0x20, 0x20, 0x20)) : SystemColors.WindowBrush;
+#pragma warning restore WPF0001
+    }
+
+    /// <summary>
+    /// Also copies the window from the screen, title bar included, when the machine has a visible desktop (CI runners
+    /// do). Best effort: nothing is written when the capture fails.
+    /// </summary>
+    private static void SaveScreen(Window window, string output)
+    {
+        try
+        {
+            var hwnd = new System.Windows.Interop.WindowInteropHelper(window).Handle;
+            if (Native.DwmGetWindowAttribute(hwnd, Native.DWMWA_EXTENDED_FRAME_BOUNDS, out var bounds, Marshal.SizeOf<Native.RECT>()) != 0)
+            {
+                return;
+            }
+            var (width, height) = (bounds.Right - bounds.Left, bounds.Bottom - bounds.Top);
+            using var bitmap = new System.Drawing.Bitmap(width, height);
+            using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
+            {
+                graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, new System.Drawing.Size(width, height));
+            }
+            bitmap.Save(output, System.Drawing.Imaging.ImageFormat.Png);
+        }
+        catch (Exception error) when (error is System.ComponentModel.Win32Exception or ExternalException or ArgumentException)
+        {
+            Log.Error("snapshot screen", error);
+        }
     }
 }
