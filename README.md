@@ -44,7 +44,7 @@ save dialogs, no uploads, no limits. The two apps share no code; each has its ow
 </p>
 
 <p align="center">
-  <img src="docs/images/en/welcome.png" width="860" alt="The welcome window">
+  <img src="docs/images/en/welcome.png" width="760" alt="The welcome window">
 </p>
 
 | Hold and right-click | Wheel | What it does |
