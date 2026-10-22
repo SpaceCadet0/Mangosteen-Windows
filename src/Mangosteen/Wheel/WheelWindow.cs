@@ -254,7 +254,7 @@ internal sealed class WheelWindow : Window
 
     /// <summary>
     /// The largest icon and title, on one or two lines, whose boxes lie inside the segment (between the rings, clear of
-    /// the gaps) at some distance from the centre; null when nothing fits down to 9 pt without the icon.
+    /// the gaps) at some distance from the centre; null when nothing fits down to 8 pt with a 14 pt icon.
     /// </summary>
     private LabelFit? FitLabel(string title, double angle, double span, double outer)
     {
@@ -264,9 +264,10 @@ internal sealed class WheelWindow : Window
         {
             candidates.Add([string.Join(' ', words[..split]), string.Join(' ', words[split..])]);
         }
-        foreach (var glyph in new[] { 20.0, 18, 16, 0 })
+        // Every segment keeps its icon: dense wheels get a smaller one first.
+        foreach (var glyph in span <= 36 ? new[] { 14.0 } : [20.0, 18, 16, 14])
         {
-            for (var size = 12.5; size >= 9; size -= 0.5)
+            for (var size = 12.5; size >= 8; size -= 0.5)
             {
                 var lineHeight = size * LabelFace.FontFamily.LineSpacing;
                 // One line first, then the most even split.
@@ -328,8 +329,9 @@ internal sealed class WheelWindow : Window
     {
         var span = 360.0 / count;
         var angle = -90 + index * span;
-        // Nothing fitted even on the largest wheel: the smallest title without the icon, in the middle of the ring.
-        fit ??= new LabelFit(0, 9, (InnerRadius + _outerRadius) / 2, [item.Title], TextWidth(item.Title, 9), 9 * LabelFace.FontFamily.LineSpacing);
+        // Nothing fitted even on the largest wheel: the smallest icon and title, in the middle of the ring.
+        fit ??= new LabelFit(14, 8, (InnerRadius + _outerRadius) / 2, [item.Title], Math.Max(TextWidth(item.Title, 8), 14),
+            14 * 1.3 + GlyphGap + 8 * LabelFace.FontFamily.LineSpacing);
         var path = new Path
         {
             Data = SegmentGeometry(center, angle, span, count, _outerRadius),

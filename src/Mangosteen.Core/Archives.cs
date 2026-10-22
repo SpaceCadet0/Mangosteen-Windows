@@ -59,8 +59,8 @@ public static class Archives
     }
 
     /// <summary>
-    /// "Add to archive": the files and folders go into one ZIP next to the first of them, named after the folder they
-    /// share ("Photos.zip", or "Photos 2.zip" when that is taken).
+    /// "Archive": the selected files and folders go into one ZIP next to the first of them, named after the folder they
+    /// share ("Photos.zip", or "Photos 2.zip" when that is taken), or after the item when there is only one.
     /// </summary>
     public static string AddToArchive(IReadOnlyList<string> paths)
     {
@@ -69,9 +69,16 @@ public static class Archives
             output => Pack(paths, FileFormat.Zip, output));
     }
 
-    /// <summary>The name of the deepest folder all the items are in, or "Archive" when they only share a drive.</summary>
+    /// <summary>
+    /// The item's own name when there is one, else the name of the deepest folder all the items are in, or "Archive"
+    /// when they only share a drive.
+    /// </summary>
     public static string BundleName(IReadOnlyList<string> paths)
     {
+        if (paths.Count == 1)
+        {
+            return OutputNaming.BaseName(Path.TrimEndingDirectorySeparator(paths[0]));
+        }
         var parents = paths.Select(p => Path.GetDirectoryName(Path.GetFullPath(Path.TrimEndingDirectorySeparator(p))) ?? "").ToList();
         var common = parents[0];
         while (common.Length > 0 && !parents.All(p => p.Equals(common, StringComparison.OrdinalIgnoreCase)

@@ -174,6 +174,7 @@ public class MixedSelectionTests : TempFolderTest
         {
             Assert.Equal(["Trip/a.txt", "a 2.txt", "a.txt"], zip.Entries.Select(e => e.FullName).Order(StringComparer.Ordinal));
         }
-        Assert.Equal(Path.Combine(photos, "Photos 2.zip"), Archives.AddToArchive([Path.Combine(photos, "a.txt")]));
+        Assert.Equal(Path.Combine(photos, "a.zip"), Archives.AddToArchive([Path.Combine(photos, "a.txt")]));
+        Assert.Equal(Path.Combine(photos, "Photos 2.zip"), Archives.AddToArchive([Path.Combine(photos, "a.txt"), inner]));
     }
 }

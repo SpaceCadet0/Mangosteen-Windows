@@ -101,7 +101,7 @@ public static class WheelCatalog
         Add(formats.Any(f => CanCompress(f)), "tool.compressAll", "Compress", WheelIcon.Compress);
         Add(formats.Any(Raster), "tool.metadata", "Metadata", WheelIcon.Info);
         Add(formats.Count == paths.Count && formats.All(f => Raster(f) || f == FileFormat.Pdf), "tool.recognizeText", "Text", WheelIcon.Text);
-        Add(true, "tool.archive", "Add to archive", WheelIcon.Archive);
+        Add(true, "tool.archive", "Archive", WheelIcon.Archive);
         return items;
     }
 
@@ -157,7 +157,7 @@ public static class WheelCatalog
         var rasterImages = Any(f => f.Category() == FormatCategory.Image && f != FileFormat.Svg);
         Add(rasterImages || pdf, "tool.recognizeText", "Text", WheelIcon.Text);
         Add(images, "tool.frame", "Background", WheelIcon.Background);
-        Add(rasterImages, "tool.removeBackground", "Remove background", WheelIcon.RemoveBackground);
+        Add(rasterImages, "tool.removeBackground", "Remove bg", WheelIcon.RemoveBackground);
         Add(Count(f => f.Category() == FormatCategory.Image) >= 2, "tool.collage", "Collage", WheelIcon.Collage);
         Add(rasterImages, "tool.metadata", "Metadata", WheelIcon.Info);
         Add(rasterImages, "tool.createPDF", "PDF from images", WheelIcon.CreatePdf);
