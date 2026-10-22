@@ -270,3 +270,41 @@ public class PdfSplitTests
         Assert.Equal(3, PdfSplit.Documents(5, PdfSplit.EveryN(5, 2), []).Count);
     }
 }
+
+public class SubjectMaskTests
+{
+    [Fact]
+    public void NormalizesBoundsAndCuts()
+    {
+        var mask = SubjectMask.Normalize([0.1f, 0.1f, 0.9f, 0.5f, 0.1f, 0.9f]);
+        Assert.Equal([0, 0, 255, 128, 0, 255], mask);
+        Assert.Equal(new PixelRect(0, 0, 3, 2), SubjectMask.Bounds(mask, 3, 2));
+        Assert.Equal(new PixelRect(2, 0, 1, 2), SubjectMask.Bounds([0, 0, 255, 0, 0, 255], 3, 2));
+        Assert.Null(SubjectMask.Bounds(new byte[6], 3, 2));
+        Assert.False(SubjectMask.HasSubject(new byte[1000]));
+        Assert.False(SubjectMask.HasSubject(SubjectMask.Normalize([0f, 0.02f, 0.045f, 0.01f])));
+
+        var image = new Bgra(3, 2);
+        Array.Fill(image.Pixels, (byte)200);
+        for (var i = 3; i < image.Pixels.Length; i += 4)
+        {
+            image.Pixels[i] = 255;
+        }
+        var cut = SubjectMask.Cut(image, mask);
+        Assert.Equal(0, cut.Pixels[3]);
+        Assert.Equal(255, cut.Pixels[2 * 4 + 3]);
+        var flat = SubjectMask.OnColor(cut, 0xFF0000FF);
+        Assert.Equal((255, 0, 0, 255), (flat.Pixels[0], flat.Pixels[1], flat.Pixels[2], flat.Pixels[3]));
+        Assert.Equal(200, flat.Pixels[2 * 4 + 2]);
+    }
+
+    [Fact]
+    public void InputIsPlanarRgbMinusTheMeans()
+    {
+        var image = new Bgra(SubjectMask.Side, SubjectMask.Side);
+        image.Pixels[0] = 255; // blue of the first pixel
+        var input = SubjectMask.Input(image);
+        Assert.Equal(-0.485f, input[0], 3);
+        Assert.Equal(1 - 0.406f, input[2 * SubjectMask.Side * SubjectMask.Side], 3);
+    }
+}

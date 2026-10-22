@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mangosteen.Windows.Tests", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mangosteen.FFmpeg", "src\Mangosteen.FFmpeg\Mangosteen.FFmpeg.csproj", "{2E98B3C2-BB7E-4C5A-98A2-80F67F7D68D9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mangosteen.Models", "src\Mangosteen.Models\Mangosteen.Models.csproj", "{3121BD84-8D44-46F8-AC94-10C9F62CA541}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -87,6 +89,18 @@ Global
 		{2E98B3C2-BB7E-4C5A-98A2-80F67F7D68D9}.Release|x64.Build.0 = Release|Any CPU
 		{2E98B3C2-BB7E-4C5A-98A2-80F67F7D68D9}.Release|x86.ActiveCfg = Release|Any CPU
 		{2E98B3C2-BB7E-4C5A-98A2-80F67F7D68D9}.Release|x86.Build.0 = Release|Any CPU
+		{3121BD84-8D44-46F8-AC94-10C9F62CA541}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3121BD84-8D44-46F8-AC94-10C9F62CA541}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3121BD84-8D44-46F8-AC94-10C9F62CA541}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3121BD84-8D44-46F8-AC94-10C9F62CA541}.Debug|x64.Build.0 = Debug|Any CPU
+		{3121BD84-8D44-46F8-AC94-10C9F62CA541}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3121BD84-8D44-46F8-AC94-10C9F62CA541}.Debug|x86.Build.0 = Debug|Any CPU
+		{3121BD84-8D44-46F8-AC94-10C9F62CA541}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3121BD84-8D44-46F8-AC94-10C9F62CA541}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3121BD84-8D44-46F8-AC94-10C9F62CA541}.Release|x64.ActiveCfg = Release|Any CPU
+		{3121BD84-8D44-46F8-AC94-10C9F62CA541}.Release|x64.Build.0 = Release|Any CPU
+		{3121BD84-8D44-46F8-AC94-10C9F62CA541}.Release|x86.ActiveCfg = Release|Any CPU
+		{3121BD84-8D44-46F8-AC94-10C9F62CA541}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -97,5 +111,6 @@ Global
 		{4A5C63CC-C118-453A-86C7-66650D50F05F} = {C62EE908-CAFB-422A-9F5E-168293CF0B2F}
 		{642FF396-DC15-4344-B953-386D010E7405} = {C62EE908-CAFB-422A-9F5E-168293CF0B2F}
 		{2E98B3C2-BB7E-4C5A-98A2-80F67F7D68D9} = {3A7FF70E-170F-4C43-ACD7-5B1731A81B1E}
+		{3121BD84-8D44-46F8-AC94-10C9F62CA541} = {3A7FF70E-170F-4C43-ACD7-5B1731A81B1E}
 	EndGlobalSection
 EndGlobal

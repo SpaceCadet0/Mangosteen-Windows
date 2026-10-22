@@ -250,6 +250,46 @@ public sealed class ToolTests : IDisposable
         Assert.Contains("blank.png", error.Message);
     }
 
+    private static string RepositoryFile(string relative)
+    {
+        var folder = new DirectoryInfo(AppContext.BaseDirectory);
+        while (folder is not null && !File.Exists(Path.Combine(folder.FullName, "Mangosteen.sln")))
+        {
+            folder = folder.Parent;
+        }
+        return Path.Combine(folder!.FullName, relative);
+    }
+
+    [Fact]
+    public void BackgroundIsRemovedAroundTheSubject()
+    {
+        if (!BackgroundRemoval.IsBundled)
+        {
+            return; // built without the model (build/fetch-isnet.ps1 did not run)
+        }
+        var photo = PathOf("mangosteen.jpg");
+        File.Copy(RepositoryFile("docs/images/source/mangosteen-video.jpg"), photo);
+        var output = RemoveBackgroundTool.RemoveFile(photo, null, null, crop: false);
+        Assert.Equal(PathOf("mangosteen (no background).png"), output);
+        var result = ImageIO.ToBgra(ImageIO.Load(output));
+        var source = ImageIO.ToBgra(ImageIO.Load(photo));
+        Assert.Equal((source.Width, source.Height), (result.Width, result.Height));
+        byte Alpha(double x, double y) => result.Pixels[((int)(y * result.Height) * result.Width + (int)(x * result.Width)) * 4 + 3];
+        Assert.True(Alpha(0.02, 0.02) < 30, "the corner is background");
+        Assert.True(Alpha(0.5, 0.6) > 220, "the middle fruit is subject");
+
+        var onWhite = RemoveBackgroundTool.RemoveFile(photo, null, 0xFFFFFFFF, crop: true);
+        Assert.Equal(PathOf("mangosteen (no background).jpg"), onWhite);
+        var cropped = ImageIO.Load(onWhite);
+        Assert.True(cropped.PixelWidth < source.Width && cropped.PixelHeight < source.Height);
+
+        var blank = PathOf("blank.png");
+        var pixels = Enumerable.Repeat((byte)180, 400 * 300 * 4).ToArray();
+        File.WriteAllBytes(blank, ImageIO.Encode(BitmapSource.Create(400, 300, 96, 96, PixelFormats.Bgra32, null, pixels, 1600), FileFormat.Png));
+        var error = Assert.Throws<ShownException>(() => RemoveBackgroundTool.RemoveFile(blank, null, null, crop: false));
+        Assert.Contains("blank.png", error.Message);
+    }
+
     [Fact]
     public void LockedPdfSaysSo()
     {

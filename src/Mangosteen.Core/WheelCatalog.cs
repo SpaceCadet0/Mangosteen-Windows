@@ -13,7 +13,7 @@ public enum WheelIcon
 {
     Image, Document, Film, Music, Archive, Table, Subtitle,
     Trim, Split, Speed, Volume, Bleep, Channels, Visualizer, Hide, Crop, Join, Compress, Frames,
-    Edit, Annotate, Pages, Background, Collage, Info, CreatePdf, Extract, Merge, Text,
+    Edit, Annotate, Pages, Background, Collage, Info, CreatePdf, Extract, Merge, Text, RemoveBackground,
     Float, Copy, Move, Path, Terminal,
 }
 
@@ -70,7 +70,11 @@ public static class WheelCatalog
         "tool.redactVideo", "tool.cropVideo", "tool.join", "tool.compressMedia", "tool.frames",
     ];
 
-    private static bool IsAvailable(string id) => AvailableTools.Contains(id) || FormatCatalog.MediaAvailable && MediaTools.Contains(id);
+    /// <summary>True when the app carries the background-removal model.</summary>
+    public static bool BackgroundRemovalAvailable { get; set; }
+
+    private static bool IsAvailable(string id) => AvailableTools.Contains(id) || FormatCatalog.MediaAvailable && MediaTools.Contains(id)
+        || id == "tool.removeBackground" && BackgroundRemovalAvailable;
 
     /// <summary>Same rules and order as the macOS Tools wheel.</summary>
     private static List<WheelItem> ToolItems(IReadOnlyList<string> paths)
@@ -114,6 +118,7 @@ public static class WheelCatalog
         Add(pdf, "tool.organizePDF", "Page order", WheelIcon.Pages);
         var rasterImages = Any(f => f.Category() == FormatCategory.Image && f != FileFormat.Svg);
         Add(rasterImages || pdf, "tool.recognizeText", "Text", WheelIcon.Text);
+        Add(rasterImages, "tool.removeBackground", "Remove background", WheelIcon.RemoveBackground);
         Add(images, "tool.frame", "Background", WheelIcon.Background);
         Add(Count(f => f.Category() == FormatCategory.Image) >= 2, "tool.collage", "Collage", WheelIcon.Collage);
         Add(rasterImages, "tool.metadata", "Metadata", WheelIcon.Info);

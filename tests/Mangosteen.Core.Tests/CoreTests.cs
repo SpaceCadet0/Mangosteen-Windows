@@ -59,7 +59,7 @@ public class WheelCatalogTests
     public void ImageToolsMatchMacOrder()
     {
         var ids = WheelCatalog.Items(WheelKind.Tools, ["a.png", "b.jpg"]).Select(i => i.Id);
-        Assert.Equal(["tool.compress", "tool.crop", "tool.edit", "tool.annotate", "tool.redact", "tool.recognizeText", "tool.frame",
+        Assert.Equal(["tool.compress", "tool.crop", "tool.edit", "tool.annotate", "tool.redact", "tool.recognizeText", "tool.removeBackground", "tool.frame",
             "tool.collage", "tool.metadata", "tool.createPDF"], ids);
     }
 

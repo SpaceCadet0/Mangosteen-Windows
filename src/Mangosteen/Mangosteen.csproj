@@ -38,12 +38,18 @@
     <!-- FFmpeg (GPLv3) is bundled when build/fetch-ffmpeg.ps1 has run: the archive lives in Mangosteen.FFmpeg.dll, and
          its hash is recorded here so Mangosteen knows about it without loading that assembly. -->
     <AssemblyMetadata Include="FFmpegHash" Value="$(FFmpegHash)" Condition="'$(FFmpegHash)' != ''" />
+    <!-- The same for the background-removal model (build/fetch-isnet.ps1), which lives in Mangosteen.Models.dll. -->
+    <AssemblyMetadata Include="IsnetHash" Value="$(IsnetHash)" Condition="'$(IsnetHash)' != ''" />
   </ItemGroup>
   <PropertyGroup Condition="Exists('$(MSBuildThisFileDirectory)Media\ffmpeg.sha256')">
     <FFmpegHash>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)Media\ffmpeg.sha256').Trim())</FFmpegHash>
   </PropertyGroup>
+  <PropertyGroup Condition="Exists('$(MSBuildThisFileDirectory)Models\isnet.sha256')">
+    <IsnetHash>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)Models\isnet.sha256').Trim())</IsnetHash>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Mangosteen.FFmpeg\Mangosteen.FFmpeg.csproj" />
+    <ProjectReference Include="..\Mangosteen.Models\Mangosteen.Models.csproj" />
     <ProjectReference Include="..\Mangosteen.Core\Mangosteen.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
@@ -53,6 +59,7 @@
     <!-- PDFsharp 6.5 and later are AGPL-3.0; 6.2.x is the last MIT release. Do not upgrade. -->
     <PackageReference Include="PDFsharp-MigraDoc" Version="6.2.4" />
     <PackageReference Include="SkiaSharp" Version="4.153.1" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.31.0" />
   </ItemGroup>
   <!-- Native packages ship their own .pdb files; the published app is Mangosteen.exe alone. -->
   <Target Name="DropSymbolsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">

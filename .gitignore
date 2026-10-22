@@ -22,3 +22,8 @@ Thumbs.db
 ffmpeg-cache/
 src/Mangosteen/Media/ffmpeg.zip
 src/Mangosteen/Media/ffmpeg.sha256
+
+# The IS-Net model is fetched and converted by build/fetch-isnet.ps1
+isnet-cache/
+src/Mangosteen/Models/isnet.onnx
+src/Mangosteen/Models/isnet.sha256

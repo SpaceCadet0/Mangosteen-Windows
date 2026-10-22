@@ -252,4 +252,13 @@ T = {
 "Clear History": ("Очистить историю", "Borrar historial"),
 "Show Mangosteen in Explorer's right-click menu": ("Показывать Mangosteen в меню правого щелчка Проводника", "Mostrar Mangosteen en el menú contextual del Explorador"),
 "On Windows 11 it is under “Show more options”.": ("В Windows 11 он находится в пункте «Показать дополнительные параметры».", "En Windows 11 está en «Mostrar más opciones»."),
+"Remove background": ("Убрать фон", "Quitar fondo"),
+"Transparent (PNG)": ("Прозрачный (PNG)", "Transparente (PNG)"),
+"Crop to subject": ("Обрезать по объекту", "Recortar al objeto"),
+"Finding the subject…": ("Ищу объект…", "Buscando el objeto…"),
+"No subject was found in “{0}” to separate from the background.": ("На «{0}» не найден объект, от которого можно отделить фон.", "No se encontró en «{0}» ningún objeto que separar del fondo."),
+"The preview shows the first image; every image is processed the same way.": ("В предпросмотре первое фото; все фото обрабатываются так же.", "La vista previa muestra la primera imagen; todas se procesan igual."),
+"no background": ("без фона", "sin fondo"),
+"Removing the background": ("Удаление фона", "Quitando el fondo"),
+"Background removed": ("Фон убран", "Fondo quitado"),
 }

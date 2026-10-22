@@ -1,0 +1,5 @@
+# The background-removal model bundled into Mangosteen.exe: IS-Net "general use" from DIS (Apache-2.0,
+# https://github.com/xuebinqin/DIS), as published in ONNX form by rembg. build/fetch-isnet.ps1 converts it to
+# half precision (about 86 MB instead of 170 MB; the masks differ by less than 0.2 %).
+url=https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx
+sha256=60920e99c45464f2ba57bee2ad08c919a52bbf852739e96947fbb4358c0d964a

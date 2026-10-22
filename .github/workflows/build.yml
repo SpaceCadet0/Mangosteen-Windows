@@ -30,6 +30,21 @@ jobs:
         shell: pwsh
         run: ./build/fetch-ffmpeg.ps1
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - uses: actions/cache@v6
+        with:
+          path: isnet-cache
+          key: isnet-${{ hashFiles('build/isnet.pin', 'build/isnet-fp16.py') }}
+
+      - name: Fetch the background-removal model
+        shell: pwsh
+        run: |
+          python -m pip install --quiet --disable-pip-version-check onnx==1.23.2 onnxruntime==1.31.0
+          ./build/fetch-isnet.ps1
+
       - name: Restore
         run: dotnet restore Mangosteen.sln
 
@@ -129,6 +144,7 @@ jobs:
             @{ id = 'tool.edit'; files = @('photo.jpg') },
             @{ id = 'tool.redact'; files = @('photo.jpg', 'portrait.jpg') },
             @{ id = 'tool.annotate'; files = @('photo.jpg') },
+            @{ id = 'tool.removeBackground'; files = @('../../docs/images/source/mangosteen-still.jpg') },
             @{ id = 'tool.trimMedia'; files = @('clip.mp4') },
             @{ id = 'tool.splitMedia'; files = @('clip.mp4') },
             @{ id = 'tool.frames'; files = @('clip.mp4') },

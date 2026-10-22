@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Carries only the background-removal model (IS-Net, about 86 MB). It is a separate assembly so the model stays
+       out of memory until "Remove background" is used. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Mangosteen.Models</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\Mangosteen\Models\isnet.onnx" LogicalName="isnet.onnx" Condition="Exists('..\Mangosteen\Models\isnet.onnx')" />
+  </ItemGroup>
+</Project>

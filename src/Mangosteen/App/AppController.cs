@@ -33,7 +33,8 @@ internal sealed class AppController : IDisposable
     public void Start()
     {
         FormatCatalog.MediaAvailable = Media.FFmpeg.IsBundled;
-        Log.Write($"ffmpeg bundled: {Media.FFmpeg.IsBundled}");
+        WheelCatalog.BackgroundRemovalAvailable = Tools.BackgroundRemoval.IsBundled;
+        Log.Write($"ffmpeg bundled: {Media.FFmpeg.IsBundled}, background model bundled: {Tools.BackgroundRemoval.IsBundled}");
         _tray = new TrayIcon(ChooseFiles, _shelf.Toggle, () => new SettingsWindow(_settings).Present(), () => new WelcomeWindow().Present(), Quit);
         _jobs = new Jobs(_dispatcher, _tray);
         // The hook thread only posts; everything below runs on the UI thread.

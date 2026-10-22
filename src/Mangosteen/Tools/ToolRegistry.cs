@@ -21,6 +21,7 @@ internal static class ToolRegistry
         "tool.collage" => new CollageTool(files, jobs),
         "tool.organizePDF" => new PdfPagesTool(files, jobs),
         "tool.splitPDF" => new PdfSplitTool(files, jobs),
+        "tool.removeBackground" => new RemoveBackgroundTool(files, jobs),
         "tool.edit" => new EditorTool(files, jobs),
         "tool.redact" => new HideTool(files, jobs),
         "tool.annotate" => new AnnotateTool(files, jobs),

@@ -12,6 +12,8 @@ license texts are available at the linked projects.
 | [PDFsharp and MigraDoc](https://github.com/empira/PDFsharp) 6.2 | Writing PDF files | MIT |
 | [SkiaSharp](https://github.com/mono/SkiaSharp) | Writing WebP images | MIT |
 | [FFmpeg](https://ffmpeg.org) 8.1, the [BtbN build](https://github.com/BtbN/FFmpeg-Builds) with x264, libvpx, libaom, Opus, LAME and more | Video, audio and AVIF | GPL v3 |
+| [ONNX Runtime](https://github.com/microsoft/onnxruntime) 1.31 | Running the background-removal model | MIT |
+| [IS-Net](https://github.com/xuebinqin/DIS) "general use" model (Dichotomous Image Segmentation), ONNX export by [rembg](https://github.com/danielgatis/rembg), converted to half precision | Remove background | Apache License 2.0 |
 | [Skia](https://skia.org) and [libwebp](https://chromium.googlesource.com/webm/libwebp), inside SkiaSharp | Image encoding | BSD 3-Clause |
 
 ## PdfPig
@@ -24,6 +26,13 @@ the specific language governing permissions and limitations under the License.
 
 Copyright (c) UglyToad and the PdfPig contributors. PdfPig includes code ported from Apache PDFBox, Copyright
 The Apache Software Foundation.
+
+## IS-Net
+
+The background-removal model is IS-Net from "Highly Accurate Dichotomous Image Segmentation" (Qin et al., ECCV
+2022), Copyright (c) Xuebin Qin, licensed under the Apache License, Version 2.0
+(http://www.apache.org/licenses/LICENSE-2.0). Mangosteen carries it converted to half precision (16-bit floats);
+the weights are otherwise unchanged. It runs on the device; nothing is sent anywhere.
 
 ## FFmpeg
 
