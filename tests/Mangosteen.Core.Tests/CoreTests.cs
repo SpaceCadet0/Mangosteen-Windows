@@ -24,12 +24,21 @@ public class FormatCatalogTests
 {
     [Fact]
     public void PngOffersOtherImageFormats() =>
-        Assert.Equal([FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Bmp, FileFormat.Gif, FileFormat.Pdf],
+        Assert.Equal([FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Gif, FileFormat.Pdf],
             FormatCatalog.Targets(["a.png"]));
 
     [Fact]
+    public void BmpIsReadAndEditedButNotOffered()
+    {
+        Assert.Equal([FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Gif, FileFormat.Pdf],
+            FormatCatalog.Targets(["a.bmp"]));
+        Assert.DoesNotContain(FileFormat.Bmp, FormatCatalog.Targets(["a.jpg", "b.mp4", "c.png"]));
+        Assert.Contains(FileFormat.Bmp, FormatCatalog.EditableImageFormats);
+    }
+
+    [Fact]
     public void MixedImagesOfferEveryFormatSomeItemNeeds() =>
-        Assert.Equal([FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Bmp, FileFormat.Gif, FileFormat.Pdf],
+        Assert.Equal([FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Gif, FileFormat.Pdf],
             FormatCatalog.Targets(["a.png", "b.jpg"]));
 
     [Fact]

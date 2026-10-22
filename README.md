@@ -73,7 +73,7 @@ file uses the whole selection. Right-clicks without these keys open the usual co
 
 | Kind | Formats |
 |---|---|
-| Images | PNG, JPG, WebP, TIFF, AVIF, BMP, GIF, PDF; also reads ICO, and HEIC with the Microsoft Store codec |
+| Images | PNG, JPG, WebP, TIFF, AVIF, GIF, PDF; also reads BMP, ICO, and HEIC with the Microsoft Store codec |
 | PDF | to PNG or JPG (several pages become a folder of pages), TXT, Markdown, RTF, DOCX, HTML |
 | Documents | DOCX, ODT, RTF, TXT, Markdown, HTML into each other and into PDF |
 | Video | MP4, MOV, MKV, WebM, AVI, WMV into each other, GIF and MP3 |

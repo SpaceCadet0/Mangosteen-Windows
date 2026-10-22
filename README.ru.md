@@ -73,7 +73,7 @@ Windows-версия [Mangosteen](https://github.com/SpaceCadet0/Mangosteen) д�
 
 | Тип | Форматы |
 |---|---|
-| Изображения | PNG, JPG, WebP, TIFF, AVIF, BMP, GIF, PDF; ещё читает ICO и HEIC (с кодеком из Microsoft Store) |
+| Изображения | PNG, JPG, WebP, TIFF, AVIF, GIF, PDF; ещё читает BMP, ICO и HEIC (с кодеком из Microsoft Store) |
 | PDF | в PNG или JPG (несколько страниц — папка со страницами), TXT, Markdown, RTF, DOCX, HTML |
 | Документы | DOCX, ODT, RTF, TXT, Markdown, HTML друг в друга и в PDF |
 | Видео | MP4, MOV, MKV, WebM, AVI, WMV друг в друга, в GIF и MP3 |

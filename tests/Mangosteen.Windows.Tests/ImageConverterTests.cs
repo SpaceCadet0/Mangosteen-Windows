@@ -13,7 +13,7 @@ public sealed class ImageConverterTests : IDisposable
 
     public void Dispose() => TempCleanup.Delete(_dir);
 
-    public static TheoryData<FileFormat> Targets => new() { FileFormat.Jpg, FileFormat.Tiff, FileFormat.Bmp, FileFormat.Gif };
+    public static TheoryData<FileFormat> Targets => new() { FileFormat.Jpg, FileFormat.Tiff, FileFormat.Gif };
 
     [Theory]
     [MemberData(nameof(Targets))]
@@ -35,7 +35,6 @@ public sealed class ImageConverterTests : IDisposable
     [Theory]
     [InlineData(FileFormat.Png)]
     [InlineData(FileFormat.Tiff)]
-    [InlineData(FileFormat.Bmp)]
     [InlineData(FileFormat.Gif)]
     public void ConvertsJpgToEveryFormat(FileFormat target)
     {
@@ -61,8 +60,8 @@ public sealed class ImageConverterTests : IDisposable
     [Fact]
     public void TransparencyBecomesWhiteWithoutAlphaChannel()
     {
-        var bmp = ImageConverter.Convert(WritePng("clear.png"), FileFormat.Bmp);
-        var pixels = Pixels(ImageConverter.Decode(bmp));
+        var gif = ImageConverter.Convert(WritePng("clear.png"), FileFormat.Gif);
+        var pixels = Pixels(ImageConverter.Decode(gif));
         // Pixel (0,0) was fully transparent.
         Assert.Equal([255, 255, 255], pixels[..3]);
     }

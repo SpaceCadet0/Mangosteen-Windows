@@ -205,6 +205,10 @@ public sealed class ToolTests : IDisposable
     }
 
     [Fact]
+    public void EditedBmpStaysBmp() =>
+        Assert.Equal(PathOf("old (changed).bmp"), Turn(Encoded("old.bmp", PixelFormats.Bgr24, new BmpBitmapEncoder())));
+
+    [Fact]
     public void TurningKeepsTheColourProfile()
     {
         var input = Encoded("profiled.jpg", PixelFormats.Bgr24, new JpegBitmapEncoder(), profile: true);

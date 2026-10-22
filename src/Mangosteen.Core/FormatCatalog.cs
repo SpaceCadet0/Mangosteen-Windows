@@ -10,12 +10,21 @@ public static class FormatCatalog
     /// <summary>True when the app carries FFmpeg: video, audio and AVIF are offered only then.</summary>
     public static bool MediaAvailable { get; set; }
 
-    /// <summary>Image formats written without FFmpeg (WIC, SkiaSharp, PDFsharp).</summary>
+    /// <summary>Image formats written without FFmpeg (WIC, SkiaSharp, PDFsharp). BMP is not offered as a target.</summary>
     public static readonly IReadOnlyList<FileFormat> WicImageOutputs =
-        [FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Bmp, FileFormat.Gif, FileFormat.Pdf];
+        [FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Gif, FileFormat.Pdf];
+
+    /// <summary>
+    /// Formats the editors (crop, editor, annotate, background, hide…) save an edited image in: the image targets
+    /// without PDF, plus BMP, so an edited BMP stays a BMP. Anything else is saved as PNG.
+    /// </summary>
+    public static readonly IReadOnlySet<FileFormat> EditableImageFormats = new HashSet<FileFormat>
+    {
+        FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Gif, FileFormat.Bmp,
+    };
 
     private static readonly IReadOnlyList<FileFormat> ImageOutputsWithAvif =
-        [FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Avif, FileFormat.Bmp, FileFormat.Gif, FileFormat.Pdf];
+        [FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Avif, FileFormat.Gif, FileFormat.Pdf];
 
     public static IReadOnlyList<FileFormat> ImageOutputs => MediaAvailable ? ImageOutputsWithAvif : WicImageOutputs;
 
@@ -50,7 +59,7 @@ public static class FormatCatalog
     /// <summary>Order of segments on the wheel when the selection mixes kinds of files.</summary>
     private static readonly IReadOnlyList<FileFormat> DisplayOrder =
     [
-        FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Avif, FileFormat.Bmp, FileFormat.Gif, FileFormat.Pdf,
+        FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Avif, FileFormat.Gif, FileFormat.Pdf,
         FileFormat.Docx, FileFormat.Odt, FileFormat.Rtf, FileFormat.Txt, FileFormat.Md, FileFormat.Html,
         FileFormat.Srt, FileFormat.Vtt, FileFormat.Csv, FileFormat.Tsv, FileFormat.Xlsx,
         FileFormat.Mp4, FileFormat.Mov, FileFormat.Mkv, FileFormat.Webm, FileFormat.Avi, FileFormat.Wmv,

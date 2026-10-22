@@ -234,7 +234,7 @@ public class CatalogTests
 
     [Fact]
     public void ImagesOfferWebpAndPdf() => Assert.Equal(
-        [FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Bmp, FileFormat.Gif, FileFormat.Pdf], FormatCatalog.Targets(["a.png"]));
+        [FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Gif, FileFormat.Pdf], FormatCatalog.Targets(["a.png"]));
 
     [Fact]
     public void LegacyDocIsNotConvertible() => Assert.Empty(FormatCatalog.Targets(["old.doc"]));
