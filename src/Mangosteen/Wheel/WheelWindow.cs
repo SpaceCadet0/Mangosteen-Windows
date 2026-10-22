@@ -245,8 +245,10 @@ internal sealed class WheelWindow : Window
     {
         if (!Widths.TryGetValue((text, size), out var width))
         {
+            // Measured as the wheel draws it (Display text formatting, which rounds glyphs to whole pixels and can be
+            // wider than the ideal layout), with a little room so the last letter is never clipped.
             width = new FormattedText(text, System.Globalization.CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, LabelFace,
-                size, Brushes.White, 1).WidthIncludingTrailingWhitespace;
+                size, Brushes.White, null, TextFormattingMode.Display, 1).WidthIncludingTrailingWhitespace + 4;
             Widths[(text, size)] = width;
         }
         return width;
