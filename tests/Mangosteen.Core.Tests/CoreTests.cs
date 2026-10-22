@@ -59,7 +59,7 @@ public class WheelCatalogTests
     public void ImageToolsMatchMacOrder()
     {
         var ids = WheelCatalog.Items(WheelKind.Tools, ["a.png", "b.jpg"]).Select(i => i.Id);
-        Assert.Equal(["tool.compress", "tool.crop", "tool.edit", "tool.annotate", "tool.redact", "tool.recognizeText", "tool.removeBackground", "tool.frame",
+        Assert.Equal(["tool.compress", "tool.crop", "tool.edit", "tool.annotate", "tool.redact", "tool.recognizeText", "tool.frame", "tool.removeBackground",
             "tool.collage", "tool.metadata", "tool.createPDF"], ids);
     }
 
@@ -143,5 +143,37 @@ public class ResultHistoryTests : TempFolderTest
         Assert.Equal("Job 22", ResultHistory.Load(file).Live()[0].Title);
         history.Clear();
         Assert.Empty(ResultHistory.Load(file).Entries);
+    }
+}
+
+public class MixedSelectionTests : TempFolderTest
+{
+    [Fact]
+    public void MixedSelectionsGetTheCommonTools()
+    {
+        Assert.Equal(["tool.compressAll", "tool.metadata", "tool.recognizeText", "tool.archive"],
+            WheelCatalog.Items(WheelKind.Tools, ["a.jpg", "b.pdf"]).Select(i => i.Id));
+        Assert.Equal(["tool.compressAll", "tool.metadata", "tool.archive"],
+            WheelCatalog.Items(WheelKind.Tools, ["a.jpg", "b.mp4"]).Select(i => i.Id));
+        Assert.Equal(["tool.archive"], WheelCatalog.Items(WheelKind.Tools, ["a.docx", "b.csv"]).Select(i => i.Id));
+        Assert.Contains("tool.crop", WheelCatalog.Items(WheelKind.Tools, ["a.jpg", "b.png", "c.webp"]).Select(i => i.Id));
+    }
+
+    [Fact]
+    public void ArchiveIsNamedAfterTheSharedFolder()
+    {
+        var photos = Directory.CreateDirectory(PathOf("Photos")).FullName;
+        var inner = Directory.CreateDirectory(Path.Combine(photos, "Trip")).FullName;
+        File.WriteAllText(Path.Combine(photos, "a.txt"), "a");
+        File.WriteAllText(Path.Combine(inner, "a.txt"), "b");
+        Assert.Equal("Photos", Archives.BundleName([Path.Combine(photos, "a.txt"), inner]));
+        Assert.Equal("Photos", Archives.BundleName([Path.Combine(photos, "a.txt"), Path.Combine(inner, "a.txt")]));
+        var first = Archives.AddToArchive([Path.Combine(photos, "a.txt"), Path.Combine(inner, "a.txt"), inner]);
+        Assert.Equal(Path.Combine(photos, "Photos.zip"), first);
+        using (var zip = System.IO.Compression.ZipFile.OpenRead(first))
+        {
+            Assert.Equal(["Trip/a.txt", "a 2.txt", "a.txt"], zip.Entries.Select(e => e.FullName).Order(StringComparer.Ordinal));
+        }
+        Assert.Equal(Path.Combine(photos, "Photos 2.zip"), Archives.AddToArchive([Path.Combine(photos, "a.txt")]));
     }
 }

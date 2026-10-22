@@ -266,6 +266,17 @@ internal sealed class AppController : IDisposable
                 case "tool.createPDF":
                     jobs.RunOnce(L("Creating PDF"), L("PDF created"), WheelCatalog.FileCount(paths.Count), () => Converter.CreatePdf(paths));
                     break;
+                case "tool.compressAll":
+                    // A mixed selection: every file compressed its own default way, without a window.
+                    jobs.RunEach(L("Compressing"), L("Compressed"),
+                        paths.Where(p => FileFormats.Detect(p) is { } f && WheelCatalog.CanCompress(f)).ToList(),
+                        (input, token, progress) => FileFormats.Detect(input)!.Value.Category().IsMedia()
+                            ? Media.MediaTools.Compress(input, new Core.Media.MediaMath.MediaCompression(), progress, token)
+                            : Tools.Compression.CompressFile(input, new Core.Imaging.CompressionSettings(), token));
+                    break;
+                case "tool.archive":
+                    jobs.RunOnce(L("Archiving"), L("Archived"), Core.Loc.Count(paths.Count, "item"), () => Archives.AddToArchive(paths));
+                    break;
                 case "tool.recognizeText":
                     jobs.RunEach(L("Recognising text"), L("Text recognised"), paths.Where(Tools.TextRecognition.Accepts).ToList(),
                         (input, token) => Tools.TextRecognition.RecognizeFile(input, token));

@@ -47,7 +47,14 @@ internal static class ToolRegistry
     public static void Snapshot(string id, string output, IReadOnlyList<string> files)
     {
         Window window;
-        if (id.StartsWith("traymenu-recent", StringComparison.Ordinal) || id.StartsWith("traymenu-result", StringComparison.Ordinal))
+        if (id.StartsWith("wheel.", StringComparison.Ordinal))
+        {
+            // wheel.convert, wheel.tools, wheel.actions: the wheel for the files, as it opens at the pointer.
+            var kind = Enum.Parse<Core.WheelKind>(id["wheel.".Length..], ignoreCase: true);
+            Platform.Native.GetCursorPos(out var at);
+            window = new Wheel.WheelWindow(kind, Core.WheelCatalog.Items(kind, files), files.Count, at);
+        }
+        else if (id.StartsWith("traymenu-recent", StringComparison.Ordinal) || id.StartsWith("traymenu-result", StringComparison.Ordinal))
         {
             // The files given become results, as if jobs had made them.
             foreach (var file in files)
@@ -55,7 +62,14 @@ internal static class ToolRegistry
                 RecentResults.Record(string.Format(L("Converted to {0}"), "PNG"), [file]);
             }
             var menu = new TrayMenu(light: !id.EndsWith("dark", StringComparison.Ordinal)) { KeepOpen = true };
-            if (id.StartsWith("traymenu-recent", StringComparison.Ordinal))
+            if (id.StartsWith("wheel.", StringComparison.Ordinal))
+        {
+            // wheel.convert, wheel.tools, wheel.actions: the wheel for the files, as it opens at the pointer.
+            var kind = Enum.Parse<Core.WheelKind>(id["wheel.".Length..], ignoreCase: true);
+            Platform.Native.GetCursorPos(out var at);
+            window = new Wheel.WheelWindow(kind, Core.WheelCatalog.Items(kind, files), files.Count, at);
+        }
+        else if (id.StartsWith("traymenu-recent", StringComparison.Ordinal))
             {
                 TrayIcon.FillRecent(menu);
             }

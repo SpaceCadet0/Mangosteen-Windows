@@ -61,7 +61,7 @@ public static class WheelCatalog
     ];
 
     /// <summary>Tools that already work on Windows; the others are shown greyed out until their phase.</summary>
-    private static readonly HashSet<string> AvailableTools = ["tool.extract", "tool.createPDF", "tool.mergePDF", "tool.crop", "tool.compress", "tool.metadata", "tool.frame", "tool.collage", "tool.organizePDF", "tool.splitPDF", "tool.recognizeText", "tool.edit", "tool.redact", "tool.annotate"];
+    private static readonly HashSet<string> AvailableTools = ["tool.extract", "tool.createPDF", "tool.mergePDF", "tool.crop", "tool.compress", "tool.metadata", "tool.frame", "tool.collage", "tool.organizePDF", "tool.splitPDF", "tool.recognizeText", "tool.compressAll", "tool.archive", "tool.edit", "tool.redact", "tool.annotate"];
 
     /// <summary>Video and audio tools; they need the bundled FFmpeg.</summary>
     private static readonly HashSet<string> MediaTools =
@@ -76,10 +76,48 @@ public static class WheelCatalog
     private static bool IsAvailable(string id) => AvailableTools.Contains(id) || FormatCatalog.MediaAvailable && MediaTools.Contains(id)
         || id == "tool.removeBackground" && BackgroundRemovalAvailable;
 
+    /// <summary>
+    /// The kinds of items in a selection: format categories, plus folders. More than one kind makes a mixed selection.
+    /// </summary>
+    private static HashSet<string> Kinds(IReadOnlyList<string> paths) => paths
+        .Select(p => FileFormats.Detect(p) is { } format ? format.Category().ToString() : Directory.Exists(p) ? "folder" : null)
+        .OfType<string>().ToHashSet();
+
+    /// <summary>
+    /// A mixed selection (say photos and a video) gets only what applies to all of it, instead of every tool for
+    /// every kind: compress each file its own way, metadata of the photos, text from photos and PDFs, one archive.
+    /// </summary>
+    private static List<WheelItem> MixedItems(IReadOnlyList<string> paths, List<FileFormat> formats)
+    {
+        var items = new List<WheelItem>();
+        void Add(bool condition, string id, string title, WheelIcon icon)
+        {
+            if (condition)
+            {
+                items.Add(new WheelItem(id, Loc.L(title), icon, IsAvailable(id)));
+            }
+        }
+        bool Raster(FileFormat f) => f.Category() == FormatCategory.Image && f != FileFormat.Svg;
+        Add(formats.Any(f => CanCompress(f)), "tool.compressAll", "Compress", WheelIcon.Compress);
+        Add(formats.Any(Raster), "tool.metadata", "Metadata", WheelIcon.Info);
+        Add(formats.Count == paths.Count && formats.All(f => Raster(f) || f == FileFormat.Pdf), "tool.recognizeText", "Text", WheelIcon.Text);
+        Add(true, "tool.archive", "Add to archive", WheelIcon.Archive);
+        return items;
+    }
+
+    /// <summary>Formats "Compress" handles without a window: photos and PDF, and video and audio when FFmpeg is there.</summary>
+    public static bool CanCompress(FileFormat format) =>
+        format.Category() == FormatCategory.Image && format != FileFormat.Svg || format == FileFormat.Pdf
+        || format.Category().IsMedia() && FormatCatalog.MediaAvailable;
+
     /// <summary>Same rules and order as the macOS Tools wheel.</summary>
     private static List<WheelItem> ToolItems(IReadOnlyList<string> paths)
     {
         var formats = paths.Select(FileFormats.Detect).OfType<FileFormat>().ToList();
+        if (Kinds(paths).Count > 1)
+        {
+            return MixedItems(paths, formats);
+        }
         bool Any(Func<FileFormat, bool> predicate) => formats.Any(predicate);
         int Count(Func<FileFormat, bool> predicate) => formats.Count(predicate);
         var media = Any(f => f.Category().IsMedia());
@@ -118,8 +156,8 @@ public static class WheelCatalog
         Add(pdf, "tool.organizePDF", "Page order", WheelIcon.Pages);
         var rasterImages = Any(f => f.Category() == FormatCategory.Image && f != FileFormat.Svg);
         Add(rasterImages || pdf, "tool.recognizeText", "Text", WheelIcon.Text);
-        Add(rasterImages, "tool.removeBackground", "Remove background", WheelIcon.RemoveBackground);
         Add(images, "tool.frame", "Background", WheelIcon.Background);
+        Add(rasterImages, "tool.removeBackground", "Remove background", WheelIcon.RemoveBackground);
         Add(Count(f => f.Category() == FormatCategory.Image) >= 2, "tool.collage", "Collage", WheelIcon.Collage);
         Add(rasterImages, "tool.metadata", "Metadata", WheelIcon.Info);
         Add(rasterImages, "tool.createPDF", "PDF from images", WheelIcon.CreatePdf);

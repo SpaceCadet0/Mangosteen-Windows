@@ -9,12 +9,26 @@ public static class Archives
 {
     static Archives() => Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
-    /// <summary>Archives files and folders that share a parent; each keeps its name as a top-level entry.</summary>
+    /// <summary>
+    /// Archives files and folders; each keeps its name as a top-level entry ("photo 2.jpg" when two items from
+    /// different folders share a name).
+    /// </summary>
     public static void Pack(IReadOnlyList<string> items, FileFormat target, string output)
     {
         if (items.Count == 0)
         {
             throw new ArgumentException("Nothing to archive.", nameof(items));
+        }
+        var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        string EntryName(string item)
+        {
+            var name = Path.GetFileName(Path.TrimEndingDirectorySeparator(item));
+            var (stem, extension) = Directory.Exists(item) ? (name, "") : (Path.GetFileNameWithoutExtension(name), Path.GetExtension(name));
+            for (var index = 2; !used.Add(name); index++)
+            {
+                name = $"{stem} {index}{extension}";
+            }
+            return name;
         }
         switch (target)
         {
@@ -23,7 +37,7 @@ public static class Archives
                 {
                     foreach (var item in items)
                     {
-                        AddToZip(zip, item, Path.GetFileName(Path.TrimEndingDirectorySeparator(item)));
+                        AddToZip(zip, item, EntryName(item));
                     }
                 }
                 break;
@@ -35,13 +49,38 @@ public static class Archives
                 {
                     foreach (var item in items)
                     {
-                        AddToTar(tar, item, Path.GetFileName(Path.TrimEndingDirectorySeparator(item)));
+                        AddToTar(tar, item, EntryName(item));
                     }
                 }
                 break;
             default:
                 throw new NotSupportedException($"{target.DisplayName()} is not an archive format.");
         }
+    }
+
+    /// <summary>
+    /// "Add to archive": the files and folders go into one ZIP next to the first of them, named after the folder they
+    /// share ("Photos.zip", or "Photos 2.zip" when that is taken).
+    /// </summary>
+    public static string AddToArchive(IReadOnlyList<string> paths)
+    {
+        var first = Path.GetFullPath(Path.TrimEndingDirectorySeparator(paths[0]));
+        return OutputNaming.WriteAtomically(Path.GetDirectoryName(first) ?? first, BundleName(paths), "zip",
+            output => Pack(paths, FileFormat.Zip, output));
+    }
+
+    /// <summary>The name of the deepest folder all the items are in, or "Archive" when they only share a drive.</summary>
+    public static string BundleName(IReadOnlyList<string> paths)
+    {
+        var parents = paths.Select(p => Path.GetDirectoryName(Path.GetFullPath(Path.TrimEndingDirectorySeparator(p))) ?? "").ToList();
+        var common = parents[0];
+        while (common.Length > 0 && !parents.All(p => p.Equals(common, StringComparison.OrdinalIgnoreCase)
+                   || p.StartsWith(Path.TrimEndingDirectorySeparator(common) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)))
+        {
+            common = Path.GetDirectoryName(common) ?? "";
+        }
+        var name = Path.GetFileName(Path.TrimEndingDirectorySeparator(common));
+        return string.IsNullOrEmpty(name) ? "Archive" : name;
     }
 
     /// <summary>Unpacks an archive and packs its contents again in another format.</summary>

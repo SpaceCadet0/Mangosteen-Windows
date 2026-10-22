@@ -261,4 +261,7 @@ T = {
 "no background": ("без фона", "sin fondo"),
 "Removing the background": ("Удаление фона", "Quitando el fondo"),
 "Background removed": ("Фон убран", "Fondo quitado"),
+"Add to archive": ("В архив", "Archivar"),
+"Archiving": ("Архивирование", "Archivando"),
+"Archived": ("Добавлено в архив", "Archivado"),
 }
