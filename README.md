@@ -24,12 +24,13 @@
 </p>
 
 ```
-0.0 % CPU at rest · ≈13 MB private memory · 163 MB download, one exe · no admin rights, nothing asked at launch
+0.0 % CPU at rest · ≈13 MB private memory · 249 MB download, one exe · no admin rights, nothing asked at launch
 ```
 
 <sub>Measured by CI on a GitHub windows-latest runner (Windows Server 2025, 4 cores): the published exe idle for 60 s
-after start. Memory is the private working set that Task Manager shows (73 MB working set in all). The exe is 298 MB
-unpacked, as it carries .NET and FFmpeg; FFmpeg runs as a separate process only while a video or audio job does.</sub>
+after start. Memory is the private working set that Task Manager shows (74 MB working set in all). The exe is 402 MB
+unpacked, as it carries .NET, FFmpeg and the background-removal model; FFmpeg runs as a separate process only while a
+video or audio job does, and the model is loaded only while you remove a background.</sub>
 
 ---
 
@@ -54,8 +55,9 @@ save dialogs, no uploads, no limits. The two apps share no code; each has its ow
 | `Alt` | **Actions** | Float shelf, copy, move, path, terminal |
 
 Picked the wrong wheel? While it is open, press Shift, Ctrl or Alt to switch. As in Explorer, right-clicking a selected
-file uses the whole selection. Right-clicks without these keys open the usual context menu. For other apps, the tray
-menu has **Choose files…**.
+file uses the whole selection. Right-clicks without these keys open the usual context menu, which has a
+**Mangosteen** submenu too (on Windows 11 under **Show more options**). For other apps, the tray menu has
+**Choose files…**.
 
 ## Highlights
 
@@ -98,11 +100,15 @@ Every tool opens a small window with a live preview. Close it and nothing is cha
 - **Background** — a photo on a colour, gradient, image or a blurred copy of itself, with margin, corners and shadow.
 - **Editor** — light, colour, detail and effects; hold the preview to compare, double-click a slider to reset it.
 - **Compress** — presets, quality, target file size, resize and format; works for PDF too.
-- **Crop** — free frame, aspect ratios or an exact size.
+- **Crop** — free frame, aspect ratios or an exact size; turn and flip; cut into a grid of parts along lines you drag.
+- **Remove background** — finds the subject with a model that runs on your PC; transparent PNG or a colour, cropped to
+  the subject if you like.
+- **Text** — recognises the text of photos and scanned PDFs on the device and saves it as TXT.
 - **Collage** — grid, row, column or a featured photo.
 - **Hide** — finds faces and text on the device and covers them with a fill, a blur or pixels.
 - **Metadata** — view everything, edit common fields, remove the location or all metadata (JPEG is not re-encoded).
-- **Pages** — reorder, rotate, duplicate and delete PDF pages; **Merge** PDFs; **PDF from images**.
+- **Page order** — reorder, rotate, duplicate and delete PDF pages; **Split** a PDF into parts; **Merge** PDFs;
+  **PDF from images**.
 
 <p align="center">
   <img src="docs/images/en/edit.png" width="47.9%" alt="Photo editor">
@@ -134,15 +140,16 @@ Every tool opens a small window with a live preview. Close it and nothing is cha
 ## Download
 
 Download `Mangosteen-win-x64.zip` from the [latest release](https://github.com/SpaceCadet0/Mangosteen-Windows/releases/latest)
-(163 MB), unzip it anywhere and run `Mangosteen.exe`. The exe is 298 MB on disk because it carries the .NET runtime
-and FFmpeg, which is unpacked into `%LOCALAPPDATA%\Mangosteen\ffmpeg` on first use. In the background it uses no CPU
-and about 13 MB of private memory (73 MB working set). It runs without administrator rights. Windows 10 and 11, x64.
+(249 MB), unzip it anywhere and run `Mangosteen.exe`. The exe is 402 MB on disk because it carries the .NET runtime,
+FFmpeg (unpacked into `%LOCALAPPDATA%\Mangosteen\ffmpeg` on first use) and the background-removal model. In the
+background it uses no CPU and about 13 MB of private memory (74 MB working set). It runs without administrator rights. Windows 10 and 11, x64.
 
 The build is not signed, so SmartScreen may warn you: click **More info**, then **Run anyway**. Microsoft Defender may
 look at it closely the first time, because an unsigned app that unpacks programs and watches the mouse is unusual.
 
-Mangosteen lives in the notification area by the clock. The tray menu has **Settings…** (language, start with Windows),
-**Welcome…**, the **Float shelf**, the log and **Quit**. Builds of every commit are available as artifacts on the
+Mangosteen lives in the notification area by the clock. The tray menu has **Recent Results** (show, open or move a
+result to the Recycle Bin), **Settings…** (language, start with Windows, the Explorer menu), **Welcome…**, the
+**Float shelf**, the log and **Quit**. Builds of every commit are available as artifacts on the
 [Actions tab](https://github.com/SpaceCadet0/Mangosteen-Windows/actions/workflows/build.yml).
 
 ## Troubleshooting
