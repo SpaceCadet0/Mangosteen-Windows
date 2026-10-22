@@ -117,17 +117,10 @@ internal sealed class WheelWindow : Window
     private Canvas BuildLayer(WheelKind kind, IReadOnlyList<WheelItem> items, int fileCount)
     {
         var layer = new Canvas { Width = WindowSize, Height = WindowSize };
-        // The smallest wheel on which every label fits its segment; the largest one when even that is not enough.
-        var fits = new List<LabelFit?>();
-        for (var outer = MinOuterRadius; ; outer += 10)
-        {
-            fits = items.Select((item, i) => FitLabel(item.Title, -90 + i * 360.0 / items.Count, 360.0 / items.Count, outer)).ToList();
-            _outerRadius = outer;
-            if (fits.All(f => f is not null) || outer >= MaxOuterRadius)
-            {
-                break;
-            }
-        }
+        // One layout for the whole wheel: the same icon size, title size and distance from the centre in every segment,
+        // so the icons sit on one circle; only the line break of a title differs.
+        var (outer, fits) = FitWheel(items);
+        _outerRadius = outer;
         if (fits.Any(f => f is null))
         {
             Log.Write($"wheel: titles that do not fit their segment: {string.Join(", ", items.Where((_, i) => fits[i] is null).Select(i => i.Title))}");
@@ -255,46 +248,75 @@ internal sealed class WheelWindow : Window
     }
 
     /// <summary>
-    /// The largest icon and title, on one or two lines, whose boxes lie inside the segment (between the rings, clear of
-    /// the gaps) at some distance from the centre; null when nothing fits down to 8 pt with a 14 pt icon.
+    /// The smallest wheel and the largest title size at which every segment's icon and title fit inside it, with one
+    /// distance from the centre for all of them (as close to the middle of the ring as possible). Icons are 18 pt, or
+    /// 14 pt on wheels of ten segments and more; titles go from 11.5 down to 8 pt, on one or two lines. When even the
+    /// largest wheel at 8 pt is not enough, the titles that do not fit come back as null.
     /// </summary>
-    private LabelFit? FitLabel(string title, double angle, double span, double outer)
+    private (double Outer, LabelFit?[] Fits) FitWheel(IReadOnlyList<WheelItem> items)
     {
-        var words = title.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var candidates = new List<string[]> { new[] { title } };
-        for (var split = 1; split < words.Length; split++)
+        var span = 360.0 / Math.Max(items.Count, 1);
+        var glyph = span <= 36 ? 14.0 : 18.0;
+        LabelFit?[] Try(double outer, double size, int reserved, double radius)
         {
-            candidates.Add([string.Join(' ', words[..split]), string.Join(' ', words[split..])]);
+            var lineHeight = size * LabelFace.FontFamily.LineSpacing;
+            var height = glyph * 1.3 + GlyphGap + reserved * lineHeight;
+            return items.Select((item, i) => FitAt(item.Title, -90 + i * span, span, outer, glyph, size, radius, height, reserved)).ToArray();
         }
-        // Every segment keeps its icon: dense wheels get a smaller one first.
-        foreach (var glyph in span <= 36 ? new[] { 14.0 } : [20.0, 18, 16, 14])
+        for (var outer = MinOuterRadius; outer <= MaxOuterRadius; outer += 10)
         {
-            for (var size = 12.5; size >= 8; size -= 0.5)
+            var middle = (InnerRadius + outer) / 2;
+            for (var size = 11.5; size >= 8; size -= 0.5)
             {
-                var lineHeight = size * LabelFace.FontFamily.LineSpacing;
-                // One line first, then the most even split.
-                foreach (var lines in candidates.OrderBy(c => c.Length).ThenBy(c => c.Max(l => TextWidth(l, size))))
+                foreach (var reserved in new[] { 1, 2 })
                 {
-                    var width = lines.Max(l => TextWidth(l, size));
-                    var textHeight = lines.Length * lineHeight;
-                    var glyphHeight = glyph * 1.3;
-                    var height = glyphHeight + (glyph > 0 ? GlyphGap : 0) + textHeight;
-                    for (var radius = InnerRadius + 16; radius <= outer - 10; radius += 2)
+                    for (var step = 0; step <= 30; step += 2)
                     {
-                        var radians = angle * Math.PI / 180;
-                        var (x, y) = (radius * Math.Cos(radians), radius * Math.Sin(radians));
-                        var top = y - height / 2;
-                        var boxes = new List<Rect> { new(x - width / 2, top + height - textHeight, width, textHeight) };
-                        if (glyph > 0)
+                        foreach (var radius in step == 0 ? [middle] : new[] { middle + step, middle - step })
                         {
-                            boxes.Add(new Rect(x - glyph / 2, top, glyph, glyphHeight));
-                        }
-                        if (boxes.All(box => InsideSegment(box, angle, span, outer)))
-                        {
-                            return new LabelFit(glyph, size, radius, lines, Math.Max(width, glyph), height);
+                            var fits = Try(outer, size, reserved, radius);
+                            if (fits.All(f => f is not null))
+                            {
+                                return (outer, fits);
+                            }
                         }
                     }
                 }
+            }
+        }
+        return (MaxOuterRadius, Try(MaxOuterRadius, 8, 2, (InnerRadius + MaxOuterRadius) / 2));
+    }
+
+    /// <summary>
+    /// The title on one line, or split in two (the most even split first), with the icon above it, centred at
+    /// <paramref name="radius"/> in a box of <paramref name="height"/> (room for <paramref name="reserved"/> lines, so
+    /// the icon is in the same place whether the title takes one line or two); null when it leaves the segment.
+    /// </summary>
+    private static LabelFit? FitAt(string title, double angle, double span, double outer, double glyph, double size, double radius,
+        double height, int reserved)
+    {
+        var words = title.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var candidates = new List<string[]> { new[] { title } };
+        for (var split = 1; split < words.Length && reserved > 1; split++)
+        {
+            candidates.Add([string.Join(' ', words[..split]), string.Join(' ', words[split..])]);
+        }
+        var lineHeight = size * LabelFace.FontFamily.LineSpacing;
+        var radians = angle * Math.PI / 180;
+        var (x, y) = (radius * Math.Cos(radians), radius * Math.Sin(radians));
+        var top = y - height / 2;
+        var glyphBox = new Rect(x - glyph / 2, top, glyph, glyph * 1.3);
+        if (!InsideSegment(glyphBox, angle, span, outer))
+        {
+            return null;
+        }
+        foreach (var lines in candidates.OrderBy(c => c.Length).ThenBy(c => c.Max(l => TextWidth(l, size))))
+        {
+            var width = lines.Max(l => TextWidth(l, size));
+            var textBox = new Rect(x - width / 2, glyphBox.Bottom + GlyphGap, width, lines.Length * lineHeight);
+            if (InsideSegment(textBox, angle, span, outer))
+            {
+                return new LabelFit(glyph, size, radius, lines, Math.Max(width, glyph), height);
             }
         }
         return null;
@@ -333,7 +355,7 @@ internal sealed class WheelWindow : Window
         var angle = -90 + index * span;
         // Nothing fitted even on the largest wheel: the smallest icon and title, in the middle of the ring.
         fit ??= new LabelFit(14, 8, (InnerRadius + _outerRadius) / 2, [item.Title], Math.Max(TextWidth(item.Title, 8), 14),
-            14 * 1.3 + GlyphGap + 8 * LabelFace.FontFamily.LineSpacing);
+            14 * 1.3 + GlyphGap + 2 * 8 * LabelFace.FontFamily.LineSpacing);
         var path = new Path
         {
             Data = SegmentGeometry(center, angle, span, count, _outerRadius),
@@ -395,7 +417,7 @@ internal sealed class WheelWindow : Window
         };
 
         canvas.Children.Add(path);
-        PlaceCentered(canvas, stack, labelCenter, fit.Width + 2, fit.Height + 2);
+        PlaceCentered(canvas, stack, labelCenter, fit.Width + 2, fit.Height, top: true);
     }
 
     /// <summary>
@@ -446,10 +468,10 @@ internal sealed class WheelWindow : Window
         return ellipse;
     }
 
-    private static void PlaceCentered(Canvas canvas, FrameworkElement element, Point at, double width, double height)
+    private static void PlaceCentered(Canvas canvas, FrameworkElement element, Point at, double width, double height, bool top = false)
     {
         var host = new Grid { Width = width, Height = height, IsHitTestVisible = false };
-        element.VerticalAlignment = VerticalAlignment.Center;
+        element.VerticalAlignment = top ? VerticalAlignment.Top : VerticalAlignment.Center;
         element.HorizontalAlignment = HorizontalAlignment.Center;
         host.Children.Add(element);
         Canvas.SetLeft(host, at.X - width / 2);
