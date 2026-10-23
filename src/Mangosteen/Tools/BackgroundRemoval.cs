@@ -63,7 +63,11 @@ internal static class BackgroundRemoval
         using var stream = Models.Model.Open() ?? throw new InvalidOperationException("This build has no background-removal model.");
         using var memory = new MemoryStream();
         stream.CopyTo(memory);
-        _session = new InferenceSession(memory.ToArray(), new SessionOptions { GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL });
+        var options = new SessionOptions { GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL };
+        // ONNX Runtime's worker threads spin while they wait for work by default, which keeps a core busy; they sleep.
+        options.AddSessionConfigEntry("session.intra_op.allow_spinning", "0");
+        options.AddSessionConfigEntry("session.inter_op.allow_spinning", "0");
+        _session = new InferenceSession(memory.ToArray(), options);
         _release ??= new Timer(_ => Release(), null, Timeout.Infinite, Timeout.Infinite);
         _release.Change(TimeSpan.FromMinutes(1), Timeout.InfiniteTimeSpan);
         Log.Write("background removal: model loaded");

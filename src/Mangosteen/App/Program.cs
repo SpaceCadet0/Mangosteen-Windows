@@ -58,13 +58,28 @@ internal static class Program
         };
         AppDomain.CurrentDomain.UnhandledException += (_, e) => Log.Write($"FATAL {e.ExceptionObject}");
 
-        using var controller = new AppController(app.Dispatcher, settings);
+        var controller = new AppController(app.Dispatcher, settings);
         app.Dispatcher.BeginInvoke(controller.Start, DispatcherPriority.Normal);
         if (explorer is { } first)
         {
             app.Dispatcher.BeginInvoke(() => controller.OpenFromExplorer(first.Kind, first.Path), DispatcherPriority.Background);
         }
-        return app.Run();
+        var code = app.Run();
+
+        // Quit, or a restart for a new language. The normal process exit can hang after ONNX Runtime or Windows' OCR
+        // have run (a copy stayed behind with a core at 100 %), so once the tray icon and the hooks are gone and the
+        // single-instance lock is free for the next copy, the process ends at once.
+        controller.Dispose();
+        try
+        {
+            instance.ReleaseMutex();
+        }
+        catch (ApplicationException)
+        {
+        }
+        Log.Write("exit");
+        Native.TerminateProcess(Native.GetCurrentProcess(), (uint)code);
+        return code;
     }
 
     /// <summary>Renders one tool window to a PNG and exits; no tray icon, no hooks.</summary>
