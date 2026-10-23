@@ -177,5 +177,5 @@ CI). Без него приложение работает, просто не п
 
 ## Лицензия
 
-[MIT](LICENSE). Copyright (c) 2026 Igor Rusakov (SpaceCadet). Exe содержит [FFmpeg](https://ffmpeg.org) (GPL v3) как
+[MIT](LICENSE). Copyright (c) 2026 Igor Rusakov (SpaceCadet). [Политика конфиденциальности](PRIVACY.md): ничего не собирается и не отправляется. Exe содержит [FFmpeg](https://ffmpeg.org) (GPL v3) как
 отдельную программу. Открытые компоненты и их лицензии перечислены в [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

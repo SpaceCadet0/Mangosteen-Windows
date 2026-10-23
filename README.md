@@ -177,5 +177,5 @@ and the tool-window snapshots run in CI. Interface strings go through `L("…")`
 
 ## License
 
-[MIT](LICENSE). Copyright (c) 2026 Igor Rusakov (SpaceCadet). The exe bundles [FFmpeg](https://ffmpeg.org) (GPL v3) as a
+[MIT](LICENSE). Copyright (c) 2026 Igor Rusakov (SpaceCadet). [Privacy policy](PRIVACY.md): nothing is collected or sent. The exe bundles [FFmpeg](https://ffmpeg.org) (GPL v3) as a
 separate program. Open-source components and their licenses are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
