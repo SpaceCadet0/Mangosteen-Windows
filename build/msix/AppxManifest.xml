@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Microsoft Store package of Mangosteen. build/pack-msix.ps1 fills in the identity from build/msix/identity.txt
+  (the values Partner Center shows under Product identity) and the version, and packs it with Mangosteen.exe.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
+  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
+  xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap5 desktop4 desktop5 com rescap">
+
+  <Identity Name="{Name}" Publisher="{Publisher}" Version="{Version}" ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>Mangosteen</DisplayName>
+    <PublisherDisplayName>{PublisherDisplayName}</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+    <Description>Zero-click file converter and toolbox: hold Shift, Ctrl or Alt and right-click a file.</Description>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+    <Resource Language="ru-ru" />
+    <Resource Language="es-es" />
+  </Resources>
+
+  <Applications>
+    <Application Id="Mangosteen" Executable="Mangosteen.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="Mangosteen" Description="Zero-click file converter and toolbox"
+        BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+      </uap:VisualElements>
+      <Extensions>
+        <!-- "Start Mangosteen when I sign in to Windows"; off until the person turns it on. -->
+        <uap5:Extension Category="windows.startupTask">
+          <uap5:StartupTask TaskId="MangosteenStartup" Enabled="false" DisplayName="Mangosteen" />
+        </uap5:Extension>
+        <!-- The Explorer menu (Mangosteen ▸ Convert… / Tools… / Actions…), served by the running Mangosteen. -->
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:ExeServer Executable="Mangosteen.exe" Arguments="--com-server" DisplayName="Mangosteen Explorer menu">
+              <com:Class Id="6B9C2A3E-58D1-4F7A-9E0B-4D2C8A71F3C5" DisplayName="Mangosteen" />
+            </com:ExeServer>
+          </com:ComServer>
+        </com:Extension>
+        <desktop4:Extension Category="windows.fileExplorerContextMenus">
+          <desktop4:FileExplorerContextMenus>
+            <desktop5:ItemType Type="*">
+              <desktop5:Verb Id="Mangosteen" Clsid="6B9C2A3E-58D1-4F7A-9E0B-4D2C8A71F3C5" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type="Directory">
+              <desktop5:Verb Id="Mangosteen" Clsid="6B9C2A3E-58D1-4F7A-9E0B-4D2C8A71F3C5" />
+            </desktop5:ItemType>
+          </desktop4:FileExplorerContextMenus>
+        </desktop4:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

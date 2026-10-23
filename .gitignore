@@ -27,3 +27,9 @@ src/Mangosteen/Media/ffmpeg.sha256
 isnet-cache/
 src/Mangosteen/Models/isnet.onnx
 src/Mangosteen/Models/isnet.sha256
+
+# MSIX packing (build/pack-msix.ps1)
+/msix-layout/
+/msix/
+*.pfx
+/test.msix

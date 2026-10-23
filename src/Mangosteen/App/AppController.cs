@@ -34,7 +34,7 @@ internal sealed class AppController : IDisposable
     {
         FormatCatalog.MediaAvailable = Media.FFmpeg.IsBundled;
         WheelCatalog.BackgroundRemovalAvailable = Tools.BackgroundRemoval.IsBundled;
-        Log.Write($"ffmpeg bundled: {Media.FFmpeg.IsBundled}, background model bundled: {Tools.BackgroundRemoval.IsBundled}");
+        Log.Write($"ffmpeg bundled: {Media.FFmpeg.IsBundled}, background model bundled: {Tools.BackgroundRemoval.IsBundled}, packaged: {Package.IsPackaged}");
         _tray = new TrayIcon(ChooseFiles, _shelf.Toggle, () => new SettingsWindow(_settings).Present(), () => new WelcomeWindow().Present(), Quit);
         _jobs = new Jobs(_dispatcher, _tray);
         // The hook thread only posts; everything below runs on the UI thread.
@@ -43,11 +43,23 @@ internal sealed class AppController : IDisposable
         _hooks.DismissWheel += reason => _dispatcher.BeginInvoke(() => CloseWheel(reason));
         _hooks.SwitchWheel += kind => _dispatcher.BeginInvoke(() => SwitchWheel(kind));
         _hooks.Start();
-        if (_settings.ExplorerMenu)
+        if (Package.IsPackaged)
         {
-            ExplorerMenu.Register();
+            // The Store build: Explorer's menu is declared in the package and served by this process.
+            ExplorerCommand.Register((kind, paths) =>
+            {
+                GetCursorPos(out var cursor);
+                ShowWheel(kind, paths, cursor);
+            }, () => _settings.ExplorerMenu);
         }
-        ExplorerMenu.Listen((kind, path) => _dispatcher.BeginInvoke(() => OpenFromExplorer(kind, path)));
+        else
+        {
+            if (_settings.ExplorerMenu)
+            {
+                ExplorerMenu.Register();
+            }
+            ExplorerMenu.Listen((kind, path) => _dispatcher.BeginInvoke(() => OpenFromExplorer(kind, path)));
+        }
         _dispatcher.BeginInvoke(ShellHitTest.WarmUp, DispatcherPriority.ApplicationIdle);
         if (!_settings.WelcomeShown)
         {

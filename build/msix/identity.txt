@@ -1,0 +1,5 @@
+# The package identity from Partner Center (Apps and games › Mangosteen › Product identity). Until the name is
+# reserved these are placeholders: the package builds and installs for testing, but the Store would refuse it.
+name=SpaceCadet.Mangosteen
+publisher=CN=SpaceCadet
+publisherDisplayName=SpaceCadet

@@ -31,7 +31,10 @@ internal sealed class SettingsWindow : ToolWindow
         stack.Children.Add(Row(L("Language"), _language));
         stack.Children.Add(_autostart);
         stack.Children.Add(_explorer);
-        stack.Children.Add(Note(L("On Windows 11 it is under “Show more options”.")));
+        if (!Platform.Package.IsPackaged)
+        {
+            stack.Children.Add(Note(L("On Windows 11 it is under “Show more options”.")));
+        }
         stack.Children.Add(new Border { Height = 10 });
         stack.Children.Add(Note(L("The keys: hold Shift for Convert, Ctrl for Tools, Alt for Actions, and right-click a file.")));
         Body = stack;
@@ -45,13 +48,17 @@ internal sealed class SettingsWindow : ToolWindow
         _settings.Language = language;
         _settings.ExplorerMenu = _explorer.IsChecked == true;
         _settings.Save();
-        if (_settings.ExplorerMenu)
+        // The Store build's menu is part of the package; there the setting only hides it.
+        if (!Platform.Package.IsPackaged)
         {
-            ExplorerMenu.Register();
-        }
-        else
-        {
-            ExplorerMenu.Unregister();
+            if (_settings.ExplorerMenu)
+            {
+                ExplorerMenu.Register();
+            }
+            else
+            {
+                ExplorerMenu.Unregister();
+            }
         }
         try
         {

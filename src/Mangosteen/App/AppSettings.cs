@@ -49,16 +49,41 @@ internal sealed class AppSettings
 
     public string EffectiveLanguage => Language == "system" ? Core.Loc.SystemLanguage() : Language;
 
-    /// <summary>Starts Mangosteen when you sign in to Windows (the Run key of the current user).</summary>
+    /// <summary>The startup task declared in the Store build's package manifest (build/msix/AppxManifest.xml).</summary>
+    private const string StartupTaskId = "MangosteenStartup";
+
+    /// <summary>
+    /// Starts Mangosteen when you sign in to Windows: the Run key of the current user, or in the Store build the
+    /// package's startup task (which Windows also shows in Settings › Apps › Startup).
+    /// </summary>
     public static bool StartsWithWindows
     {
         get
         {
+            if (Platform.Package.IsPackaged)
+            {
+                var task = Windows.ApplicationModel.StartupTask.GetAsync(StartupTaskId).AsTask().GetAwaiter().GetResult();
+                return task.State is Windows.ApplicationModel.StartupTaskState.Enabled or Windows.ApplicationModel.StartupTaskState.EnabledByPolicy;
+            }
             using var key = Registry.CurrentUser.OpenSubKey(RunKey);
             return key?.GetValue("Mangosteen") is string;
         }
         set
         {
+            if (Platform.Package.IsPackaged)
+            {
+                var task = Windows.ApplicationModel.StartupTask.GetAsync(StartupTaskId).AsTask().GetAwaiter().GetResult();
+                if (value)
+                {
+                    var state = task.RequestEnableAsync().AsTask().GetAwaiter().GetResult();
+                    Log.Write($"startup task: {state}");
+                }
+                else
+                {
+                    task.Disable();
+                }
+                return;
+            }
             using var key = Registry.CurrentUser.CreateSubKey(RunKey);
             if (value && Environment.ProcessPath is { } path)
             {

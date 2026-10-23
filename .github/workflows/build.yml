@@ -67,6 +67,49 @@ jobs:
           $size = (Get-Item publish/Mangosteen.exe).Length / 1MB
           Write-Host ("Mangosteen.exe: {0:N1} MB" -f $size)
 
+      - name: Pack the Microsoft Store package (MSIX)
+        shell: pwsh
+        run: ./build/pack-msix.ps1
+
+      - name: Install the MSIX for a test and check its Explorer menu server
+        shell: pwsh
+        run: |
+          # The Store signs the real package; here a throw-away certificate with the same publisher lets Windows install it.
+          $identity = @{}
+          Get-Content build/msix/identity.txt | Where-Object { $_ -match '^(\w+)=(.+)$' } | ForEach-Object { $identity[$Matches[1]] = $Matches[2].Trim() }
+          $cert = New-SelfSignedCertificate -Type Custom -Subject $identity.publisher -KeyUsage DigitalSignature -FriendlyName 'Mangosteen test' `
+            -CertStoreLocation Cert:\CurrentUser\My -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3', '2.5.29.19={text}')
+          $password = ConvertTo-SecureString -String 'test' -Force -AsPlainText
+          Export-PfxCertificate -Cert $cert -FilePath test.pfx -Password $password | Out-Null
+          Copy-Item msix/Mangosteen.msix test.msix
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.*\x64\signtool.exe" | Sort-Object FullName | Select-Object -Last 1
+          & $signtool.FullName sign /fd SHA256 /f test.pfx /p test test.msix
+          if ($LASTEXITCODE -ne 0) { throw "signtool failed" }
+          Import-PfxCertificate -FilePath test.pfx -CertStoreLocation Cert:\LocalMachine\TrustedPeople -Password $password | Out-Null
+          Add-AppxPackage test.msix
+          $package = Get-AppxPackage -Name $identity.name
+          Write-Host "installed $($package.PackageFullName)"
+          Start-Process "shell:AppsFolder\$($package.PackageFamilyName)!Mangosteen"
+          Start-Sleep -Seconds 20
+          $log = Join-Path $env:LOCALAPPDATA "Packages\$($package.PackageFamilyName)\LocalCache\Local\Mangosteen\mangosteen.log"
+          if (-not (Test-Path $log)) { $log = Join-Path $env:LOCALAPPDATA 'Mangosteen\mangosteen.log' }
+          $text = Get-Content $log -Raw
+          Get-Content $log -Tail 8
+          if ($text -notmatch 'packaged: True') { throw 'The packaged app did not start as packaged' }
+          if ($text -notmatch 'explorer command registered') { throw 'The Explorer menu server was not registered' }
+          # Explorer creates the menu through COM; so does this, from outside the package.
+          $menu = [Activator]::CreateInstance([Type]::GetTypeFromCLSID([Guid]'6B9C2A3E-58D1-4F7A-9E0B-4D2C8A71F3C5'))
+          if ($null -eq $menu) { throw 'The Explorer menu object could not be created' }
+          Write-Host 'explorer menu object created through COM'
+          Get-Process Mangosteen -ErrorAction SilentlyContinue | Stop-Process -Force
+          Remove-AppxPackage $package.PackageFullName
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Mangosteen-msix
+          path: msix/Mangosteen.msix
+          if-no-files-found: error
+
       - name: Media self-test of the published exe
         shell: pwsh
         run: |
