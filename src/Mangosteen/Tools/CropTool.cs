@@ -151,6 +151,9 @@ internal sealed class CropTool : ToolWindow
 
     public override bool IsSettled => _loaded;
 
+    /// <summary>Snapshots: show a 2 × 2 grid of parts (otherwise the screenshot demo shows a square frame).</summary>
+    public static bool SnapshotSplit { get; set; }
+
     private static bool IsVideo(IReadOnlyList<string> files) =>
         ToolOutput.Images(files).Count == 0 && files.Any(f => Core.FileFormats.Detect(f) is { } format && Core.FileFormats.Category(format) == Core.FormatCategory.Video);
 
@@ -175,13 +178,18 @@ internal sealed class CropTool : ToolWindow
                 return;
             }
             (_preview, _sourceWidth, _sourceHeight) = task.Result;
-            if (MediaToolWindow.SnapshotDemo && _video is null)
+            if (SnapshotSplit && _video is null)
             {
                 // Snapshot check of the grid: two by two.
                 (_columnCuts, _rowCuts) = (CropMath.EvenCuts(2), CropMath.EvenCuts(2));
             }
             _loaded = true;
             ActionEnabled = true;
+            if (MediaToolWindow.SnapshotDemo && !SnapshotSplit && _video is null)
+            {
+                // Screenshots: a square frame, as a person would pick for a profile picture.
+                _aspect.SelectedIndex = CropMath.Aspects.ToList().FindIndex(a => a.Ratio == 1);
+            }
             ShowTransformed();
         }, TaskScheduler.FromCurrentSynchronizationContext());
     }

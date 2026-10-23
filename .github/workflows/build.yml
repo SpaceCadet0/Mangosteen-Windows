@@ -184,7 +184,7 @@ jobs:
             @{ id = 'tool.organizePDF'; files = @('document.pdf') },
             @{ id = 'tool.splitPDF'; files = @('document.pdf') },
             @{ id = 'tool.splitPDF'; files = @('document.pdf'); language = 'ru'; name = 'ru.tool.splitPDF' },
-            @{ id = 'tool.crop'; files = @('photo.jpg'); demo = $true; name = 'tool.crop.split' },
+            @{ id = 'tool.crop'; files = @('photo.jpg'); demo = 'split'; name = 'tool.crop.split' },
             @{ id = 'tool.edit'; files = @('photo.jpg') },
             @{ id = 'tool.redact'; files = @('photo.jpg', 'portrait.jpg') },
             @{ id = 'tool.annotate'; files = @('photo.jpg') },
@@ -228,7 +228,7 @@ jobs:
             $name = if ($tool.name) { $tool.name } else { $tool.id }
             $output = Join-Path (Resolve-Path snapshots) ($name + '.png')
             $env:MANGOSTEEN_LANGUAGE = if ($tool.language) { $tool.language } else { 'en' }
-            $env:MANGOSTEEN_SNAPSHOT_DEMO = if ($tool.demo) { '1' } else { '' }
+            $env:MANGOSTEEN_SNAPSHOT_DEMO = if ($tool.demo) { $tool.demo } else { '' }
             $arguments = @('--snapshot', $tool.id, $output) + ($tool.files | ForEach-Object { Join-Path $fixtures $_ })
             $process = Start-Process publish/Mangosteen.exe -ArgumentList $arguments -Wait -PassThru
             if ($process.ExitCode -ne 0) {
@@ -257,12 +257,12 @@ jobs:
           if (-not (Test-Path $video)) { throw "The README video was not made" }
           $photo = Join-Path $source 'mangosteen-still.jpg'
           # Files with ordinary names for the Float shelf and the Convert wheels.
-          $desk = New-Item -ItemType Directory -Force (Join-Path $env:RUNNER_TEMP 'Desktop')
+          $desk = New-Item -ItemType Directory -Force 'C:\Photos'
           Copy-Item $photo (Join-Path $desk 'Mangosteen.jpg')
           Copy-Item $video (Join-Path $desk 'Mangosteen.mp4')
           Copy-Item tests/fixtures/document.pdf (Join-Path $desk 'Recipes.pdf')
-          & $ffmpeg -hide_banner -loglevel error -y -i (Join-Path $source 'mangosteen-video.jpg') -vf scale=1600:-2 (Join-Path $desk 'Fruit bowl.webp')
-          $deskFiles = @('Mangosteen.jpg', 'Fruit bowl.webp', 'Mangosteen.mp4', 'Recipes.pdf') | ForEach-Object { Join-Path $desk $_ }
+          & $ffmpeg -hide_banner -loglevel error -y -i (Join-Path $source 'mangosteen-video.jpg') -vf scale=1600:-2 (Join-Path $desk 'Fruit bowl.png')
+          $deskFiles = @('Mangosteen.jpg', 'Fruit bowl.png', 'Mangosteen.mp4', 'Recipes.pdf') | ForEach-Object { Join-Path $desk $_ }
           $shots = @(
             @{ id = 'tool.crop'; files = @($photo) },
             @{ id = 'float'; files = $deskFiles },

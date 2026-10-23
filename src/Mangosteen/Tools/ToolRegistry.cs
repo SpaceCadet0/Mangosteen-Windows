@@ -103,7 +103,8 @@ internal static class ToolRegistry
         else
         {
             // README screenshots: the dark theme and a selection in the middle of the timeline.
-            MediaToolWindow.SnapshotDemo = Environment.GetEnvironmentVariable("MANGOSTEEN_SNAPSHOT_DEMO") == "1";
+            MediaToolWindow.SnapshotDemo = Environment.GetEnvironmentVariable("MANGOSTEEN_SNAPSHOT_DEMO") is { Length: > 0 };
+            CropTool.SnapshotSplit = Environment.GetEnvironmentVariable("MANGOSTEEN_SNAPSHOT_DEMO") == "split";
             var tool = Create(id, files, null!) ?? throw new ArgumentException($"Unknown tool {id}");
             if (Environment.GetEnvironmentVariable("MANGOSTEEN_THEME") == "dark")
             {
