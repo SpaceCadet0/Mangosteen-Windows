@@ -256,7 +256,19 @@ jobs:
             -map "[v]" -map 1:a -t 30 -c:v libx264 -preset veryfast -crf 22 -c:a aac -b:a 128k $video
           if (-not (Test-Path $video)) { throw "The README video was not made" }
           $photo = Join-Path $source 'mangosteen-still.jpg'
+          # Files with ordinary names for the Float shelf and the Convert wheels.
+          $desk = New-Item -ItemType Directory -Force (Join-Path $env:RUNNER_TEMP 'Desktop')
+          Copy-Item $photo (Join-Path $desk 'Mangosteen.jpg')
+          Copy-Item $video (Join-Path $desk 'Mangosteen.mp4')
+          Copy-Item tests/fixtures/document.pdf (Join-Path $desk 'Recipes.pdf')
+          & $ffmpeg -hide_banner -loglevel error -y -i (Join-Path $source 'mangosteen-video.jpg') -vf scale=1600:-2 (Join-Path $desk 'Fruit bowl.webp')
+          $deskFiles = @('Mangosteen.jpg', 'Fruit bowl.webp', 'Mangosteen.mp4', 'Recipes.pdf') | ForEach-Object { Join-Path $desk $_ }
           $shots = @(
+            @{ id = 'tool.crop'; files = @($photo) },
+            @{ id = 'float'; files = $deskFiles },
+            @{ id = 'wheel.convert'; files = @((Join-Path $desk 'Mangosteen.jpg')); name = 'wheel.convert.photo' },
+            @{ id = 'wheel.convert'; files = @((Join-Path $desk 'Mangosteen.mp4')); name = 'wheel.convert.video' },
+            @{ id = 'wheel.convert'; files = @((Join-Path $desk 'Recipes.pdf')); name = 'wheel.convert.pdf' },
             @{ id = 'tool.annotate'; files = @($photo) },
             @{ id = 'tool.frame'; files = @($photo) },
             @{ id = 'tool.edit'; files = @($photo) },
@@ -273,8 +285,10 @@ jobs:
             $folder = New-Item -ItemType Directory -Force (Join-Path 'readme-screenshots' $language)
             $env:MANGOSTEEN_LANGUAGE = $language
             foreach ($shot in $shots) {
-              $output = Join-Path $folder.FullName ($shot.id.Replace('tool.', '') + '.png')
-              $arguments = @('--snapshot', $shot.id, $output) + $shot.files
+              $name = if ($shot.name) { $shot.name } else { $shot.id.Replace('tool.', '') }
+              $output = Join-Path $folder.FullName ($name + '.png')
+              # Start-Process does not quote arguments; some file names have spaces.
+              $arguments = @('--snapshot', $shot.id, $output) + ($shot.files | ForEach-Object { '"' + $_ + '"' })
               $process = Start-Process publish/Mangosteen.exe -ArgumentList $arguments -Wait -PassThru
               if ($process.ExitCode -ne 0) {
                 Write-Host ("snapshot {0} exited with 0x{1:X8}; trying again" -f $shot.id, $process.ExitCode)

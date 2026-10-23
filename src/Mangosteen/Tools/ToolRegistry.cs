@@ -47,7 +47,14 @@ internal static class ToolRegistry
     public static void Snapshot(string id, string output, IReadOnlyList<string> files)
     {
         Window window;
-        if (id.StartsWith("wheel.", StringComparison.Ordinal))
+        if (id == "float")
+        {
+            // The Float shelf holding the files, with their thumbnails.
+            var shelf = new FloatShelf();
+            shelf.Add(files);
+            window = shelf;
+        }
+        else if (id.StartsWith("wheel.", StringComparison.Ordinal))
         {
             // wheel.convert, wheel.tools, wheel.actions: the wheel for the files, as it opens at the pointer.
             var kind = Enum.Parse<Core.WheelKind>(id["wheel.".Length..], ignoreCase: true);
