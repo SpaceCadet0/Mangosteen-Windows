@@ -205,6 +205,16 @@ public sealed class ToolTests : IDisposable
     }
 
     [Fact]
+    public void SmallPreviewTurnsOnAnotherThread()
+    {
+        // A preview loaded on a worker thread and turned on the window's thread (Crop's rotate button).
+        var path = Encoded("small.jpg", PixelFormats.Bgr24, new JpegBitmapEncoder());
+        var preview = Sta.Run(() => ImageIO.Scale(ImageIO.Load(path), 1600));
+        var turned = Sta.Run(() => CropTool.Transformed(preview, new ImageTransform().Rotate(clockwise: true)));
+        Assert.Equal((2, 4), (turned.PixelWidth, turned.PixelHeight));
+    }
+
+    [Fact]
     public void EditedBmpStaysBmp() =>
         Assert.Equal(PathOf("old (changed).bmp"), Turn(Encoded("old.bmp", PixelFormats.Bgr24, new BmpBitmapEncoder())));
 

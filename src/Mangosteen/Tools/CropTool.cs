@@ -359,7 +359,7 @@ internal sealed class CropTool : ToolWindow
         ApplyAspect();
     }
 
-    private static BitmapSource Transformed(BitmapSource image, ImageTransform transform)
+    internal static BitmapSource Transformed(BitmapSource image, ImageTransform transform)
     {
         if (transform.IsIdentity)
         {

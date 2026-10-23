@@ -18,12 +18,19 @@ internal static class ImageIO
         return maxSide is { } limit ? Scale(image, limit) : image;
     }
 
+    /// <summary>
+    /// The image at most <paramref name="maxSide"/> pixels on the longer side. It is always a bitmap of its own, even
+    /// when no scaling is needed: a decoded frame stays tied to the decoder of the thread that loaded it, and
+    /// turning or mirroring it later on the window's thread would fail ("another thread owns it").
+    /// </summary>
     public static BitmapSource Scale(BitmapSource image, int maxSide)
     {
         var (width, height) = CompressionSearch.FitInside(image.PixelWidth, image.PixelHeight, maxSide);
         if (width == image.PixelWidth && height == image.PixelHeight)
         {
-            return image;
+            var copy = new WriteableBitmap(image);
+            copy.Freeze();
+            return copy;
         }
         return Resize(image, width, height);
     }
