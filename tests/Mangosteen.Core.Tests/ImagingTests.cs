@@ -308,3 +308,30 @@ public class SubjectMaskTests
         Assert.Equal(1 - 0.406f, input[2 * SubjectMask.Side * SubjectMask.Side], 3);
     }
 }
+
+public class ResizeRuleTests
+{
+    [Fact]
+    public void RulesGiveTheNewSize()
+    {
+        Assert.Equal((2016, 1512), ResizeRule.Percent(50).Apply(4032, 3024));
+        Assert.Equal((1920, 1440), ResizeRule.LongSide(1920).Apply(4032, 3024));
+        Assert.Equal((1440, 1920), ResizeRule.LongSide(1920).Apply(3024, 4032));
+        Assert.Equal((800, 600), ResizeRule.LongSide(1920).Apply(800, 600)); // never enlarged
+        Assert.Equal((1000, 750), ResizeRule.Width(1000).Apply(4032, 3024));
+        Assert.Equal((1333, 1000), ResizeRule.HeightOnly(1000).Apply(4032, 3024));
+        Assert.Equal((500, 500), ResizeRule.Exact(500, 500).Apply(4032, 3024));
+    }
+
+    [Fact]
+    public void SidesStayBetweenOneAndTheLimit()
+    {
+        Assert.Equal((1, 1), ResizeRule.Percent(1).Apply(10, 20));
+        Assert.Equal((20000, 50), ResizeRule.Width(30000).Apply(4000, 10));
+        Assert.Equal((20000, 20000), ResizeRule.Exact(30000, 25000).Apply(100, 100));
+        Assert.Equal((1, 1), ResizeRule.Exact(0, -5).Apply(100, 100));
+    }
+
+    [Fact]
+    public void ResultNameCarriesTheSize() => Assert.Equal("photo (1920×1440)", ResizeRule.ResultName("photo", 1920, 1440));
+}

@@ -215,6 +215,17 @@ public sealed class ToolTests : IDisposable
     }
 
     [Fact]
+    public void ResizeWritesTheNewSizeInTheName()
+    {
+        var output = CropTool.ResizeFile(Photo("big.jpg", 800, 600, false), default, ResizeRule.Percent(50));
+        Assert.Equal(PathOf("big (400×300).jpg"), output);
+        var frame = Open(output);
+        Assert.Equal((400, 300), (frame.PixelWidth, frame.PixelHeight));
+        Assert.Equal(PathOf("old (8×2).bmp"), CropTool.ResizeFile(Encoded("old.bmp", PixelFormats.Bgr24, new BmpBitmapEncoder()), default, ResizeRule.Exact(8, 2)));
+        Assert.Equal(PathOf("big (600×800).jpg"), CropTool.ResizeFile(PathOf("big.jpg"), new ImageTransform().Rotate(true), ResizeRule.LongSide(1920)));
+    }
+
+    [Fact]
     public void EditedBmpStaysBmp() =>
         Assert.Equal(PathOf("old (changed).bmp"), Turn(Encoded("old.bmp", PixelFormats.Bgr24, new BmpBitmapEncoder())));
 

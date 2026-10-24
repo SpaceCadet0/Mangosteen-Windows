@@ -40,7 +40,10 @@ public static class Loc
         return stream is null ? new Dictionary<string, string>() : JsonSerializer.Deserialize<Dictionary<string, string>>(stream) ?? [];
     }
 
-    public static string L(string english) => _table is not null && _table.TryGetValue(english, out var text) && text.Length > 0 ? text : english;
+    /// <remarks>A key may carry a context after "|" ("Crop|tab") when one English word needs two translations; the
+    /// English text is the part before it.</remarks>
+    public static string L(string english) => _table is not null && _table.TryGetValue(english, out var text) && text.Length > 0 ? text
+        : english.IndexOf('|') is var bar and > 0 ? english[..bar] : english;
 
     private static readonly Dictionary<string, (string[] En, string[] Ru, string[] Es)> Nouns = new()
     {

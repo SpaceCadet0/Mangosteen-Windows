@@ -15,6 +15,9 @@ internal sealed class AppSettings
 
     public bool WelcomeShown { get; set; }
 
+    /// <summary>The tab the Crop window opens on: "crop" or "size".</summary>
+    public string CropTab { get; set; } = "crop";
+
     /// <summary>"Mangosteen" in Explorer's right-click menu.</summary>
     public bool ExplorerMenu { get; set; } = true;
 

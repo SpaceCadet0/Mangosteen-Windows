@@ -38,6 +38,20 @@ internal sealed class CropTool : ToolWindow
     private List<double> _columnCuts = [];
     private List<double> _rowCuts = [];
     private (bool Vertical, int Index)? _cutDrag;
+    // "Size": the whole picture resized by one rule for every file.
+    private readonly RadioButton _cropTab = new() { Content = L("Crop|tab"), GroupName = "cropMode", MinWidth = 110 };
+    private readonly RadioButton _sizeTab = new() { Content = L("Size"), GroupName = "cropMode", MinWidth = 110 };
+    private readonly StackPanel _cropControls = new();
+    private readonly StackPanel _sizeControls = new() { Visibility = Visibility.Collapsed };
+    private readonly StackPanel _splitPanel = new() { Orientation = Orientation.Horizontal };
+    private readonly TextBox _sizeWidth = new() { Width = 80 };
+    private readonly TextBox _sizeHeight = new() { Width = 80 };
+    private readonly System.Windows.Controls.Primitives.ToggleButton _keepProportions = new() { IsChecked = true, MinWidth = 40, Margin = new Thickness(8, 0, 8, 0) };
+    private readonly ComboBox _longSide = new() { MinWidth = 150 };
+    private readonly TextBlock _allFiles = new() { Opacity = 0.7, Margin = new Thickness(0, 10, 0, 0) };
+    private readonly TextBlock _sizeBadge = new() { VerticalAlignment = VerticalAlignment.Center, Opacity = 0.7, Margin = new Thickness(12, 0, 12, 0) };
+    private ResizeRule _rule = ResizeRule.Percent(100);
+    private bool _showingSize;
     private readonly ComboBox _aspect = new() { MinWidth = 180 };
     private readonly TextBox _exactWidth = new() { Text = "1080", Width = 70 };
     private readonly TextBox _exactHeight = new() { Text = "1080", Width = 70 };
@@ -118,6 +132,9 @@ internal sealed class CropTool : ToolWindow
             _transform = default;
             _columnCuts = [];
             _rowCuts = [];
+            _rule = ResizeRule.Percent(100);
+            _keepProportions.IsChecked = true;
+            _longSide.SelectedIndex = -1;
             ShowTransformed();
         };
 
@@ -134,15 +151,21 @@ internal sealed class CropTool : ToolWindow
         controls.Children.Add(left);
 
         var stack = new StackPanel();
-        stack.Children.Add(canvasFrame);
-        stack.Children.Add(controls);
         if (_video is null)
         {
+            stack.Children.Add(ModeTabs());
+        }
+        stack.Children.Add(canvasFrame);
+        _cropControls.Children.Add(controls);
+        stack.Children.Add(_cropControls);
+        if (_video is null)
+        {
+            stack.Children.Add(SizeControls(reset));
             stack.Children.Add(ImageControls());
         }
         if (_images.Count > 1)
         {
-            stack.Children.Add(Note(L("The frame is drawn on the first image; the others get a centred crop of the same proportions.")));
+            _cropControls.Children.Add(Note(L("The frame is drawn on the first image; the others get a centred crop of the same proportions.")));
         }
         Body = stack;
         ActionEnabled = false;
@@ -185,6 +208,10 @@ internal sealed class CropTool : ToolWindow
             }
             _loaded = true;
             ActionEnabled = true;
+            if (SnapshotMode == "size")
+            {
+                _rule = ResizeRule.Percent(50);
+            }
             if (MediaToolWindow.SnapshotDemo && !SnapshotSplit && _video is null)
             {
                 // Screenshots: a square frame, as a person would pick for a profile picture.
@@ -288,7 +315,175 @@ internal sealed class CropTool : ToolWindow
         var pixels = _rect.ToPixels(_width, _height);
         _pixels.Text = $"{pixels.Width} × {pixels.Height} px";
         DrawCuts(frame, w);
+        if (_showingSize)
+        {
+            ShowSize();
+        }
     }
+
+    /// <summary>"Crop | Size" at the top; the choice is remembered.</summary>
+    private FrameworkElement ModeTabs()
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10), HorizontalAlignment = HorizontalAlignment.Center };
+        foreach (var tab in new[] { _cropTab, _sizeTab })
+        {
+            tab.SetResourceReference(StyleProperty, typeof(System.Windows.Controls.Primitives.ToggleButton));
+            tab.Margin = new Thickness(0, 0, 4, 0);
+            tab.Checked += (_, _) => SetMode(tab == _sizeTab, remember: true);
+            row.Children.Add(tab);
+        }
+        var size = SnapshotMode == "size" || SnapshotMode is null && AppSettings.Load().CropTab == "size";
+        (size ? _sizeTab : _cropTab).IsChecked = true;
+        SetMode(size, remember: false);
+        return row;
+    }
+
+    private void SetMode(bool size, bool remember)
+    {
+        _showingSize = size;
+        _overlay.Visibility = size ? Visibility.Collapsed : Visibility.Visible;
+        _cropControls.Visibility = size ? Visibility.Collapsed : Visibility.Visible;
+        _sizeControls.Visibility = size ? Visibility.Visible : Visibility.Collapsed;
+        _splitPanel.Visibility = size ? Visibility.Collapsed : Visibility.Visible;
+        if (remember && SnapshotMode is null)
+        {
+            var settings = AppSettings.Load();
+            settings.CropTab = size ? "size" : "crop";
+            settings.Save();
+        }
+        Redraw();
+        if (!_loaded)
+        {
+            ActionTitle = size ? L("Resize") : L("Save");
+        }
+    }
+
+    /// <summary>Width and height with the proportions lock, 25 / 50 / 75 %, and a long side.</summary>
+    private FrameworkElement SizeControls(Button reset)
+    {
+        var fields = new DockPanel { Margin = new Thickness(0, 14, 0, 0) };
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        row.Children.Add(new TextBlock { Text = L("Width"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
+        row.Children.Add(_sizeWidth);
+        _keepProportions.Content = new TextBlock { Text = "\uE72E", FontFamily = new FontFamily(Wheel.WheelGlyphs.FontFamily), FontSize = 14 };
+        _keepProportions.ToolTip = L("Keep proportions");
+        row.Children.Add(_keepProportions);
+        row.Children.Add(new TextBlock { Text = L("Height"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
+        row.Children.Add(_sizeHeight);
+        row.Children.Add(new TextBlock { Text = " px", VerticalAlignment = VerticalAlignment.Center, Opacity = 0.7 });
+        var sizeReset = new Button { Content = L("Reset"), MinWidth = 80 };
+        sizeReset.Click += (_, _) => reset.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        DockPanel.SetDock(sizeReset, Dock.Right);
+        DockPanel.SetDock(_sizeBadge, Dock.Right);
+        fields.Children.Add(sizeReset);
+        fields.Children.Add(_sizeBadge);
+        fields.Children.Add(row);
+
+        var presets = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 10, 0, 0) };
+        foreach (var percent in ResizeRule.Percents)
+        {
+            var button = new Button { Content = $"{percent}%", MinWidth = 56, Margin = new Thickness(0, 0, 6, 0) };
+            button.Click += (_, _) => SetRule(ResizeRule.Percent(percent));
+            presets.Children.Add(button);
+        }
+        presets.Children.Add(new TextBlock { Text = L("Longer side"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(18, 0, 8, 0) });
+        foreach (var side in ResizeRule.LongSides)
+        {
+            _longSide.Items.Add($"{side} px");
+        }
+        _longSide.SelectionChanged += (_, _) =>
+        {
+            if (_longSide.SelectedIndex >= 0)
+            {
+                SetRule(ResizeRule.LongSide(ResizeRule.LongSides[_longSide.SelectedIndex]));
+            }
+        };
+        presets.Children.Add(_longSide);
+
+        // Typing only counts once the picture is loaded and the number really changed (a focused field must not
+        // turn an empty value into 1 × 1 before the size is known).
+        _sizeWidth.TextChanged += (_, _) => Typed(width: true);
+        _sizeHeight.TextChanged += (_, _) => Typed(width: false);
+        _keepProportions.Click += (_, _) =>
+        {
+            _keepProportions.Content = new TextBlock
+            {
+                Text = _keepProportions.IsChecked == true ? "\uE72E" : "\uE785", FontFamily = new FontFamily(Wheel.WheelGlyphs.FontFamily), FontSize = 14,
+            };
+            var (w, h) = _rule.Apply(_width, _height);
+            SetRule(_keepProportions.IsChecked == true ? ResizeRule.Width(w) : ResizeRule.Exact(w, h));
+        };
+
+        _sizeControls.Children.Add(fields);
+        _sizeControls.Children.Add(presets);
+        if (_images.Count > 1)
+        {
+            _sizeControls.Children.Add(_allFiles);
+        }
+        return _sizeControls;
+    }
+
+    private bool _writingSize;
+
+    private void Typed(bool width)
+    {
+        if (!_loaded || _writingSize || !int.TryParse((width ? _sizeWidth : _sizeHeight).Text, out var value) || value < 1)
+        {
+            return;
+        }
+        var (w, h) = _rule.Apply(_width, _height);
+        if (value == (width ? w : h))
+        {
+            return;
+        }
+        _longSide.SelectedIndex = -1;
+        SetRule(_keepProportions.IsChecked == true
+            ? width ? ResizeRule.Width(value) : ResizeRule.HeightOnly(value)
+            : width ? ResizeRule.Exact(value, h) : ResizeRule.Exact(w, value));
+    }
+
+    private void SetRule(ResizeRule rule)
+    {
+        _rule = rule;
+        if (rule.Kind != ResizeKind.LongSide)
+        {
+            _longSide.SelectedIndex = -1;
+        }
+        ShowSize();
+    }
+
+    /// <summary>The fields, "4032 × 3024 → 1920 × 1440 px" and, for several files, the rule in words.</summary>
+    private void ShowSize()
+    {
+        if (!_loaded)
+        {
+            return;
+        }
+        var (w, h) = _rule.Apply(_width, _height);
+        _writingSize = true;
+        if (!_sizeWidth.IsKeyboardFocused || _sizeWidth.Text != w.ToString())
+        {
+            _sizeWidth.Text = w.ToString();
+        }
+        if (!_sizeHeight.IsKeyboardFocused || _sizeHeight.Text != h.ToString())
+        {
+            _sizeHeight.Text = h.ToString();
+        }
+        _writingSize = false;
+        _sizeBadge.Text = $"{_width} × {_height} → {w} × {h} px";
+        _allFiles.Text = _rule.Kind switch
+        {
+            ResizeKind.Percent => string.Format(L("All files: {0}% of their size"), _rule.Value),
+            ResizeKind.LongSide => string.Format(L("All files: long side {0} px"), _rule.Value),
+            ResizeKind.Width => string.Format(L("All files: {0} px wide, height to scale"), _rule.Value),
+            ResizeKind.Height => string.Format(L("All files: {0} px high, width to scale"), _rule.Value),
+            _ => string.Format(L("All files: {0} × {1} px"), w, h),
+        };
+        ActionTitle = L("Resize");
+    }
+
+    /// <summary>Snapshots: "size" opens on the Size tab at 50 %, "crop" on the Crop tab; null uses the remembered tab.</summary>
+    public static string? SnapshotMode { get; set; }
 
     private bool IsSplit => _columnCuts.Count > 0 || _rowCuts.Count > 0;
 
@@ -316,10 +511,11 @@ internal sealed class CropTool : ToolWindow
         row.Children.Add(Glyph("\uE7AD", L("Rotate right"), () => _transform = _transform.Rotate(clockwise: true)));
         row.Children.Add(Glyph("\u21C6", L("Flip horizontally"), () => _transform = _transform.Flip(horizontal: true), font: "Segoe UI Symbol"));
         row.Children.Add(Glyph("\u21C5", L("Flip vertically"), () => _transform = _transform.Flip(horizontal: false), font: "Segoe UI Symbol"));
-        row.Children.Add(new TextBlock { Text = L("Split into parts:"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(18, 0, 8, 0) });
-        row.Children.Add(Stepper(_acrossText, () => _columnCuts.Count + 1, n => _columnCuts = CropMath.EvenCuts(n)));
-        row.Children.Add(new Border { Width = 10 });
-        row.Children.Add(Stepper(_downText, () => _rowCuts.Count + 1, n => _rowCuts = CropMath.EvenCuts(n)));
+        _splitPanel.Children.Add(new TextBlock { Text = L("Split into parts:"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(18, 0, 8, 0) });
+        _splitPanel.Children.Add(Stepper(_acrossText, () => _columnCuts.Count + 1, n => _columnCuts = CropMath.EvenCuts(n)));
+        _splitPanel.Children.Add(new Border { Width = 10 });
+        _splitPanel.Children.Add(Stepper(_downText, () => _rowCuts.Count + 1, n => _rowCuts = CropMath.EvenCuts(n)));
+        row.Children.Add(_splitPanel);
         return row;
     }
 
@@ -381,7 +577,7 @@ internal sealed class CropTool : ToolWindow
         _downText.Text = string.Format(L("{0} down"), _rowCuts.Count + 1);
         if (_video is null)
         {
-            ActionTitle = IsSplit ? L("Split") : L("Save");
+            ActionTitle = _showingSize ? L("Resize") : IsSplit ? L("Split") : L("Save");
         }
         _cutLayer.Children.Clear();
         var thickness = Math.Max(1, width / 400);
@@ -430,6 +626,13 @@ internal sealed class CropTool : ToolWindow
             ? (ew, eh) : ((int, int)?)null;
         var frameAspect = (double)firstRect.ToPixels(_width, _height).Width / firstRect.ToPixels(_width, _height).Height;
         var lockedFirst = PixelAspect(_width, _height);
+        if (_showingSize && _video is null)
+        {
+            var (rule, turn) = (_rule, _transform);
+            Close();
+            _jobs.RunEach(L("Resizing"), L("Resized"), _images, (input, _) => ResizeFile(input, turn, rule));
+            return;
+        }
         Close();
         if (_video is { } video)
         {
@@ -440,6 +643,22 @@ internal sealed class CropTool : ToolWindow
         _jobs.RunEach(L("Cropping"), L("Cropped"), _images, (input, _) => CropFile(input, transform,
             (width, height) => input == first ? firstRect : CropMath.CenteredRect(lockedFirst ?? frameAspect, width, height),
             exact, columnCuts, rowCuts));
+    }
+
+    /// <summary>
+    /// Turns and mirrors the image, resizes it by <paramref name="rule"/> and writes "name (W×H).ext" next to it, in
+    /// the original's format (an edited BMP stays BMP, read-only formats become PNG), keeping the metadata and profile.
+    /// </summary>
+    internal static string ResizeFile(string input, ImageTransform transform, ResizeRule rule)
+    {
+        var image = Transformed(ImageIO.Load(input), transform);
+        var (width, height) = rule.Apply(image.PixelWidth, image.PixelHeight);
+        var resized = width == image.PixelWidth && height == image.PixelHeight ? image : ImageIO.Resize(image, width, height);
+        var format = ToolOutput.KeepFormat(input);
+        var data = ImageIO.Encode(resized, format, 0.92, ImageIO.ReadMetadata(input), ImageIO.ReadColorContexts(input));
+        var full = Path.GetFullPath(input);
+        return Core.OutputNaming.WriteAtomically(Path.GetDirectoryName(full)!, ResizeRule.ResultName(Core.OutputNaming.BaseName(full), width, height),
+            format.Extension(), temp => File.WriteAllBytes(temp, data));
     }
 
     /// <summary>

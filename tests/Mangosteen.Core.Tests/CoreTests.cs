@@ -187,3 +187,14 @@ public class MixedSelectionTests : TempFolderTest
         Assert.Equal(Path.Combine(photos, "Photos 2.zip"), Archives.AddToArchive([Path.Combine(photos, "a.txt"), inner]));
     }
 }
+
+public class LocContextTests
+{
+    [Fact]
+    public void ContextIsDroppedInEnglish()
+    {
+        // English only: other tests run in parallel and expect English strings.
+        Assert.Equal("Crop", Loc.L("Crop|tab"));
+        Assert.Equal("Обрезка", Loc.Load("ru")["Crop|tab"]);
+    }
+}

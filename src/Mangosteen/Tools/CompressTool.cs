@@ -21,6 +21,8 @@ internal sealed class CompressTool : ToolWindow
     private readonly TextBox _target = new() { Text = "1", Width = 70 };
     private readonly ComboBox _unit = new() { Width = 70, Margin = new Thickness(8, 0, 0, 0) };
     private readonly ComboBox _maxSide = new();
+    private readonly TextBox _customSide = new() { Text = "1600", Width = 80 };
+    private FrameworkElement? _customSideRow;
     private readonly ComboBox _format = new();
     private readonly CheckBox _metadata = new() { Content = L("Keep metadata"), IsChecked = true };
     private readonly StackPanel _presetPanel = new();
@@ -99,8 +101,19 @@ internal sealed class CompressTool : ToolWindow
         {
             _maxSide.Items.Add($"{size} px");
         }
+        _maxSide.Items.Add(L("Custom…"));
         _maxSide.SelectedIndex = 0;
         _maxSide.SelectionChanged += (_, _) => Changed();
+        _customSide.TextChanged += (_, _) => Changed();
+        var customPanel = new StackPanel { Orientation = Orientation.Horizontal };
+        customPanel.Children.Add(_customSide);
+        customPanel.Children.Add(new TextBlock { Text = " px", VerticalAlignment = VerticalAlignment.Center, Opacity = 0.7 });
+        _customSideRow = Row(L("Custom long side"), customPanel);
+        _customSideRow.Visibility = Visibility.Collapsed;
+        if (SnapshotCustomSide)
+        {
+            _maxSide.SelectedIndex = CompressionSettings.SizeLimits.Count + 1;
+        }
         _format.Items.Add(L("Same as original"));
         foreach (var format in CompressionSettings.SelectableFormats)
         {
@@ -117,6 +130,7 @@ internal sealed class CompressTool : ToolWindow
         settings.Children.Add(_qualityRow);
         settings.Children.Add(_targetRow);
         settings.Children.Add(Row(L("Longer side"), _maxSide));
+        settings.Children.Add(_customSideRow);
         settings.Children.Add(Row(L("Format"), _format));
         settings.Children.Add(_metadata);
         settings.Children.Add(new Border { Height = 10 });
@@ -167,10 +181,24 @@ internal sealed class CompressTool : ToolWindow
             Preset = preset,
             Quality = _quality.Value,
             TargetBytes = (long)(Math.Max(target, 0.001) * (_unit.SelectedIndex == 0 ? 1_000 : 1_000_000)),
-            MaxPixelSize = _maxSide.SelectedIndex > 0 ? CompressionSettings.SizeLimits[_maxSide.SelectedIndex - 1] : null,
+            MaxPixelSize = MaxSide(),
             Format = _format.SelectedIndex > 0 ? CompressionSettings.SelectableFormats[_format.SelectedIndex - 1] : null,
             PreserveMetadata = _metadata.IsChecked == true,
         };
+    }
+
+    /// <summary>Snapshots: open with "Custom…" chosen as the longer side.</summary>
+    public static bool SnapshotCustomSide { get; set; }
+
+    /// <summary>The chosen longer side: a preset, the custom one (16…20000 px, typed), or null to keep the size.</summary>
+    private int? MaxSide()
+    {
+        var custom = CompressionSettings.SizeLimits.Count + 1;
+        if (_maxSide.SelectedIndex == custom)
+        {
+            return int.TryParse(_customSide.Text, out var side) ? Math.Clamp(side, 16, 20000) : 1600;
+        }
+        return _maxSide.SelectedIndex > 0 ? CompressionSettings.SizeLimits[_maxSide.SelectedIndex - 1] : null;
     }
 
     private void Changed()
@@ -178,6 +206,10 @@ internal sealed class CompressTool : ToolWindow
         if (_qualityRow is null)
         {
             return; // still building the window
+        }
+        if (_customSideRow is not null)
+        {
+            _customSideRow.Visibility = _maxSide.SelectedIndex == CompressionSettings.SizeLimits.Count + 1 ? Visibility.Visible : Visibility.Collapsed;
         }
         var settings = Settings();
         _presetPanel.Visibility = settings.Mode == CompressionMode.Preset ? Visibility.Visible : Visibility.Collapsed;

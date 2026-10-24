@@ -55,7 +55,7 @@ internal sealed class WelcomeWindow : ToolWindow
         cards.Children.Add(Card("", L("Convert"), "Shift",
             L("Turns files into another format: images, documents, PDF, tables, archives, video and audio.")));
         cards.Children.Add(Card("", L("Tools"), "Ctrl",
-            L("Opens an editor with a live preview: crop, compress, annotate, trim a video and more.")));
+            L("Compress, crop and resize in pixels, photo editor, annotate, trim a video and more, with a live preview.")));
         cards.Children.Add(Card("", L("Actions"), "Alt",
             L("Float shelf, copy, move, copy the path or open a terminal.")));
         stack.Children.Add(cards);
