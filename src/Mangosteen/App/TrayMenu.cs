@@ -194,6 +194,7 @@ internal sealed class TrayMenu : Window
         if (Trace)
         {
             item.PreviewMouseLeftButtonDown += (_, _) => Platform.Log.Write($"menu: down on \"{text}\"");
+            Loaded += (_, _) => Platform.Log.Write($"menu: window 0x{new System.Windows.Interop.WindowInteropHelper(this).Handle:X} shown with \"{text}\"");
             Closed += (_, _) => Platform.Log.Write($"menu: closed ({text} row)");
         }
         item.MouseLeftButtonUp += (_, _) =>

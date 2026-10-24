@@ -23,9 +23,10 @@ internal static class MenuSelfTest
         {
             try
             {
+                var top = await Click(path: [0], expected: "first");
                 var deep = await Click(path: [1, 0, 0], expected: "open");
                 var shallow = await Click(path: [1, 1], expected: "clear");
-                code = deep && shallow ? 0 : 1;
+                code = top && deep && shallow ? 0 : 1;
             }
             catch (Exception error)
             {
@@ -93,7 +94,9 @@ internal static class MenuSelfTest
     private static void Press()
     {
         var inputs = new[] { MouseInput(MouseLeftDown), MouseInput(MouseLeftUp) };
-        SendInput((uint)inputs.Length, inputs, System.Runtime.InteropServices.Marshal.SizeOf<INPUT>());
+        var sent = SendInput((uint)inputs.Length, inputs, System.Runtime.InteropServices.Marshal.SizeOf<INPUT>());
+        GetCursorPos(out var at);
+        Log.Write($"menu self-test: click at {at.X},{at.Y}, SendInput sent {sent}, window there 0x{WindowFromPoint(at):X}");
     }
 
     private static INPUT MouseInput(uint flags) => new() { type = INPUT_MOUSE, u = new INPUTUNION { mi = new MOUSEINPUT { dwFlags = flags } } };
