@@ -17,6 +17,7 @@ internal static class MenuSelfTest
     {
         Log.Start(Program.Version + " (menu self-test)");
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        TrayMenu.Trace = true;
         var code = 1;
         app.Dispatcher.BeginInvoke(async () =>
         {

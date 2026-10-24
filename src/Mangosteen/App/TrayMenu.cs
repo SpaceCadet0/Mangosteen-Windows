@@ -55,6 +55,10 @@ internal sealed class TrayMenu : Window
         };
         Deactivated += (_, _) =>
         {
+            if (Trace)
+            {
+                Platform.Log.Write($"menu: deactivated (submenu: {_parent is not null})");
+            }
             if (!KeepOpen && _parent is null)
             {
                 CloseMenu();
@@ -187,8 +191,17 @@ internal sealed class TrayMenu : Window
                 Lit(false);
             }
         };
+        if (Trace)
+        {
+            item.PreviewMouseLeftButtonDown += (_, _) => Platform.Log.Write($"menu: down on \"{text}\"");
+            Closed += (_, _) => Platform.Log.Write($"menu: closed ({text} row)");
+        }
         item.MouseLeftButtonUp += (_, _) =>
         {
+            if (Trace)
+            {
+                Platform.Log.Write($"menu: up on \"{text}\"");
+            }
             if (submenu is not null)
             {
                 OpenChild(item, submenu, () => Lit(false));
@@ -203,6 +216,9 @@ internal sealed class TrayMenu : Window
         _items.Children.Add(item);
         _rows.Add(item);
     }
+
+    /// <summary>For the menu self-test: write what the menus do to the log.</summary>
+    internal static bool Trace { get; set; }
 
     /// <summary>For the menu self-test: the submenu now open, if any.</summary>
     internal TrayMenu? OpenSubmenu => _child;
