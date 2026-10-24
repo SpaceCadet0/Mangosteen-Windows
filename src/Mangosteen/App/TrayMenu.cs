@@ -18,6 +18,7 @@ internal sealed class TrayMenu : Window
 {
     private static readonly Brush Highlight = Frozen(new SolidColorBrush(WheelWindow.Brand));
     private readonly StackPanel _items = new() { Margin = new Thickness(4) };
+    private readonly List<FrameworkElement> _rows = [];
     private readonly bool _light;
     private readonly Brush _text;
     private readonly Brush _secondary;
@@ -200,6 +201,17 @@ internal sealed class TrayMenu : Window
             }
         };
         _items.Children.Add(item);
+        _rows.Add(item);
+    }
+
+    /// <summary>For the menu self-test: the submenu now open, if any.</summary>
+    internal TrayMenu? OpenSubmenu => _child;
+
+    /// <summary>For the menu self-test: the centre of an item (items and submenus only), in screen pixels.</summary>
+    internal Point ItemCenter(int index)
+    {
+        var row = _rows[index];
+        return row.PointToScreen(new Point(row.ActualWidth / 2, row.ActualHeight / 2));
     }
 
     private void OpenChild(FrameworkElement item, Action<TrayMenu> fill, Action closed)

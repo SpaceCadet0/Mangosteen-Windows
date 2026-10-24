@@ -117,6 +117,13 @@ jobs:
           Get-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/mangosteen.log') -Tail 15
           if ($process.ExitCode -ne 0) { throw "Media self-test failed with exit code $($process.ExitCode)" }
 
+      - name: Click through the tray menu with the real mouse
+        shell: pwsh
+        run: |
+          $process = Start-Process publish/Mangosteen.exe -ArgumentList '--menu-self-test' -Wait -PassThru
+          Get-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/mangosteen.log') | Select-String 'menu self-test' | Select-Object -Last 12
+          if ($process.ExitCode -ne 0) { throw "The tray menu self-test failed ($($process.ExitCode))" }
+
       - name: Idle CPU, memory and size
         shell: pwsh
         run: |

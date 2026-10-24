@@ -17,6 +17,10 @@ internal static class Program
             Log.Start(Version + " (media self-test)");
             return Media.FFmpeg.SelfTest();
         }
+        if (args.Length == 1 && args[0] == "--menu-self-test")
+        {
+            return MenuSelfTest.Run();
+        }
         if (args.Length >= 3 && args[0] == "--snapshot")
         {
             return RunSnapshot(args[1], args[2], args[3..]);
