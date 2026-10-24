@@ -12,7 +12,9 @@ namespace Mangosteen;
 /// <summary>
 /// The tray icon's menu, drawn by Mangosteen: rounded corners, a light or dark background that follows the Windows
 /// theme, and the brand colour on the item under the mouse. It closes when you click elsewhere or press Esc.
-/// Submenus open beside their item when the mouse rests on it; they never take the focus, so the menu stays open.
+/// Submenus open beside their item when the mouse rests on it, without taking the focus; a click in one gives it the
+/// focus (WPF ignores clicks in a window that can never be active), and the menus close together only when the focus
+/// leaves all of them.
 /// </summary>
 internal sealed class TrayMenu : Window
 {
@@ -59,16 +61,20 @@ internal sealed class TrayMenu : Window
             {
                 Platform.Log.Write($"menu: deactivated (submenu: {_parent is not null})");
             }
-            if (!KeepOpen && _parent is null)
+            // The focus may only be moving to another of these menus (a click in a submenu); look once it has settled.
+            Dispatcher.BeginInvoke(() =>
             {
-                CloseMenu();
-            }
+                if (!KeepOpen && !Root.AnyActive())
+                {
+                    Root.CloseMenu();
+                }
+            }, System.Windows.Threading.DispatcherPriority.Background);
         };
         PreviewKeyDown += (_, e) =>
         {
             if (e.Key == Key.Escape)
             {
-                CloseMenu();
+                Root.CloseMenu();
             }
         };
         Loaded += (_, _) => Place();
@@ -82,18 +88,10 @@ internal sealed class TrayMenu : Window
         };
     }
 
-    protected override void OnSourceInitialized(EventArgs e)
-    {
-        base.OnSourceInitialized(e);
-        if (_parent is not null)
-        {
-            // A submenu must not take the focus from the menu, or the menu would close.
-            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-            SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
-        }
-    }
-
     private TrayMenu Root => _parent?.Root ?? this;
+
+    /// <summary>True while this menu or one of its open submenus has the focus.</summary>
+    private bool AnyActive() => IsActive || _child?.AnyActive() == true;
 
     private void Place()
     {
