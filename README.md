@@ -73,7 +73,7 @@ file uses the whole selection. Right-clicks without these keys open the usual co
 
 | Kind | Formats |
 |---|---|
-| Images | PNG, JPG, WebP, TIFF, AVIF, GIF, PDF; also reads BMP, ICO, and HEIC with the Microsoft Store codec |
+| Images | PNG, JPG, WebP, TIFF, AVIF, GIF, PDF (several photos make one PDF); also reads BMP, ICO, and HEIC with the Microsoft Store codec |
 | PDF | to PNG or JPG (several pages become a folder of pages), TXT, Markdown, RTF, DOCX, HTML |
 | Documents | DOCX, ODT, RTF, TXT, Markdown, HTML into each other and into PDF |
 | Video | MP4, MOV, MKV, WebM, AVI, WMV into each other, GIF and MP3 |
@@ -107,8 +107,7 @@ Every tool opens a small window with a live preview. Close it and nothing is cha
 - **Collage** — grid, row, column or a featured photo.
 - **Hide** — finds faces and text on the device and covers them with a fill, a blur or pixels.
 - **Metadata** — view everything, edit common fields, remove the location or all metadata (JPEG is not re-encoded).
-- **Page order** — reorder, rotate, duplicate and delete PDF pages; **Split** a PDF into parts; **Merge** PDFs;
-  **PDF from images**.
+- **Page order** — reorder, rotate, duplicate and delete PDF pages; **Split** a PDF into parts; **Merge** PDFs.
 
 <p align="center">
   <img src="docs/images/en/edit.png" width="47.9%" alt="Photo editor">

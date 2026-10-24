@@ -47,6 +47,23 @@ public static class FormatCatalog
         FileFormat.Ico, FileFormat.Webp, FileFormat.Heic, FileFormat.Avif,
     };
 
+    /// <summary>An image that becomes one page when several are converted to a single PDF (raster, readable).</summary>
+    public static bool IsPageImage(FileFormat format) => ImageInputs.Contains(format);
+
+    /// <summary>
+    /// Converting to PDF: two or more photos go into one PDF (a page each, in the selection's order); everything else
+    /// in the selection, and a single photo, is converted on its own.
+    /// </summary>
+    public static (List<string> Pages, List<string> Separate) SplitForPdf(IReadOnlyList<string> paths)
+    {
+        var pages = paths.Where(p => FileFormats.Detect(p) is { } f && IsPageImage(f)).ToList();
+        if (pages.Count < 2)
+        {
+            return ([], paths.ToList());
+        }
+        return (pages, paths.Where(p => !pages.Contains(p)).ToList());
+    }
+
     /// <summary>Formats Mangosteen can read as a conversion source.</summary>
     public static bool CanRead(FileFormat format) => format.Category() switch
     {

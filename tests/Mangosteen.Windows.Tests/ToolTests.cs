@@ -132,6 +132,20 @@ public sealed class ToolTests : IDisposable
     }
 
     [Fact]
+    public void TwoPhotosMakeOneTwoPagePdf()
+    {
+        var photos = new[] { Photo("1.jpg", 200, 100, false), Photo("2.jpg", 100, 200, false) };
+        var (pages, separate) = FormatCatalog.SplitForPdf(photos);
+        Assert.Empty(separate);
+        var output = Converter.CreatePdf(pages);
+        Assert.Equal(PathOf("Images.pdf"), output);
+        Assert.Single(Directory.GetFiles(_dir, "*.pdf"));
+        using var document = PdfDocument.Open(output);
+        Assert.Equal(2, document.NumberOfPages);
+        Assert.Equal(150, document.GetPage(1).Width, 1); // 200 px at 96 dpi = 150 pt
+    }
+
+    [Fact]
     public void PdfPagesReorderRotateAndDuplicate()
     {
         var pdf = Converter.CreatePdf([Photo("1.jpg", 200, 100, false), Photo("2.jpg", 100, 200, false)]);

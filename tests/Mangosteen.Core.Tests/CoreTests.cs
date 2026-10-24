@@ -69,7 +69,7 @@ public class WheelCatalogTests
     {
         var ids = WheelCatalog.Items(WheelKind.Tools, ["a.png", "b.jpg"]).Select(i => i.Id);
         Assert.Equal(["tool.compress", "tool.crop", "tool.edit", "tool.annotate", "tool.redact", "tool.recognizeText", "tool.frame", "tool.removeBackground",
-            "tool.collage", "tool.metadata", "tool.createPDF"], ids);
+            "tool.collage", "tool.metadata"], ids);
     }
 
     [Fact]
@@ -196,5 +196,26 @@ public class LocContextTests
         // English only: other tests run in parallel and expect English strings.
         Assert.Equal("Crop", Loc.L("Crop|tab"));
         Assert.Equal("Обрезка", Loc.Load("ru")["Crop|tab"]);
+    }
+}
+
+public class PdfFromPhotosTests
+{
+    [Fact]
+    public void SeveralPhotosMakeOnePdf()
+    {
+        var (pages, separate) = FormatCatalog.SplitForPdf(["b.jpg", "a.png", "notes.docx", "logo.svg", "c.webp"]);
+        Assert.Equal(["b.jpg", "a.png", "c.webp"], pages);
+        Assert.Equal(["notes.docx", "logo.svg"], separate);
+        Assert.False(FormatCatalog.IsPageImage(FileFormat.Svg));
+        Assert.False(FormatCatalog.IsPageImage(FileFormat.Docx));
+    }
+
+    [Fact]
+    public void OnePhotoIsConvertedOnItsOwn()
+    {
+        var (pages, separate) = FormatCatalog.SplitForPdf(["a.jpg", "notes.docx"]);
+        Assert.Empty(pages);
+        Assert.Equal(["a.jpg", "notes.docx"], separate);
     }
 }

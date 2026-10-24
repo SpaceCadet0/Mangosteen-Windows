@@ -263,6 +263,20 @@ internal sealed class AppController : IDisposable
         {
             // Items that cannot become the target (or already are it) are skipped, as the wheel promised.
             var inputs = paths.Where(p => FormatCatalog.Conversion(p) is var c && c.Source != target && c.Targets.Contains(target)).ToList();
+            if (target == FileFormat.Pdf)
+            {
+                // Several photos become one PDF, a page each; the rest is converted file by file.
+                var (pages, separate) = FormatCatalog.SplitForPdf(inputs);
+                if (pages.Count > 0)
+                {
+                    jobs.RunOnce(L("Creating PDF"), L("PDF created"), WheelCatalog.FileCount(pages.Count), () => Converter.CreatePdf(pages));
+                    inputs = separate;
+                    if (inputs.Count == 0)
+                    {
+                        return;
+                    }
+                }
+            }
             jobs.RunEach(string.Format(L("Converting to {0}"), target.DisplayName()), string.Format(L("Converted to {0}"), target.DisplayName()), inputs,
                 (input, token, progress) => Converter.Convert(input, target, token, progress));
             return;
@@ -274,9 +288,6 @@ internal sealed class AppController : IDisposable
                 case "tool.extract":
                     var archives = paths.Where(p => FileFormats.Detect(p)?.Category() == FormatCategory.Archive).ToList();
                     jobs.RunEach(L("Extracting"), L("Extracted"), archives, (input, _) => Archives.ExtractNextToArchive(input));
-                    break;
-                case "tool.createPDF":
-                    jobs.RunOnce(L("Creating PDF"), L("PDF created"), WheelCatalog.FileCount(paths.Count), () => Converter.CreatePdf(paths));
                     break;
                 case "tool.compressAll":
                     // A mixed selection: every file compressed its own default way, without a window.

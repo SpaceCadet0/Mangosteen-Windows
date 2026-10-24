@@ -61,7 +61,7 @@ public static class WheelCatalog
     ];
 
     /// <summary>Tools that already work on Windows; the others are shown greyed out until their phase.</summary>
-    private static readonly HashSet<string> AvailableTools = ["tool.extract", "tool.createPDF", "tool.mergePDF", "tool.crop", "tool.compress", "tool.metadata", "tool.frame", "tool.collage", "tool.organizePDF", "tool.splitPDF", "tool.recognizeText", "tool.compressAll", "tool.archive", "tool.edit", "tool.redact", "tool.annotate"];
+    private static readonly HashSet<string> AvailableTools = ["tool.extract", "tool.mergePDF", "tool.crop", "tool.compress", "tool.metadata", "tool.frame", "tool.collage", "tool.organizePDF", "tool.splitPDF", "tool.recognizeText", "tool.compressAll", "tool.archive", "tool.edit", "tool.redact", "tool.annotate"];
 
     /// <summary>Video and audio tools; they need the bundled FFmpeg.</summary>
     private static readonly HashSet<string> MediaTools =
@@ -160,7 +160,6 @@ public static class WheelCatalog
         Add(rasterImages, "tool.removeBackground", "Remove bg", WheelIcon.RemoveBackground);
         Add(Count(f => f.Category() == FormatCategory.Image) >= 2, "tool.collage", "Collage", WheelIcon.Collage);
         Add(rasterImages, "tool.metadata", "Metadata", WheelIcon.Info);
-        Add(rasterImages, "tool.createPDF", "PDF from images", WheelIcon.CreatePdf);
         Add(Any(f => f.Category() == FormatCategory.Archive), "tool.extract", "Extract", WheelIcon.Extract);
         Add(Count(f => f == FileFormat.Pdf) >= 2, "tool.mergePDF", "Merge", WheelIcon.Merge);
         return items;

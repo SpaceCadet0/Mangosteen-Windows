@@ -198,7 +198,6 @@ T = {
 "Pencil": ("Карандаш", "Lápiz"),
 "Float": ("Float", "Float"),
 "Hide": ("Скрыть", "Ocultar"),
-"PDF from images": ("PDF из фото", "PDF desde fotos"),
 "Settings": ("Настройки", "Ajustes"),
 "Settings…": ("Настройки…", "Ajustes…"),
 "Welcome…": ("Приветствие…", "Bienvenida…"),
