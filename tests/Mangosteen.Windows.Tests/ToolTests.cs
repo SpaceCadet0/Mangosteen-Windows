@@ -349,6 +349,7 @@ public sealed class ToolTests : IDisposable
             pixels[i * 4 + 3] = 255;
         }
         var photo = BitmapSource.Create(300, 200, 96, 96, PixelFormats.Bgra32, null, pixels, 1200);
+        photo.Freeze();
         var settings = new FrameSettings { Background = FrameBackground.Color, Color = 0xFFFFFFFF, Padding = 0.1, Circle = true, Shadow = 0 };
         var result = Sta.Run(() => Compose.Frame(photo, settings, null));
         Assert.Equal((240, 240), (result.PixelWidth, result.PixelHeight)); // the square plus its margin
