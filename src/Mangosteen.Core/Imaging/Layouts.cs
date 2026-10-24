@@ -168,8 +168,10 @@ public sealed record FrameSettings
     public CanvasAspect Aspect { get; init; } = CanvasAspect.Auto;
     /// <summary>Margin around the photo as a fraction of its longer side.</summary>
     public double Padding { get; init; } = 0.08;
-    /// <summary>Corner radius as a fraction of the photo's shorter side.</summary>
+    /// <summary>Corner radius as a fraction of the photo's shorter side; 0.5 rounds it fully.</summary>
     public double CornerRadius { get; init; } = 0.03;
+    /// <summary>"Circle": the photo is cut to its centred square and made round; <see cref="CornerRadius"/> is not used.</summary>
+    public bool Circle { get; init; }
     /// <summary>0…1</summary>
     public double Shadow { get; init; } = 0.5;
 }

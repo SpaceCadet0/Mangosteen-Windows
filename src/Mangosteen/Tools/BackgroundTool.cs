@@ -23,6 +23,7 @@ internal sealed class BackgroundTool : ToolWindow
     private readonly ComboBox _aspect = new();
     private readonly Slider _padding;
     private readonly Slider _corners;
+    private readonly CheckBox _circle = new() { Content = L("Circle"), ToolTip = L("Crop the photo to a centred square and make it round"), Margin = new Thickness(0, 0, 0, 10) };
     private readonly Slider _shadow;
     private readonly FrameworkElement _colorRow, _gradientRows, _imageRow, _blurRow;
     private readonly TextBlock _imageName = new() { Opacity = 0.7, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0), TextTrimming = TextTrimming.CharacterEllipsis };
@@ -62,7 +63,13 @@ internal sealed class BackgroundTool : ToolWindow
         (var angleView, _angle) = LabeledSlider(0, 360, defaults.GradientAngle, defaults.GradientAngle, v => $"{Math.Round(v)}°");
         (var blurView, _blur) = LabeledSlider(0, 1, defaults.Blur, defaults.Blur, Percent);
         (var paddingView, _padding) = LabeledSlider(0, 0.3, defaults.Padding, defaults.Padding, Percent);
-        (var cornersView, _corners) = LabeledSlider(0, 0.25, defaults.CornerRadius, defaults.CornerRadius, Percent);
+        // Half the shorter side rounds the photo fully: a square becomes a circle. The readout says 100% there.
+        (var cornersView, _corners) = LabeledSlider(0, 0.5, defaults.CornerRadius, defaults.CornerRadius, v => Percent(v / 0.5));
+        _circle.Click += (_, _) =>
+        {
+            _corners.IsEnabled = _circle.IsChecked != true;
+            Changed();
+        };
         (var shadowView, _shadow) = LabeledSlider(0, 1, defaults.Shadow, defaults.Shadow, Percent);
         foreach (var slider in new[] { _angle, _blur, _padding, _corners, _shadow })
         {
@@ -101,6 +108,7 @@ internal sealed class BackgroundTool : ToolWindow
         settings.Children.Add(Row(L("Proportions"), _aspect));
         settings.Children.Add(Row(L("Margin"), paddingView));
         settings.Children.Add(Row(L("Corners"), cornersView));
+        settings.Children.Add(_circle);
         settings.Children.Add(Row(L("Shadow"), shadowView));
         if (_images.Count > 1)
         {
@@ -134,6 +142,7 @@ internal sealed class BackgroundTool : ToolWindow
         Aspect = (CanvasAspect)Math.Max(0, _aspect.SelectedIndex),
         Padding = _padding.Value,
         CornerRadius = _corners.Value,
+        Circle = _circle.IsChecked == true,
         Shadow = _shadow.Value,
     };
 

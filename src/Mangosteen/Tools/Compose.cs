@@ -11,8 +11,25 @@ namespace Mangosteen.Tools;
 /// <summary>Draws Background and Collage results with WPF. Must run on an STA thread (the UI thread or <see cref="Sta"/>).</summary>
 internal static class Compose
 {
+    /// <summary>The largest square from the middle of the image.</summary>
+    private static BitmapSource CentredSquare(BitmapSource image)
+    {
+        var side = Math.Min(image.PixelWidth, image.PixelHeight);
+        if (side == image.PixelWidth && side == image.PixelHeight)
+        {
+            return image;
+        }
+        var square = new CroppedBitmap(image, new Int32Rect((image.PixelWidth - side) / 2, (image.PixelHeight - side) / 2, side, side));
+        square.Freeze();
+        return square;
+    }
+
     public static BitmapSource Frame(BitmapSource photo, FrameSettings settings, BitmapSource? backgroundImage)
     {
+        if (settings.Circle)
+        {
+            photo = CentredSquare(photo);
+        }
         double pw = photo.PixelWidth, ph = photo.PixelHeight;
         var (width, height) = Core.Imaging.Frame.CanvasSize(pw, ph, settings);
         var longest = Math.Max(width, height);
@@ -43,7 +60,7 @@ internal static class Compose
                 break;
         }
 
-        var corner = settings.CornerRadius * Math.Min(pw, ph);
+        var corner = (settings.Circle ? 0.5 : settings.CornerRadius) * Math.Min(pw, ph);
         var picture = new Rectangle { Width = pw, Height = ph, RadiusX = corner, RadiusY = corner, Fill = new ImageBrush(photo) };
         Canvas.SetLeft(picture, (width - pw) / 2);
         Canvas.SetTop(picture, (height - ph) / 2);

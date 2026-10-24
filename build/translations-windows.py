@@ -279,4 +279,6 @@ T = {
 "All files: {0} px high, width to scale": ("Все файлы: высота {0} px, ширина по пропорциям", "Todos los archivos: {0} px de alto, ancho proporcional"),
 "All files: {0} × {1} px": ("Все файлы: {0} × {1} px", "Todos los archivos: {0} × {1} px"),
 "Crop|tab": ("Обрезка", "Recorte"),
+"Circle": ("Круг", "Círculo"),
+"Crop the photo to a centred square and make it round": ("Обрезать фото до квадрата по центру и сделать круглым", "Recortar la foto a un cuadrado centrado y hacerla redonda"),
 }

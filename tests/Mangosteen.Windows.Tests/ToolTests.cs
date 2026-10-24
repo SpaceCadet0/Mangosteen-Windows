@@ -338,6 +338,28 @@ public sealed class ToolTests : IDisposable
     }
 
     [Fact]
+    public void CircleCutsTheCentredSquare()
+    {
+        // 300 × 200: red strips of 50 px at the sides, black in the middle square.
+        var pixels = new byte[300 * 200 * 4];
+        for (var i = 0; i < 300 * 200; i++)
+        {
+            var x = i % 300;
+            pixels[i * 4 + 2] = (byte)(x is < 50 or >= 250 ? 255 : 0);
+            pixels[i * 4 + 3] = 255;
+        }
+        var photo = BitmapSource.Create(300, 200, 96, 96, PixelFormats.Bgra32, null, pixels, 1200);
+        var settings = new FrameSettings { Background = FrameBackground.Color, Color = 0xFFFFFFFF, Padding = 0.1, Circle = true, Shadow = 0 };
+        var result = Sta.Run(() => Compose.Frame(photo, settings, null));
+        Assert.Equal((240, 240), (result.PixelWidth, result.PixelHeight)); // the square plus its margin
+        var bgra = ImageIO.ToBgra(result);
+        byte[] At(int x, int y) => bgra.Pixels[((y * 240 + x) * 4)..((y * 240 + x) * 4 + 3)];
+        Assert.Equal([255, 255, 255], At(23, 23)); // the corner of the square is cut away
+        Assert.True(At(22, 120)[2] < 30, "the red sides are cropped away");
+        Assert.True(At(120, 120)[2] < 30);
+    }
+
+    [Fact]
     public void BackgroundAndCollageSizes()
     {
         var photo = ImageConverter.Decode(Photo("p.jpg", 400, 300, false));
