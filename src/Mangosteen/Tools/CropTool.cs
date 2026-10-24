@@ -103,7 +103,7 @@ internal sealed class CropTool : ToolWindow
 
         var canvasFrame = new Border
         {
-            Width = 720, Height = 440, CornerRadius = new CornerRadius(10), Padding = new Thickness(8),
+            Width = 720, Height = 380, CornerRadius = new CornerRadius(10), Padding = new Thickness(8),
             Background = new SolidColorBrush(Color.FromArgb(0x18, 0x80, 0x80, 0x80)),
             Child = new Viewbox { Child = _surface, Stretch = Stretch.Uniform },
         };
