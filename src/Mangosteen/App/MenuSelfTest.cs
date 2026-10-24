@@ -79,14 +79,22 @@ internal static class MenuSelfTest
         return chosen == expected;
     }
 
-    /// <summary>Moves the pointer there in small steps, as a hand would, so the menus see it pass.</summary>
+    /// <summary>
+    /// Moves the pointer there in small steps, as a hand would, so the menus see it pass: across first (into the
+    /// submenu, which opens level with its item), then up or down to the item.
+    /// </summary>
     private static async Task Glide(Point target)
     {
         GetCursorPos(out var start);
         const int steps = 12;
         for (var step = 1; step <= steps; step++)
         {
-            SetCursorPos((int)(start.X + (target.X - start.X) * step / steps), (int)(start.Y + (target.Y - start.Y) * step / steps));
+            SetCursorPos((int)(start.X + (target.X - start.X) * step / steps), start.Y);
+            await Task.Delay(15);
+        }
+        for (var step = 1; step <= steps; step++)
+        {
+            SetCursorPos((int)target.X, (int)(start.Y + (target.Y - start.Y) * step / steps));
             await Task.Delay(15);
         }
     }

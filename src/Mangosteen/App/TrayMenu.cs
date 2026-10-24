@@ -29,6 +29,7 @@ internal sealed class TrayMenu : Window
     private TrayMenu? _parent;
     private TrayMenu? _child;
     private Rect? _anchor; // the item a submenu belongs to, in screen DIPs
+    private System.Windows.Threading.DispatcherTimer? _closeSoon;
 
     /// <param name="light">Forces the light or dark look (snapshots); null follows Windows.</param>
     public TrayMenu(bool? light = null)
@@ -179,7 +180,8 @@ internal sealed class TrayMenu : Window
             }
             else
             {
-                CloseChild();
+                // Like Windows menus: crossing another item on the way to an open submenu does not close it at once.
+                CloseChildSoon();
             }
         };
         item.MouseLeave += (_, _) =>
@@ -251,8 +253,29 @@ internal sealed class TrayMenu : Window
         child.Show();
     }
 
+    /// <summary>Closes the open submenu unless the pointer reaches it within a moment.</summary>
+    private void CloseChildSoon()
+    {
+        if (_child is null)
+        {
+            return;
+        }
+        _closeSoon ??= new System.Windows.Threading.DispatcherTimer(TimeSpan.FromMilliseconds(350),
+            System.Windows.Threading.DispatcherPriority.Input, (_, _) =>
+            {
+                _closeSoon!.Stop();
+                if (_child is { IsMouseOver: false })
+                {
+                    CloseChild();
+                }
+            }, Dispatcher);
+        _closeSoon.Stop();
+        _closeSoon.Start();
+    }
+
     private void CloseChild()
     {
+        _closeSoon?.Stop();
         if (_child is { } child)
         {
             _child = null;
