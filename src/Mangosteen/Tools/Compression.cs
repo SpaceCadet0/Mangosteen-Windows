@@ -125,7 +125,7 @@ internal static class Compression
                 var jpeg = ImageIO.Encode(picture, FileFormat.Jpg, step.Quality);
                 if (jpeg.Length < imageBytes)
                 {
-                    Rasterize(page, jpeg, picture.PixelWidth * 72.0 / picture.DpiX, picture.PixelHeight * 72.0 / picture.DpiY);
+                    Rasterize(page, jpeg);
                     continue;
                 }
             }
@@ -193,9 +193,11 @@ internal static class Compression
         return (text, images);
     }
 
-    /// <summary>Replaces the page with one JPEG of it, <paramref name="width"/> × <paramref name="height"/> points as seen.</summary>
-    private static void Rasterize(PdfPage page, byte[] jpeg, double width, double height)
+    /// <summary>Replaces the page with one JPEG of it, keeping its visible size and orientation.</summary>
+    private static void Rasterize(PdfPage page, byte[] jpeg)
     {
+        var box = page.Elements.ContainsKey("/CropBox") ? page.CropBox : page.MediaBox;
+        var (width, height) = page.Rotate % 180 == 0 ? (box.Width, box.Height) : (box.Height, box.Width);
         // The render is already turned and cropped; old pictures and fonts go with the old resources.
         foreach (var key in new[] { "/Rotate", "/CropBox", "/BleedBox", "/TrimBox", "/ArtBox", "/Resources" })
         {
