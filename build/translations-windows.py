@@ -130,7 +130,7 @@ T = {
 "Pages saved": ("Страницы сохранены", "Páginas guardadas"),
 "Photo editor": ("Редактор фото", "Editor de fotos"),
 "Photos keep the order they had in Explorer. Featured photo puts the first one large.": ("Фото идут в том же порядке, что в Проводнике. «Главное фото» делает первое крупным.", "Las fotos siguen el orden del Explorador. Foto principal muestra la primera en grande."),
-"Pictures in PDF files are re-encoded as JPEG at screen resolution.": ("В PDF изображения будут пережаты в JPEG экранного разрешения.", "Las imágenes de los PDF se recodifican como JPEG a resolución de pantalla."),
+"PDF pages without text are saved as one picture each; on pages with text only the pictures are re-encoded, the text stays selectable.": ("Страницы PDF без текста сохраняются одной картинкой; на страницах с текстом пережимаются только изображения, текст остаётся выделяемым.", "Las páginas de PDF sin texto se guardan como una sola imagen; en las páginas con texto solo se recodifican las imágenes y el texto sigue siendo seleccionable."),
 "Pixels": ("Пиксели", "Píxeles"),
 "Proportions": ("Пропорции", "Proporciones"),
 "Quiet recordings become louder and loud ones quieter, without clipping.": ("Тихие записи станут громче, громкие тише, без перегрузки.", "Las grabaciones bajas suben y las altas bajan, sin saturar."),

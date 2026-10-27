@@ -253,7 +253,7 @@
  "Photos keep the order they had in Explorer. Featured photo puts the first one large.": "Las fotos siguen el orden del Explorador. Foto principal muestra la primera en grande.",
  "Picked the wrong wheel? While it is open, press Shift, Ctrl or Alt to switch. Without the keys: click the Mangosteen icon by the clock and choose files.": "¿Rueda equivocada? Mientras está abierta, pulsa Mayús, Ctrl o Alt para cambiar. Sin teclas: haz clic en el icono de Mangosteen junto al reloj y elige archivos.",
  "Picture": "Imagen fija",
- "Pictures in PDF files are re-encoded as JPEG at screen resolution.": "Las imágenes de los PDF se recodifican como JPEG a resolución de pantalla.",
+ "PDF pages without text are saved as one picture each; on pages with text only the pictures are re-encoded, the text stays selectable.": "Las páginas de PDF sin texto se guardan como una sola imagen; en las páginas con texto solo se recodifican las imágenes y el texto sigue siendo seleccionable.",
  "Pixels": "Píxeles",
  "Podcast (−16 LUFS)": "Pódcast (−16 LUFS)",
  "Preset": "Preajuste",

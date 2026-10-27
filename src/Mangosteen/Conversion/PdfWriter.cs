@@ -17,7 +17,7 @@ internal static class PdfWriter
     private static bool _fontsReady;
 
     /// <summary>MigraDoc and PDFsharp use the fonts installed in Windows (Cyrillic included); see <see cref="WindowsFontResolver"/>.</summary>
-    private static void EnsureFonts()
+    internal static void EnsureFonts()
     {
         lock (FontSetup)
         {

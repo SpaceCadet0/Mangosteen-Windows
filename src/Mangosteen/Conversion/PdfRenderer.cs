@@ -32,6 +32,13 @@ internal static class PdfRenderer
         return result;
     }
 
+    /// <summary>Renders pages of one document at <paramref name="dpi"/>, loading it once.</summary>
+    public static Func<int, BitmapSource> Pages(string path, double dpi)
+    {
+        var document = Load(path);
+        return index => Render(document, index, MaxSide, dpi);
+    }
+
     /// <summary>Writes <c>name 1.png</c>, <c>name 2.png</c>... (numbers padded to the page count) into a new folder.</summary>
     public static void RenderPages(string path, FileFormat target, string folder, string baseName, CancellationToken token)
     {
@@ -60,11 +67,11 @@ internal static class PdfRenderer
         }
     }
 
-    private static BitmapSource Render(PdfDocument document, int index, double maxSide = MaxSide)
+    private static BitmapSource Render(PdfDocument document, int index, double maxSide = MaxSide, double resolution = Dpi)
     {
         using var page = document.GetPage((uint)index);
         // Page size is in device-independent pixels (1/96 inch), already rotated.
-        var scale = Dpi / 96;
+        var scale = resolution / 96;
         var width = page.Size.Width * scale;
         var height = page.Size.Height * scale;
         var fit = Math.Min(1, maxSide / Math.Max(width, height));
@@ -80,7 +87,7 @@ internal static class PdfRenderer
         using var managed = stream.AsStreamForRead();
         var frame = BitmapDecoder.Create(managed, BitmapCreateOptions.None, BitmapCacheOption.OnLoad).Frames[0];
         // Keep the physical size: a 300 dpi render of an A4 page is still A4.
-        var dpi = Dpi * fit;
+        var dpi = resolution * fit;
         var pixels = new FormatConvertedBitmap(frame, System.Windows.Media.PixelFormats.Bgra32, null, 0);
         var stride = pixels.PixelWidth * 4;
         var buffer = new byte[stride * pixels.PixelHeight];

@@ -121,7 +121,7 @@ public sealed class ToolTests : IDisposable
     public void PdfCompressionKeepsAValidPdf()
     {
         var pdf = Converter.CreatePdf([Photo("a.jpg", 2400, 1800, false), Photo("b.jpg", 2400, 1800, false)]);
-        var data = Compression.CompressPdf(pdf, CancellationToken.None);
+        var data = Compression.CompressPdf(pdf, new CompressionSettings(), CancellationToken.None);
         Assert.True(data.Length < new FileInfo(pdf).Length);
         File.WriteAllBytes(PathOf("small.pdf"), data);
         using (var document = PdfDocument.Open(PathOf("small.pdf")))
@@ -129,6 +129,162 @@ public sealed class ToolTests : IDisposable
             Assert.Equal(2, document.NumberOfPages);
         }
         Assert.True(PdfRenderer.RenderPage(PathOf("small.pdf"), 1).PixelWidth > 100);
+    }
+
+    private const string PdfLine = "Mangosteen compression check";
+
+    /// <summary>
+    /// An A4 PDF made with PDFsharp, like an export from a scanner or Google Docs: on each page an optional line of text
+    /// with a link and an optional picture stored losslessly (PNG, so Flate inside), a full-page 150 dpi scan when
+    /// there is no text, a 1000 × 700 screenshot when there is.
+    /// </summary>
+    private string MakePdf(string name, int pages, bool text, bool picture)
+    {
+        PdfWriter.EnsureFonts();
+        using var document = new PdfSharp.Pdf.PdfDocument();
+        for (var index = 0; index < pages; index++)
+        {
+            var page = document.AddPage();
+            page.Width = PdfSharp.Drawing.XUnit.FromPoint(595);
+            page.Height = PdfSharp.Drawing.XUnit.FromPoint(842);
+            using var graphics = PdfSharp.Drawing.XGraphics.FromPdfPage(page);
+            if (picture)
+            {
+                var (width, height) = text ? (1000, 700) : (1240, 1754);
+                var photo = new FormatConvertedBitmap(ImageConverter.Decode(Photo($"{name}-{index}.jpg", width, height, false)), PixelFormats.Bgr24, null, 0);
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(photo));
+                var stream = new MemoryStream();
+                encoder.Save(stream);
+                stream.Position = 0;
+                using var image = PdfSharp.Drawing.XImage.FromStream(stream);
+                if (text)
+                {
+                    graphics.DrawImage(image, 50, 120, 495, 346);
+                }
+                else
+                {
+                    graphics.DrawImage(image, 0, 0, 595, 842);
+                }
+            }
+            if (text)
+            {
+                graphics.DrawString(PdfLine, new PdfSharp.Drawing.XFont("Segoe UI", 14), PdfSharp.Drawing.XBrushes.Black, 50, 80);
+                page.AddWebLink(new PdfSharp.Pdf.PdfRectangle(new PdfSharp.Drawing.XRect(50, 60, 200, 30)), "https://example.com/");
+            }
+        }
+        if (text && picture)
+        {
+            // Google Docs tags its screenshots with an sRGB profile: [/ICCBased n 0 R] instead of /DeviceRGB.
+            var profile = new PdfSharp.Pdf.PdfDictionary(document);
+            profile.Elements.SetInteger("/N", 3);
+            profile.CreateStream(File.ReadAllBytes(Path.Combine(Environment.SystemDirectory, @"spool\drivers\color\sRGB Color Space Profile.icm")));
+            document.Internals.AddObject(profile);
+            var objects = document.Pages[0].Resources.Elements.GetDictionary("/XObject")!;
+            foreach (var key in objects.Elements.Keys)
+            {
+                objects.Elements.GetDictionary(key)!.Elements["/ColorSpace"] = new PdfSharp.Pdf.PdfArray(document, new PdfSharp.Pdf.PdfName("/ICCBased"), profile.Reference!);
+            }
+        }
+        var path = PathOf(name);
+        document.Save(path);
+        return path;
+    }
+
+    private static List<string> ImageFilters(string pdf)
+    {
+        using var document = PdfSharp.Pdf.IO.PdfReader.Open(pdf, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+        var filters = new List<string>();
+        foreach (var page in document.Pages)
+        {
+            if (page.Resources.Elements.GetDictionary("/XObject") is { } objects)
+            {
+                foreach (var key in objects.Elements.Keys)
+                {
+                    if (objects.Elements.GetDictionary(key) is { } item && item.Elements.GetName("/Subtype") == "/Image")
+                    {
+                        filters.Add(item.Elements["/Filter"]?.ToString() ?? "none");
+                    }
+                }
+            }
+        }
+        return filters;
+    }
+
+    [Fact]
+    public void ScannedPdfPagesBecomeJpegs()
+    {
+        var scan = MakePdf("скан.pdf", 2, text: false, picture: true);
+        var original = new FileInfo(scan).Length;
+        var output = Compression.CompressFile(scan, new CompressionSettings(), CancellationToken.None);
+        Assert.Equal(PathOf("скан (compressed).pdf"), output);
+        Assert.Equal(original, new FileInfo(scan).Length);
+        Assert.True(new FileInfo(output).Length < original / 2, $"{original} → {new FileInfo(output).Length}");
+        Assert.All(ImageFilters(output), filter => Assert.Equal("/DCTDecode", filter));
+        using (var document = PdfDocument.Open(output))
+        {
+            Assert.Equal(2, document.NumberOfPages);
+            Assert.Equal(595, document.GetPage(1).Width, 1);
+            Assert.Equal(842, document.GetPage(1).Height, 1);
+        }
+        var page = PdfRenderer.RenderPage(output, 1);
+        Assert.True(page.PixelWidth > 2000 && page.PixelHeight > page.PixelWidth);
+
+        var high = Compression.CompressPdf(scan, new CompressionSettings { Preset = CompressionPreset.High }, CancellationToken.None);
+        var small = Compression.CompressPdf(scan, new CompressionSettings { Preset = CompressionPreset.Small }, CancellationToken.None);
+        var quality = Compression.CompressPdf(scan, new CompressionSettings { Mode = CompressionMode.Quality, Quality = 0.2 }, CancellationToken.None);
+        Assert.True(small.Length < high.Length);
+        Assert.True(quality.Length < high.Length);
+        var target = high.Length / 2;
+        var fitted = Compression.CompressPdf(scan, new CompressionSettings { Mode = CompressionMode.TargetSize, TargetBytes = target }, CancellationToken.None);
+        Assert.True(fitted.Length <= target, $"{fitted.Length} > {target}");
+    }
+
+    [Fact]
+    public void PdfWithTextKeepsTextLinksAndFonts()
+    {
+        var pdf = MakePdf("документ.pdf", 3, text: true, picture: true);
+        var original = new FileInfo(pdf).Length;
+        Assert.All(ImageFilters(pdf), filter => Assert.Equal("/FlateDecode", filter));
+        Assert.Contains("ICCBased", File.ReadAllText(pdf, System.Text.Encoding.Latin1));
+        foreach (var settings in new[]
+        {
+            new CompressionSettings(), new CompressionSettings { Preset = CompressionPreset.Small },
+            new CompressionSettings { Mode = CompressionMode.Quality, Quality = 0.5 },
+            new CompressionSettings { Mode = CompressionMode.TargetSize, TargetBytes = original / 3 },
+        })
+        {
+            var output = PathOf("result.pdf");
+            File.WriteAllBytes(output, Compression.CompressPdf(pdf, settings, CancellationToken.None));
+            Assert.True(new FileInfo(output).Length < original / 2, $"{settings.Mode} {settings.Preset}: {original} → {new FileInfo(output).Length}");
+            Assert.Equal(3, ImageFilters(output).Count);
+            Assert.All(ImageFilters(output), filter => Assert.Equal("/DCTDecode", filter));
+            using (var document = PdfDocument.Open(output))
+            {
+                Assert.Equal(3, document.NumberOfPages);
+                foreach (var page in document.GetPages())
+                {
+                    Assert.Contains(PdfLine, page.Text);
+                    Assert.All(page.Letters, letter => Assert.False(string.IsNullOrEmpty(letter.FontName)));
+                }
+            }
+            using (var document = PdfSharp.Pdf.IO.PdfReader.Open(output, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import))
+            {
+                foreach (var page in document.Pages)
+                {
+                    Assert.Equal(1, page.Annotations.Count);
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void PdfWithOnlyTextIsNotSaved()
+    {
+        var pdf = MakePdf("текст.pdf", 2, text: true, picture: false);
+        var error = Assert.Throws<InvalidOperationException>(() => Compression.CompressFile(pdf, new CompressionSettings(), CancellationToken.None));
+        Assert.Contains("not smaller", error.Message);
+        Assert.False(File.Exists(PathOf("текст (compressed).pdf")));
     }
 
     [Fact]
