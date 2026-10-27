@@ -173,6 +173,19 @@ public sealed class ToolTests : IDisposable
                 page.AddWebLink(new PdfSharp.Pdf.PdfRectangle(new PdfSharp.Drawing.XRect(50, 60, 200, 30)), "https://example.com/");
             }
         }
+        if (text && picture)
+        {
+            // Google Docs tags its screenshots with an sRGB profile: [/ICCBased n 0 R] instead of /DeviceRGB.
+            var profile = new PdfSharp.Pdf.PdfDictionary(document);
+            profile.Elements.SetInteger("/N", 3);
+            profile.CreateStream(File.ReadAllBytes(Path.Combine(Environment.SystemDirectory, @"spool\drivers\color\sRGB Color Space Profile.icm")));
+            document.Internals.AddObject(profile);
+            var objects = document.Pages[0].Resources.Elements.GetDictionary("/XObject")!;
+            foreach (var key in objects.Elements.Keys)
+            {
+                objects.Elements.GetDictionary(key)!.Elements["/ColorSpace"] = new PdfSharp.Pdf.PdfArray(document, new PdfSharp.Pdf.PdfName("/ICCBased"), profile.Reference!);
+            }
+        }
         var path = PathOf(name);
         document.Save(path);
         return path;
@@ -233,6 +246,7 @@ public sealed class ToolTests : IDisposable
         var pdf = MakePdf("документ.pdf", 3, text: true, picture: true);
         var original = new FileInfo(pdf).Length;
         Assert.All(ImageFilters(pdf), filter => Assert.Equal("/FlateDecode", filter));
+        Assert.Contains("ICCBased", File.ReadAllText(pdf, System.Text.Encoding.Latin1));
         foreach (var settings in new[]
         {
             new CompressionSettings(), new CompressionSettings { Preset = CompressionPreset.Small },
