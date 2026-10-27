@@ -219,3 +219,22 @@ public class PdfFromPhotosTests
         Assert.Equal(["a.jpg", "notes.docx"], separate);
     }
 }
+
+public class UpdatesTests
+{
+    [Theory]
+    [InlineData("1.10.0", "1.9.9", 1)]
+    [InlineData("v1.3.2", "1.3.2", 0)]
+    [InlineData("1.0", "1.0.0", 0)]
+    [InlineData("1.3.1", "v1.3.2", -1)]
+    [InlineData("2", "1.99.99", 1)]
+    public void ComparesVersionsByNumbers(string a, string b, int expected) => Assert.Equal(expected, Math.Sign(Updates.Compare(a, b)));
+
+    [Fact]
+    public void ReadsTheReleaseTagAndPage()
+    {
+        var (tag, url) = Updates.ParseRelease("""{"tag_name":"v1.3.2","html_url":"https://github.com/SpaceCadet0/Mangosteen-Windows/releases/tag/v1.3.2","name":"x"}""");
+        Assert.Equal("v1.3.2", tag);
+        Assert.EndsWith("/tag/v1.3.2", url);
+    }
+}

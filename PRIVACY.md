@@ -1,14 +1,17 @@
 # Privacy Policy — Mangosteen for Windows
 
-*Last updated: 23 October 2026*
+*Last updated: 27 October 2026*
 
 Mangosteen is a file converter and toolbox that runs entirely on your computer. It does not collect, send or
 share any personal data.
 
 ## What Mangosteen does not do
 
-- It does not connect to the internet. Conversions, tools, text recognition and background removal run on your
+- It does not send your files anywhere. Conversions, tools, text recognition and background removal run on your
   device; no file, image, text or other content leaves your computer.
+- It connects to the internet only when you choose **Check for Updates…**: it then asks GitHub (api.github.com) for
+  the number of the latest version. Nothing about you or your files is in that request; like any website, GitHub
+  sees your IP address and the app's version. Mangosteen never checks on its own and downloads nothing.
 - It has no accounts, no analytics, no advertising, no crash reporting and no tracking of any kind.
 - It does not sell or share data with anyone, because it has none to share.
 
@@ -51,13 +54,16 @@ Questions about privacy: open an issue at https://github.com/SpaceCadet0/Mangost
 
 # Политика конфиденциальности — Mangosteen для Windows
 
-*Обновлено: 23 октября 2026 года*
+*Обновлено: 27 октября 2026 года*
 
 Mangosteen — конвертер файлов и набор инструментов, который полностью работает на вашем компьютере. Он не собирает,
 не отправляет и не передаёт никакие персональные данные.
 
-- Приложение не подключается к интернету. Конвертация, инструменты, распознавание текста и удаление фона выполняются
-  на устройстве; файлы и их содержимое никуда не отправляются.
+- Файлы никуда не отправляются. Конвертация, инструменты, распознавание текста и удаление фона выполняются на
+  устройстве.
+- В интернет приложение обращается, только когда вы выбираете **«Проверить обновления…»**: тогда оно спрашивает у GitHub
+  (api.github.com) номер последней версии. В этом запросе нет ничего о вас и ваших файлах; как и любой сайт, GitHub видит
+  ваш IP-адрес и версию приложения. Сам Mangosteen ничего не проверяет и ничего не скачивает.
 - Нет учётных записей, аналитики, рекламы, отчётов о сбоях и какого-либо отслеживания.
 - На компьютере, в папке `%LOCALAPPDATA%\Mangosteen` (или в папке пакета в версии из Microsoft Store), хранятся
   только настройки, список недавних результатов (имена и расположение созданных файлов) и технический журнал с путями

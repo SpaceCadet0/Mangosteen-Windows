@@ -14,6 +14,9 @@ internal static class ToolRegistry
     {
         "welcome" => new WelcomeWindow(),
         "settings" => new SettingsWindow(new AppSettings()),
+        "update.available" => UpdateDialog.Available("9.9.9", "https://github.com/SpaceCadet0/Mangosteen-Windows/releases/latest"),
+        "update.current" => UpdateDialog.UpToDate(),
+        "update.failed" => UpdateDialog.Failed(),
         "tool.crop" => new CropTool(files, jobs),
         "tool.compress" => new CompressTool(files, jobs),
         "tool.metadata" => new MetadataTool(files, jobs),
@@ -97,6 +100,7 @@ internal static class ToolRegistry
             menu.AddSeparator();
             menu.AddSubmenu(L("Recent Results"), "\uE81C", _ => { });
             menu.AddItem(L("Settings…"), "\uE713", () => { });
+            menu.AddItem(L("Check for Updates…"), "\uE896", () => { });
             menu.AddItem(L("Quit Mangosteen"), "\uE7E8", () => { });
             window = menu;
         }

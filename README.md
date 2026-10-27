@@ -63,7 +63,8 @@ file uses the whole selection. Right-clicks without these keys open the usual co
 
 - **Zero clicks.** The wheel shows only what makes sense for the files you clicked.
 - **Never touches the original.** Results are written next to the source; names never clash (`photo 2.jpg`).
-- **Fully offline.** Everything runs on your PC. Nothing is uploaded, nothing is tracked.
+- **Fully offline.** Everything runs on your PC. Nothing is uploaded, nothing is tracked. The only request it ever
+  makes is **Check for Updates…**, and only when you click it.
 - **No limits.** Any number of files, any size, as often as you like.
 - **One file.** A single self-contained `Mangosteen.exe` with FFmpeg inside; no installer, no .NET to install.
 - **Native.** WPF with the Windows 11 look, Windows' own PDF, OCR and face detection engines.

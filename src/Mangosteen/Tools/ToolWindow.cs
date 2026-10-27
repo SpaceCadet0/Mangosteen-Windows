@@ -113,6 +113,12 @@ internal abstract class ToolWindow : Window
         _action.IsCancel = true;
     }
 
+    /// <summary>The second button's text ("Later" in the update dialog).</summary>
+    protected string CancelTitle
+    {
+        set => _cancel.Content = value;
+    }
+
     /// <summary>The main button's text, for tools whose action changes (Crop becomes Split).</summary>
     protected string ActionTitle
     {

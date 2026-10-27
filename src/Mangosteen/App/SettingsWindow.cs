@@ -37,8 +37,24 @@ internal sealed class SettingsWindow : ToolWindow
         }
         stack.Children.Add(new Border { Height = 10 });
         stack.Children.Add(Note(L("The keys: hold Shift for Convert, Ctrl for Tools, Alt for Actions, and right-click a file.")));
+        stack.Children.Add(Links());
         Body = stack;
         ActionEnabled = true;
+    }
+
+    /// <summary>"Check for Updates…" and the project page.</summary>
+    private static FrameworkElement Links()
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+        System.Windows.Documents.Hyperlink Link(string text, Action click)
+        {
+            var link = new System.Windows.Documents.Hyperlink(new System.Windows.Documents.Run(text));
+            link.Click += (_, _) => click();
+            return link;
+        }
+        row.Children.Add(new TextBlock(Link(L("Check for Updates…"), UpdateCheck.Run)) { Margin = new Thickness(0, 0, 18, 0) });
+        row.Children.Add(new TextBlock(Link("GitHub", () => Process.Start(new ProcessStartInfo("https://github.com/SpaceCadet0/Mangosteen-Windows") { UseShellExecute = true }))));
+        return row;
     }
 
     protected override void Run()

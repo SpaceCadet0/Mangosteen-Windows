@@ -28,6 +28,7 @@ internal sealed class TrayIcon : IDisposable
             menu.AddSubmenu(L("Recent Results"), "\uE81C", FillRecent);
             menu.AddItem(L("Float shelf"), "\uE718", toggleShelf);
             menu.AddItem(L("Settings…"), "\uE713", settings);
+            menu.AddItem(L("Check for Updates…"), "\uE896", UpdateCheck.Run);
             menu.AddItem(L("Welcome…"), "\uE946", welcome);
             menu.AddItem(L("Open log"), "\uE7C3", OpenLog);
             menu.AddSeparator();
