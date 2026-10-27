@@ -34,6 +34,23 @@ public sealed record CompressionSettings
         _ => 0.45,
     };
 
+    /// <summary>
+    /// Resolution and JPEG quality for PDF pages and pictures, as in the macOS version: 200/0.8, 150/0.7, 110/0.5 for
+    /// the presets; the chosen quality at 150 dpi in quality mode.
+    /// </summary>
+    public PdfStep PdfStep => Mode == CompressionMode.Quality
+        ? new PdfStep(150, Quality)
+        : Preset switch
+        {
+            CompressionPreset.High => new PdfStep(200, 0.8),
+            CompressionPreset.Balanced => new PdfStep(150, 0.7),
+            _ => new PdfStep(110, 0.5),
+        };
+
+    /// <summary>Target-size mode tries these until the PDF fits.</summary>
+    public static readonly IReadOnlyList<PdfStep> PdfTargetSteps =
+        [new(200, 0.8), new(150, 0.7), new(120, 0.55), new(100, 0.4), new(72, 0.3)];
+
     public int? EffectiveMaxPixelSize => Mode == CompressionMode.Preset && Preset == CompressionPreset.Small ? MaxPixelSize ?? 2560 : MaxPixelSize;
 
     public static string Title(CompressionPreset preset) => preset switch
@@ -52,6 +69,9 @@ public sealed record CompressionSettings
 
     public static bool IsLossy(FileFormat format) => format is FileFormat.Jpg or FileFormat.Webp or FileFormat.Heic or FileFormat.Avif;
 }
+
+/// <summary>How a PDF is compressed: pages and pictures at <see cref="Dpi"/>, JPEG at <see cref="Quality"/> (0…1).</summary>
+public readonly record struct PdfStep(double Dpi, double Quality);
 
 /// <summary>Finds the highest quality whose encoded size fits a limit.</summary>
 public static class CompressionSearch

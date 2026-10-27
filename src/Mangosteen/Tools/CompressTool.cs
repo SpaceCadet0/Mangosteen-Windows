@@ -136,7 +136,7 @@ internal sealed class CompressTool : ToolWindow
         settings.Children.Add(new Border { Height = 10 });
         if (_pdfs.Count > 0)
         {
-            settings.Children.Add(Note(L("Pictures in PDF files are re-encoded as JPEG at screen resolution.")));
+            settings.Children.Add(Note(L("PDF pages without text are saved as one picture each; on pages with text only the pictures are re-encoded, the text stays selectable.")));
         }
         if (_images.Any(p => FileFormats.Detect(p) is { } f && !CompressionSettings.IsLossy(f)))
         {
