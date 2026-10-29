@@ -170,6 +170,27 @@ jobs:
           name: stats
           path: stats
 
+      - name: Sixty files from Explorer's classic menu open one wheel
+        shell: pwsh
+        run: |
+          # Explorer starts one Mangosteen.exe per selected item for a classic menu verb; all of them at once here.
+          $folder = New-Item -ItemType Directory -Force (Join-Path $env:RUNNER_TEMP 'sixty')
+          1..60 | ForEach-Object { Copy-Item tests/fixtures/photo.jpg (Join-Path $folder "photo $_.jpg") }
+          $log = Join-Path $env:LOCALAPPDATA 'Mangosteen/mangosteen.log'
+          $app = Start-Process publish/Mangosteen.exe -PassThru
+          Start-Sleep -Seconds 15
+          $before = (Get-Content $log).Count
+          $clients = Get-ChildItem $folder -Filter *.jpg | ForEach-Object {
+            Start-Process publish/Mangosteen.exe -ArgumentList @('--wheel', 'tools', "`"$($_.FullName)`"") -PassThru
+          }
+          $clients | Wait-Process -Timeout 60 -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 3
+          $lines = Get-Content $log | Select-Object -Skip $before | Where-Object { $_ -match 'explorer menu: ' }
+          $lines | ForEach-Object { Write-Host $_ }
+          Stop-Process $app -Force
+          "### Sixty files from Explorer's menu`n" + (($lines | ForEach-Object { "- ``$_``" }) -join "`n") | Add-Content $env:GITHUB_STEP_SUMMARY
+          if ($lines.Count -ne 1 -or $lines[0] -notmatch 'for 60 items') { throw "Expected one wheel for 60 items" }
+
       - name: Tool window snapshots
         # Layout checks only; a crash here must not stop the README screenshots and the build artifacts.
         continue-on-error: true
