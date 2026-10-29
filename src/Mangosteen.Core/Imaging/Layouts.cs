@@ -49,6 +49,20 @@ public sealed record CollageSettings
     public double Spacing { get; init; } = 0.015;
     /// <summary>Corner radius as a fraction of each cell's shorter side.</summary>
     public double CornerRadius { get; init; }
+    /// <summary>A plain colour behind the photos, or a gradient across the whole canvas.</summary>
+    public CollageFill Fill { get; init; } = CollageFill.Color;
+    /// <summary>The gradient starts with the same colours and angle as in Background.</summary>
+    public uint GradientStart { get; init; } = new FrameSettings().GradientStart;
+    public uint GradientEnd { get; init; } = new FrameSettings().GradientEnd;
+    /// <summary>Degrees, 0 = left → right, 90 = bottom → top.</summary>
+    public double GradientAngle { get; init; } = new FrameSettings().GradientAngle;
+    /// <summary>0…1, a soft shadow under every photo.</summary>
+    public double Shadow { get; init; }
+}
+
+public enum CollageFill
+{
+    Color, Gradient,
 }
 
 /// <summary>
@@ -57,6 +71,31 @@ public sealed record CollageSettings
 /// </summary>
 public static class Collage
 {
+    /// <summary>
+    /// The shadow under a cell, as in the macOS version: blur = shadow × the cell's shorter side × 0.08, moved down by
+    /// 0.35 of the blur, black at 0.25 + shadow × 0.3 opacity.
+    /// </summary>
+    public static (double Blur, double Offset, double Opacity) ShadowOf(Box cell, double shadow)
+    {
+        var blur = shadow * Math.Min(cell.Width, cell.Height) * 0.08;
+        return (blur, blur * 0.35, 0.25 + shadow * 0.3);
+    }
+
+    /// <summary>
+    /// Puts the item at <paramref name="from"/> where the item at <paramref name="to"/> is; the items in between shift,
+    /// as when a row is dragged in a list.
+    /// </summary>
+    public static void Move<T>(IList<T> items, int from, int to)
+    {
+        if (from == to || from < 0 || to < 0 || from >= items.Count || to >= items.Count)
+        {
+            return;
+        }
+        var item = items[from];
+        items.RemoveAt(from);
+        items.Insert(to, item);
+    }
+
     /// <summary>Canvas size and cell rectangles (origin top-left) for photos with the given aspect ratios (width / height).</summary>
     public static (double Width, double Height, List<Box> Cells) Layout(IReadOnlyList<double> aspects, CollageSettings settings)
     {

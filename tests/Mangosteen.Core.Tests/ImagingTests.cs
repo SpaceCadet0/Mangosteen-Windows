@@ -83,6 +83,33 @@ public class LayoutTests
     }
 
     [Fact]
+    public void DraggedPhotoTakesTheTargetsPlace()
+    {
+        List<string> order = ["a", "b", "c", "d"];
+        Collage.Move(order, 0, 2);
+        Assert.Equal(["b", "c", "a", "d"], order);
+        Collage.Move(order, 3, 0);
+        Assert.Equal(["d", "b", "c", "a"], order);
+        Collage.Move(order, 1, 1);
+        Collage.Move(order, 1, 9);
+        Assert.Equal(["d", "b", "c", "a"], order);
+    }
+
+    [Fact]
+    public void CollageShadowFollowsTheCell()
+    {
+        Assert.Equal((0.0, 0.0, 0.25), Collage.ShadowOf(new Box(0, 0, 400, 300), 0));
+        var (blur, offset, opacity) = Collage.ShadowOf(new Box(0, 0, 400, 300), 0.5);
+        Assert.Equal(12, blur, 6);
+        Assert.Equal(4.2, offset, 6);
+        Assert.Equal(0.4, opacity, 6);
+        var defaults = new CollageSettings();
+        Assert.Equal((CollageFill.Color, 0.0), (defaults.Fill, defaults.Shadow));
+        Assert.Equal((new FrameSettings().GradientStart, new FrameSettings().GradientEnd, 135.0),
+            (defaults.GradientStart, defaults.GradientEnd, defaults.GradientAngle));
+    }
+
+    [Fact]
     public void FrameAddsMarginAndAspect()
     {
         Assert.Equal((1160, 760), Frame.CanvasSize(1000, 600, new FrameSettings { Padding = 0.08 }));

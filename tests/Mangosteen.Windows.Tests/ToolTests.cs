@@ -528,6 +528,60 @@ public sealed class ToolTests : IDisposable
     }
 }
 
+public sealed class CollageDrawingTests
+{
+    /// <summary>A plain mid-grey photo.</summary>
+    private static BitmapSource Grey()
+    {
+        var pixels = Enumerable.Repeat((byte)128, 200 * 200 * 4).ToArray();
+        var photo = BitmapSource.Create(200, 200, 96, 96, PixelFormats.Bgr32, null, pixels, 800);
+        photo.Freeze();
+        return photo;
+    }
+
+    private static byte[] At(Mangosteen.Core.Imaging.Bgra image, int x, int y) =>
+        image.Pixels[((y * image.Width + x) * 4)..((y * image.Width + x) * 4 + 3)];
+
+    [Fact]
+    public void GradientRunsAcrossTheWholeCanvas()
+    {
+        // Two photos in a row with a wide margin; 0° runs left → right, from orange to purple.
+        var settings = new CollageSettings
+        {
+            Layout = CollageLayout.Row, Width = 1000, Spacing = 0.05, Fill = CollageFill.Gradient, GradientAngle = 0,
+            GradientStart = 0xFFFF0000, GradientEnd = 0xFF0000FF,
+        };
+        var collage = ImageIO.ToBgra(Sta.Run(() => Compose.Collage([Grey(), Grey()], settings, 0xFFFFFFFF)));
+        var left = At(collage, 2, collage.Height / 2);
+        var right = At(collage, collage.Width - 3, collage.Height / 2);
+        Assert.True(left[2] > 240 && left[0] < 15, $"left edge {string.Join(",", left)}");
+        Assert.True(right[0] > 240 && right[2] < 15, $"right edge {string.Join(",", right)}");
+        Assert.Equal(128, At(collage, collage.Width / 4, collage.Height / 2)[1], 2f); // the photo itself
+
+        var plain = ImageIO.ToBgra(Sta.Run(() => Compose.Collage([Grey(), Grey()], settings with { Fill = CollageFill.Color }, 0xFFFFFFFF)));
+        Assert.Equal([255, 255, 255], At(plain, 2, plain.Height / 2));
+    }
+
+    [Fact]
+    public void ShadowFallsBelowEachPhotoButNotOnItsNeighbour()
+    {
+        var settings = new CollageSettings { Layout = CollageLayout.Row, Width = 1000, Spacing = 0.04 };
+        var flat = ImageIO.ToBgra(Sta.Run(() => Compose.Collage([Grey(), Grey()], settings, 0xFFFFFFFF)));
+        var shaded = ImageIO.ToBgra(Sta.Run(() => Compose.Collage([Grey(), Grey()], settings with { Shadow = 1 }, 0xFFFFFFFF)));
+        var cells = Collage.Layout([1, 1], settings).Cells;
+        var below = (int)(cells[0].X + cells[0].Width / 2);
+        var y = (int)(cells[0].Y + cells[0].Height + 6);
+        Assert.Equal(255, At(flat, below, y)[1]);
+        Assert.True(At(shaded, below, y)[1] < 235, $"no shadow under the photo: {At(shaded, below, y)[1]}");
+        // Inside the photos the shadow is covered: the pixels are the same as without it.
+        foreach (var cell in cells)
+        {
+            var (x, inside) = ((int)(cell.X + 3), (int)(cell.Y + cell.Height / 2));
+            Assert.Equal(At(flat, x, inside), At(shaded, x, inside));
+        }
+    }
+}
+
 public sealed class AnnotationTests
 {
     [Fact]
