@@ -189,7 +189,9 @@ jobs:
           $lines | ForEach-Object { Write-Host $_ }
           Stop-Process $app -Force
           "### Sixty files from Explorer's menu`n" + (($lines | ForEach-Object { "- ``$_``" }) -join "`n") | Add-Content $env:GITHUB_STEP_SUMMARY
-          if ($lines.Count -ne 1 -or $lines[0] -notmatch 'for 60 items') { throw "Expected one wheel for 60 items" }
+          # One wheel opens; paths whose process started late join it.
+          $opened = @($lines | Where-Object { $_ -match 'explorer menu: Tools for \d+ items$' })
+          if ($opened.Count -ne 1 -or $lines[-1] -notmatch 'for 60 items') { throw "Expected one wheel for 60 items" }
 
       - name: Tool window snapshots
         # Layout checks only; a crash here must not stop the README screenshots and the build artifacts.
