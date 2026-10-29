@@ -185,7 +185,7 @@ jobs:
           }
           $clients | Wait-Process -Timeout 60 -ErrorAction SilentlyContinue
           Start-Sleep -Seconds 3
-          $lines = Get-Content $log | Select-Object -Skip $before | Where-Object { $_ -match 'explorer menu: ' }
+          $lines = @(Get-Content $log | Select-Object -Skip $before | Where-Object { $_ -match 'explorer menu: ' })
           $lines | ForEach-Object { Write-Host $_ }
           Stop-Process $app -Force
           "### Sixty files from Explorer's menu`n" + (($lines | ForEach-Object { "- ``$_``" }) -join "`n") | Add-Content $env:GITHUB_STEP_SUMMARY
