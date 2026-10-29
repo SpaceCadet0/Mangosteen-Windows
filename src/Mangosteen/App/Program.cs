@@ -41,8 +41,10 @@ internal static class Program
                 // Another copy is starting for the same Explorer selection; it is listening a moment later.
                 if (explorer is { } late)
                 {
-                    Thread.Sleep(1500);
-                    ExplorerMenu.Send(late.Kind, late.Path);
+                    for (var attempt = 0; attempt < 10 && !ExplorerMenu.Send(late.Kind, late.Path); attempt++)
+                    {
+                        Thread.Sleep(500);
+                    }
                 }
                 return 0;
             }

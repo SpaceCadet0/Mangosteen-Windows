@@ -80,18 +80,44 @@ internal sealed class AppController : IDisposable
     private readonly List<string> _explorerPaths = [];
     private WheelKind _explorerKind;
     private DispatcherTimer? _explorerTimer;
+    /// <summary>The wheel opened from Explorer's menu, and when its last path arrived.</summary>
+    private WheelWindow? _explorerWheel;
+    private long _explorerLast;
+
+    /// <summary>Paths that arrive this long after the previous one still belong to the wheel they opened.</summary>
+    private const long LateArrivalMs = 3000;
 
     /// <summary>
-    /// A request from Explorer's right-click menu. Explorer starts one process per selected item, so the paths that
-    /// arrive within a moment of each other open one wheel together.
+    /// A request from Explorer's right-click menu. Explorer starts one process per selected item, and with many
+    /// items they start over a second or more. So the first path also reads the whole selection of the Explorer
+    /// window in front, the paths that arrive within a moment of each other open one wheel together, and paths that
+    /// arrive later join the wheel they belong to instead of opening another.
     /// </summary>
     public void OpenFromExplorer(WheelKind kind, string path)
     {
+        var now = Environment.TickCount64;
+        var late = _wheel is not null && ReferenceEquals(_wheel, _explorerWheel) && kind == _explorerKind
+            && now - _explorerLast < LateArrivalMs && _explorerPaths.Count == 0;
+        _explorerLast = now;
+        if (late)
+        {
+            if (!_wheelPaths.Contains(path, StringComparer.OrdinalIgnoreCase))
+            {
+                var paths = _wheelPaths.Append(path).ToList();
+                Log.Write($"explorer menu: {kind} for {paths.Count} items, a late one joined the open wheel");
+                ReplaceWheelPaths(paths);
+            }
+            return;
+        }
         if (_explorerPaths.Count > 0 && kind != _explorerKind)
         {
             _explorerPaths.Clear();
         }
         _explorerKind = kind;
+        if (_explorerPaths.Count == 0)
+        {
+            _explorerPaths.AddRange(ExplorerSelection(path));
+        }
         if (!_explorerPaths.Contains(path, StringComparer.OrdinalIgnoreCase))
         {
             _explorerPaths.Add(path);
@@ -103,10 +129,47 @@ internal sealed class AppController : IDisposable
             _explorerPaths.Clear();
             GetCursorPos(out var cursor);
             Log.Write($"explorer menu: {_explorerKind} for {paths.Count} items");
-            ShowWheel(_explorerKind, paths, cursor);
+            _explorerWheel = ShowWheel(_explorerKind, paths, cursor);
         }, _dispatcher);
         _explorerTimer.Stop();
         _explorerTimer.Start();
+    }
+
+    /// <summary>
+    /// The selection of the Explorer window (or desktop) in front, when it holds <paramref name="path"/>: all the
+    /// items Explorer is about to send one process at a time. Empty when it cannot be read.
+    /// </summary>
+    private static IReadOnlyList<string> ExplorerSelection(string path)
+    {
+        var window = GetForegroundWindow();
+        var root = ClassName(window);
+        if (root is not ("CabinetWClass" or "ExploreWClass" or "Progman" or "WorkerW"))
+        {
+            return [];
+        }
+        try
+        {
+            var selection = ShellSelection.Read(window, root, topLevel: true);
+            var match = selection.Paths.Contains(path, StringComparer.OrdinalIgnoreCase);
+            Log.Write($"explorer menu: selection of {selection.Paths.Count} via {selection.Source}{(match ? "" : ", without the item")}");
+            return match ? selection.Paths : [];
+        }
+        catch (Exception error)
+        {
+            Log.Error("explorer menu selection", error);
+            return [];
+        }
+    }
+
+    /// <summary>The open wheel shows the same segments for a longer list of files.</summary>
+    private void ReplaceWheelPaths(IReadOnlyList<string> paths)
+    {
+        if (_wheel is not { } wheel)
+        {
+            return;
+        }
+        _wheelPaths = paths;
+        wheel.ShowItems(_wheelKind, WheelCatalog.Items(_wheelKind, paths), paths.Count);
     }
 
     public void Dispose()
@@ -210,7 +273,8 @@ internal sealed class AppController : IDisposable
         Log.Write($"wheel {kind}: {string.Join(", ", items.Select(i => i.Title))}");
         var wheel = new WheelWindow(kind, items, paths.Count, at);
         wheel.Placed += circle => _hooks.Wheel = circle;
-        wheel.Chosen += item => Perform(item, paths);
+        // The list can grow while the wheel is open (late paths from Explorer's menu).
+        wheel.Chosen += item => Perform(item, ReferenceEquals(_wheel, wheel) ? _wheelPaths : paths);
         // A click on the centre goes to the next wheel: Convert, Tools, Actions, Convert…
         wheel.HubClicked += () => SwitchWheel((WheelKind)(((int)_wheelKind + 1) % 3));
         wheel.Closed += (_, _) =>

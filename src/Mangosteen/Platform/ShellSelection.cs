@@ -22,8 +22,11 @@ internal static class ShellSelection
 
     public sealed record Result(IReadOnlyList<string> Paths, string Source);
 
-    /// <summary>The file-system paths selected in the shell view that contains <paramref name="target"/>.</summary>
-    public static Result Read(IntPtr target, string rootClass)
+    /// <summary>
+    /// The file-system paths selected in the shell view that contains <paramref name="target"/>. With
+    /// <paramref name="topLevel"/>, <paramref name="target"/> is an Explorer window and its visible tab is read.
+    /// </summary>
+    public static Result Read(IntPtr target, string rootClass, bool topLevel = false)
     {
         var windows = (IShellWindows)Activator.CreateInstance(Type.GetTypeFromCLSID(ClsidShellWindows, throwOnError: true)!)!;
         try
@@ -61,7 +64,8 @@ internal static class ShellSelection
                 {
                     continue;
                 }
-                if (browserWindow == target || IsChild(browserWindow, target))
+                if (browserWindow == target || IsChild(browserWindow, target)
+                    || topLevel && IsChild(target, browserWindow) && IsWindowVisible(browserWindow))
                 {
                     return new Result(SelectedPaths(browser), $"window {i + 1} of {count} ({ClassName(browserWindow)})");
                 }
