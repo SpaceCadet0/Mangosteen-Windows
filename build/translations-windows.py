@@ -129,7 +129,7 @@ T = {
 "PNG, TIFF and other lossless formats are saved as {0}.": ("PNG, TIFF и другие форматы без потерь будут сохранены как {0}.", "PNG, TIFF y otros formatos sin pérdida se guardan como {0}."),
 "Pages saved": ("Страницы сохранены", "Páginas guardadas"),
 "Photo editor": ("Редактор фото", "Editor de fotos"),
-"Photos keep the order they had in Explorer. Featured photo puts the first one large.": ("Фото идут в том же порядке, что в Проводнике. «Главное фото» делает первое крупным.", "Las fotos siguen el orden del Explorador. Foto principal muestra la primera en grande."),
+"Order — drag the photos in the preview. Featured photo puts the first one large.": ("Порядок — перетаскивайте фото в превью. «Главное фото» делает первое крупным.", "Orden: arrastra las fotos de la vista previa. Foto principal muestra la primera en grande."),
 "PDF pages without text are saved as one picture each; on pages with text only the pictures are re-encoded, the text stays selectable.": ("Страницы PDF без текста сохраняются одной картинкой; на страницах с текстом пережимаются только изображения, текст остаётся выделяемым.", "Las páginas de PDF sin texto se guardan como una sola imagen; en las páginas con texto solo se recodifican las imágenes y el texto sigue siendo seleccionable."),
 "Pixels": ("Пиксели", "Píxeles"),
 "Proportions": ("Пропорции", "Proporciones"),

@@ -111,6 +111,7 @@ internal static class ToolRegistry
             CropTool.SnapshotSplit = Environment.GetEnvironmentVariable("MANGOSTEEN_SNAPSHOT_DEMO") == "split";
             CropTool.SnapshotMode = Environment.GetEnvironmentVariable("MANGOSTEEN_SNAPSHOT_DEMO") == "size" ? "size" : "crop";
             CompressTool.SnapshotCustomSide = Environment.GetEnvironmentVariable("MANGOSTEEN_SNAPSHOT_DEMO") == "custom";
+            CollageTool.SnapshotDemo = Environment.GetEnvironmentVariable("MANGOSTEEN_SNAPSHOT_DEMO") == "gradient";
             var tool = Create(id, files, null!) ?? throw new ArgumentException($"Unknown tool {id}");
             if (Environment.GetEnvironmentVariable("MANGOSTEEN_THEME") == "dark")
             {

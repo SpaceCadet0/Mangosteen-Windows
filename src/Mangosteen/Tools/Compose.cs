@@ -41,11 +41,7 @@ internal static class Compose
                 canvas.Children.Add(Fill(new SolidColorBrush(Swatches.ToColor(settings.Color)), 0, 0, width, height));
                 break;
             case FrameBackground.Gradient:
-                var radians = settings.GradientAngle * Math.PI / 180;
-                double dx = Math.Cos(radians) / 2, dy = -Math.Sin(radians) / 2;
-                var gradient = new LinearGradientBrush(Swatches.ToColor(settings.GradientStart), Swatches.ToColor(settings.GradientEnd),
-                    new Point(0.5 - dx, 0.5 - dy), new Point(0.5 + dx, 0.5 + dy));
-                canvas.Children.Add(Fill(gradient, 0, 0, width, height));
+                canvas.Children.Add(Fill(Gradient(settings.GradientStart, settings.GradientEnd, settings.GradientAngle), 0, 0, width, height));
                 break;
             default:
                 var backdrop = settings.Background == FrameBackground.Blur ? photo : backgroundImage ?? photo;
@@ -81,21 +77,42 @@ internal static class Compose
         var aspects = photos.Select(p => (double)p.PixelWidth / p.PixelHeight).ToList();
         var (width, height, cells) = Core.Imaging.Collage.Layout(aspects, settings);
         var canvas = new Canvas { Width = width, Height = height, ClipToBounds = true };
-        canvas.Children.Add(Fill(new SolidColorBrush(Swatches.ToColor(background)), 0, 0, width, height));
+        Brush fill = settings.Fill == CollageFill.Gradient
+            ? Gradient(settings.GradientStart, settings.GradientEnd, settings.GradientAngle)
+            : new SolidColorBrush(Swatches.ToColor(background));
+        canvas.Children.Add(Fill(fill, 0, 0, width, height));
+        Rectangle Cell(Box cell, Brush brush)
+        {
+            var corner = settings.CornerRadius * Math.Min(cell.Width, cell.Height);
+            var shape = new Rectangle { Width = cell.Width, Height = cell.Height, RadiusX = corner, RadiusY = corner, Fill = brush };
+            Canvas.SetLeft(shape, cell.X);
+            Canvas.SetTop(shape, cell.Y);
+            return shape;
+        }
+        // All shadows first, so no shadow falls on a neighbouring photo; the photos then cover the shapes.
+        if (settings.Shadow > 0)
+        {
+            foreach (var cell in cells.Take(photos.Count))
+            {
+                var (blur, offset, opacity) = Core.Imaging.Collage.ShadowOf(cell, settings.Shadow);
+                var shape = Cell(cell, Brushes.Black);
+                shape.Effect = new DropShadowEffect { BlurRadius = blur, ShadowDepth = offset, Direction = 270, Color = Colors.Black, Opacity = opacity };
+                canvas.Children.Add(shape);
+            }
+        }
         for (var i = 0; i < photos.Count; i++)
         {
-            var cell = cells[i];
-            var corner = settings.CornerRadius * Math.Min(cell.Width, cell.Height);
-            var picture = new Rectangle
-            {
-                Width = cell.Width, Height = cell.Height, RadiusX = corner, RadiusY = corner,
-                Fill = new ImageBrush(photos[i]) { Stretch = Stretch.UniformToFill },
-            };
-            Canvas.SetLeft(picture, cell.X);
-            Canvas.SetTop(picture, cell.Y);
-            canvas.Children.Add(picture);
+            canvas.Children.Add(Cell(cells[i], new ImageBrush(photos[i]) { Stretch = Stretch.UniformToFill }));
         }
         return Render(canvas, (int)Math.Round(width), (int)Math.Round(height));
+    }
+
+    /// <summary>A linear gradient across the whole area; 0° runs left → right, 90° bottom → top.</summary>
+    private static LinearGradientBrush Gradient(uint start, uint end, double angle)
+    {
+        var radians = angle * Math.PI / 180;
+        double dx = Math.Cos(radians) / 2, dy = -Math.Sin(radians) / 2;
+        return new LinearGradientBrush(Swatches.ToColor(start), Swatches.ToColor(end), new Point(0.5 - dx, 0.5 - dy), new Point(0.5 + dx, 0.5 + dy));
     }
 
     private static Rectangle Fill(Brush brush, double x, double y, double width, double height)
