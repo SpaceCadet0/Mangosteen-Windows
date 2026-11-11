@@ -76,8 +76,16 @@ internal sealed class AppController : IDisposable
         if (!_settings.WelcomeShown)
         {
             _settings.WelcomeShown = true;
+            _settings.WhatsNewSeenVersion = Program.Version;
             _settings.Save();
             new WelcomeWindow().Present();
+        }
+        else if (_settings.WhatsNewSeenVersion != Program.Version)
+        {
+            // Once after an update: what this version brought.
+            _settings.WhatsNewSeenVersion = Program.Version;
+            _settings.Save();
+            new WhatsNewWindow().Present();
         }
         else if (_hooks.Installed)
         {

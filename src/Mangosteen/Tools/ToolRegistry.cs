@@ -14,6 +14,8 @@ internal static class ToolRegistry
     {
         "welcome" => new WelcomeWindow(),
         "settings" => new SettingsWindow(new AppSettings()),
+        _ when id.StartsWith("settings.", StringComparison.Ordinal) => new SettingsWindow(new AppSettings(), id["settings.".Length..]),
+        "whatsnew" => new WhatsNewWindow(),
         "update.available" => UpdateDialog.Available("9.9.9", "https://github.com/SpaceCadet0/Mangosteen-Windows/releases/latest"),
         "update.current" => UpdateDialog.UpToDate(),
         "update.failed" => UpdateDialog.Failed(),
