@@ -339,7 +339,7 @@ internal sealed class WheelWindow : Window
                 var pixels = sigma * size / WindowSize;
                 using var blur = SkiaSharp.SKImageFilter.CreateBlur((float)pixels, (float)pixels, SkiaSharp.SKShaderTileMode.Clamp);
                 using var paint = new SkiaSharp.SKPaint { ImageFilter = blur };
-                surface.Canvas.DrawImage(screen, 0, 0, paint);
+                surface.Canvas.DrawImage(screen, 0, 0, new SkiaSharp.SKSamplingOptions(SkiaSharp.SKFilterMode.Linear), paint);
                 using var blurred = SkiaSharp.SKBitmap.FromImage(surface.Snapshot());
                 var source = BitmapSource.Create(size, size, 96, 96, PixelFormats.Bgra32, null, blurred.Bytes, blurred.RowBytes);
                 source.Freeze();
