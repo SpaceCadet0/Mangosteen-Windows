@@ -28,15 +28,24 @@ jobs:
           New-Item -ItemType Directory (Join-Path $ascii 'sub') | Out-Null; Set-Content (Join-Path $ascii 'sub\two.txt') 'y'
           Set-Content -Encoding utf8 (Join-Path $root 'заметка.txt') 'привет'
           $cyr = New-Item -ItemType Directory (Join-Path $root 'Папка'); Set-Content (Join-Path $cyr 'one.txt') 'x'
-          foreach ($f in 'ustar', '7zip', 'iso9660') {
-            Probe-Tar "$f ascii-folder" @('--format', $f, '-cf', "$root\a-$f.out", '-C', $root, 'Ascii') "$root\a-$f.out"
-            Probe-Tar "$f cyrillic-file" @('--format', $f, '-cf', "$root\b-$f.out", '-C', $root, 'заметка.txt') "$root\b-$f.out"
-            Probe-Tar "$f cyrillic-folder-ascii-file" @('--format', $f, '-cf', "$root\c-$f.out", '-C', $root, 'Папка') "$root\c-$f.out"
+          $stage = New-Item -ItemType Directory (Join-Path $root 'stage'); Set-Content (Join-Path $stage 'f1') 'x'
+          foreach ($f in '7zip', 'iso9660') {
+            Probe-Tar "$f s-rename" @('--format', $f, '-s', ',^f1$,заметка.txt,', '-cf', "$root\s-$f.out", '-C', $stage, 'f1') "$root\s-$f.out"
           }
-          chcp
-          [Console]::OutputEncoding = [Text.Encoding]::UTF8
-          Probe-Tar "ustar cyrillic-file utf8-console" @('--format', 'ustar', '-cf', "$root\d.out", '-C', $root, 'заметка.txt') "$root\d.out"
-          Probe-Tar "ustar cyrillic-file quiet" @('--format', 'ustar', '-cf', "$root\e.out", '-C', $root, 'заметка.txt') "$root\e.out"
-          & "C:\Program Files\Git\usr\bin\tar.exe" --version
+          Probe-Tar "pax hdrcharset" @('--format', 'pax', '--options', 'hdrcharset=UTF-8', '-cf', "$root\h.out", '-C', $root, 'заметка.txt') "$root\h.out"
+          [IO.File]::WriteAllText("$root\list.txt", "заметка.txt`n", (New-Object Text.UTF8Encoding $false))
+          Probe-Tar "7zip T-list" @('--format', '7zip', '-cf', "$root\t.out", '-C', $root, '-T', "$root\list.txt") "$root\t.out"
+          # reading archives with Cyrillic names made elsewhere
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          [IO.Compression.ZipFile]::CreateFromDirectory("$root\Папка", "$root\read.zip", 'Optimal', $true, [Text.Encoding]::UTF8)
+          & tar.exe -tf "$root\read.zip" 2>&1 | Out-Host; Write-Host "CASE read-list zip -> exit $LASTEXITCODE"
+          $x = New-Item -ItemType Directory (Join-Path $root 'x')
+          & tar.exe -xf "$root\read.zip" -C $x 2>&1 | Out-Host; Write-Host "CASE read-extract zip -> exit $LASTEXITCODE; $((Get-ChildItem -Recurse $x).FullName -join ' | ')"
+          $y = New-Item -ItemType Directory (Join-Path $root 'y')
+          & tar.exe -xf "$root\read.zip" 2>&1 -C 'C:\' | Out-Null
+          Push-Location $y; & tar.exe -xf "$root\read.zip" 2>&1 | Out-Host; Write-Host "CASE read-extract-cwd zip -> exit $LASTEXITCODE; $((Get-ChildItem -Recurse $y).Name -join ' | ')"; Pop-Location
+          & tar.exe -tf "$root\read.zip" --options hdrcharset=UTF-8 2>&1 | Out-Host
+          Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Nls\CodePage' | Select-Object ACP, OEMCP | Out-Host
+          (Get-Item C:\Windows\System32\tar.exe).VersionInfo | Format-List FileVersion, ProductVersion | Out-Host
           # Windows' System32 tar vs. the one in Git for Windows, for comparison
           Get-Command tar.exe -All | ForEach-Object { Write-Host "tar at $($_.Source)" }
