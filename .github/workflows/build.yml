@@ -117,6 +117,31 @@ jobs:
           Get-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/mangosteen.log') -Tail 15
           if ($process.ExitCode -ne 0) { throw "Media self-test failed with exit code $($process.ExitCode)" }
 
+      - name: What the runner's FFmpeg, tar and fonts can do (log only)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $ffmpeg = (Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Mangosteen/ffmpeg') -Recurse -Filter ffmpeg.exe | Select-Object -First 1).FullName
+          Write-Host '--- encoders'
+          & $ffmpeg -hide_banner -encoders | Select-String 'nvenc|qsv|amf|libx264|libx265|libsvtav1|libaom|mf '
+          Write-Host '--- filters'
+          & $ffmpeg -hide_banner -filters | Select-String ' zscale | tonemap | cropdetect | libplacebo | tonemap_opencl '
+          Write-Host '--- tar'
+          & "$env:SystemRoot\System32\tar.exe" --version
+          $work = New-Item -ItemType Directory -Force (Join-Path $env:RUNNER_TEMP 'tar-check')
+          Copy-Item tests/fixtures/photo.jpg $work
+          Push-Location $work
+          foreach ($format in @('7zip', 'iso9660', 'zip', 'ustar')) {
+            & "$env:SystemRoot\System32\tar.exe" --format $format -cf "out.$format" photo.jpg 2>&1 | Write-Host
+            Write-Host "write $format exit $LASTEXITCODE size $((Get-Item "out.$format" -ErrorAction SilentlyContinue).Length)"
+            & "$env:SystemRoot\System32\tar.exe" -tf "out.$format" 2>&1 | Write-Host
+          }
+          & "$env:SystemRoot\System32\tar.exe" -cJf out.txz photo.jpg 2>&1 | Write-Host; Write-Host "xz exit $LASTEXITCODE"
+          & "$env:SystemRoot\System32\tar.exe" -cjf out.tbz photo.jpg 2>&1 | Write-Host; Write-Host "bz2 exit $LASTEXITCODE"
+          Pop-Location
+          Write-Host '--- fonts'
+          Get-ChildItem "$env:SystemRoot\Fonts" -Include 'msyh*', 'YuGoth*', 'meiryo*', 'simsun*', 'malgun*' -Recurse | Select-Object -ExpandProperty Name
+
       - name: Click through the tray menu with the real mouse
         shell: pwsh
         run: |
