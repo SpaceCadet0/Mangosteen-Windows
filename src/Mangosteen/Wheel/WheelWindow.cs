@@ -55,6 +55,9 @@ internal sealed class WheelWindow : Window
     private WheelSides _sides;
     private int _fileCount;
 
+    /// <summary>In snapshot mode: a file that gets the titles that do not fit their segment.</summary>
+    public static string? OverflowReport { get; set; }
+
     /// <summary>True while the back of the wheel is shown.</summary>
     public bool ShowingBack { get; private set; }
 
@@ -97,12 +100,12 @@ internal sealed class WheelWindow : Window
 
         // The blurred picture of what is behind the wheel, taken before the window appears. The wheel is open for a
         // moment, so a still picture looks the same as a live blur and costs nothing while the wheel is open.
-        if (Brand.WheelBlur && Brand.WheelOpacity < 0.995 && CaptureBehind() is { } behind)
+        // It is blurred once, here, into a still picture: a live blur effect would be drawn again whenever a segment lights.
+        if (Brand.WheelBlur && Brand.WheelOpacity < 0.995 && CaptureBehind(4 + (Brand.WheelOpacity - 0.4) / 0.6 * 11) is { } behind)
         {
             _backdrop = new Image
             {
                 Source = behind, Width = WindowSize, Height = WindowSize, Stretch = Stretch.Fill, IsHitTestVisible = false,
-                Effect = new BlurEffect { Radius = 8 + (Brand.WheelOpacity - 0.4) / 0.6 * 22, KernelType = KernelType.Gaussian },
             };
             _canvas.Children.Add(_backdrop);
         }
@@ -188,7 +191,13 @@ internal sealed class WheelWindow : Window
         _outerRadius = outer;
         if (fits.Any(f => f is null))
         {
-            Log.Write($"wheel: titles that do not fit their segment: {string.Join(", ", items.Where((_, i) => fits[i] is null).Select(i => i.Title))}");
+            var titles = string.Join(", ", items.Where((_, i) => fits[i] is null).Select(i => i.Title));
+            Log.Write($"wheel: titles that do not fit their segment: {titles}");
+            if (OverflowReport is { } report)
+            {
+                // Snapshots: CI fails when a title does not fit in some language.
+                File.AppendAllText(report, titles + Environment.NewLine);
+            }
         }
         SetDisc(_outerRadius + DiscMargin);
         for (var i = 0; i < items.Count; i++)
@@ -307,8 +316,8 @@ internal sealed class WheelWindow : Window
             width * (_outerRadius + DiscMargin) / WindowSize));
     }
 
-    /// <summary>What the screen shows where the wheel is about to appear; null when it cannot be read.</summary>
-    private BitmapSource? CaptureBehind()
+    /// <summary>What the screen shows where the wheel is about to appear, blurred by <paramref name="sigma"/> DIP; null when it cannot be read.</summary>
+    private BitmapSource? CaptureBehind(double sigma)
     {
         try
         {
@@ -318,16 +327,27 @@ internal sealed class WheelWindow : Window
             {
                 graphics.CopyFromScreen(x, y, 0, 0, new System.Drawing.Size(size, size));
             }
-            var handle = bitmap.GetHbitmap();
+            var data = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, size, size), System.Drawing.Imaging.ImageLockMode.ReadOnly,
+                System.Drawing.Imaging.PixelFormat.Format32bppRgb);
             try
             {
-                var source = Imaging.CreateBitmapSourceFromHBitmap(handle, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+                // Blurred once with Skia; edges clamp, so the rim of the disc does not darken.
+                var info = new SkiaSharp.SKImageInfo(size, size, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Opaque);
+                using var screen = SkiaSharp.SKImage.FromPixelCopy(info, data.Scan0, data.Stride)
+                    ?? throw new InvalidOperationException("The screen could not be read.");
+                using var surface = SkiaSharp.SKSurface.Create(info);
+                var pixels = sigma * size / WindowSize;
+                using var blur = SkiaSharp.SKImageFilter.CreateBlur((float)pixels, (float)pixels, SkiaSharp.SKShaderTileMode.Clamp);
+                using var paint = new SkiaSharp.SKPaint { ImageFilter = blur };
+                surface.Canvas.DrawImage(screen, 0, 0, paint);
+                using var blurred = SkiaSharp.SKBitmap.FromImage(surface.Snapshot());
+                var source = BitmapSource.Create(size, size, 96, 96, PixelFormats.Bgra32, null, blurred.Bytes, blurred.RowBytes);
                 source.Freeze();
                 return source;
             }
             finally
             {
-                DeleteObject(handle);
+                bitmap.UnlockBits(data);
             }
         }
         catch (Exception error) when (error is System.ComponentModel.Win32Exception or ArgumentException or InvalidOperationException
@@ -608,9 +628,6 @@ internal sealed class WheelWindow : Window
         Canvas.SetTop(host, at.Y - height / 2);
         canvas.Children.Add(host);
     }
-
-    [System.Runtime.InteropServices.DllImport("gdi32.dll")]
-    private static extern bool DeleteObject(IntPtr handle);
 
     private static T Frozen<T>(T freezable) where T : Freezable
     {

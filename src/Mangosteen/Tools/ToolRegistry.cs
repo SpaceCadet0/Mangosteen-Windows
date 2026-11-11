@@ -66,6 +66,7 @@ internal static class ToolRegistry
         {
             // wheel.convert, wheel.tools, wheel.actions: the wheel for the files, as it opens at the pointer;
             // wheel.tools.back: its back.
+            Wheel.WheelWindow.OverflowReport = Path.ChangeExtension(output, ".overflow.txt");
             var parts = id.Split('.');
             var kind = Enum.Parse<Core.WheelKind>(parts[1], ignoreCase: true);
             Platform.Native.GetCursorPos(out var at);
