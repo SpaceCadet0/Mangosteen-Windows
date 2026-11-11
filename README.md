@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/Windows-10%20%C2%B7%2011-671E38?logo=windows&logoColor=white" alt="Windows 10 and 11">
   <img src="https://img.shields.io/badge/.NET-10%20%C2%B7%20WPF-671E38?logo=dotnet&logoColor=white" alt=".NET 10 and WPF">
   <img src="https://img.shields.io/badge/works-offline-671E38" alt="Works offline">
-  <img src="https://img.shields.io/badge/languages-EN%20%C2%B7%20ES%20%C2%B7%20RU-671E38" alt="Languages">
+  <img src="https://img.shields.io/badge/languages-8-671E38" alt="Languages">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-671E38" alt="MIT License"></a>
 </p>
 
@@ -59,6 +59,11 @@ file uses the whole selection. Right-clicks without these keys open the usual co
 **Mangosteen** submenu too (on Windows 11 under **Show more options**). For other apps, the tray menu has
 **Choose files…**.
 
+Each wheel has two sides: up to ten segments on its face and the rest on its back; the mouse wheel over it or Tab
+turns it over. **Settings** choose the side of every segment, the accent colour, the wheel's opacity and blur, where
+results go (next to the original, one folder, or a folder asked for each time), a name template with `{date}`, `{time}`
+and `{format}`, presets for quality and size, and the video codec.
+
 ## Highlights
 
 - **Zero clicks.** The wheel shows only what makes sense for the files you clicked.
@@ -68,20 +73,22 @@ file uses the whole selection. Right-clicks without these keys open the usual co
 - **No limits.** Any number of files, any size, as often as you like.
 - **One file.** A single self-contained `Mangosteen.exe` with FFmpeg inside; no installer, no .NET to install.
 - **Native.** WPF with the Windows 11 look, Windows' own PDF, OCR and face detection engines.
-- **Three languages.** English, Spanish and Russian, following Windows or chosen in Settings.
+- **Eight languages.** English, Spanish, Russian, German, French, Portuguese (Brazil), Chinese (Simplified) and
+  Japanese, following Windows or chosen in Settings.
 
 ## Convert
 
 | Kind | Formats |
 |---|---|
-| Images | PNG, JPG, WebP, TIFF, AVIF, GIF, PDF (several photos make one PDF); also reads BMP, ICO, and HEIC with the Microsoft Store codec |
+| Images | PNG, JPG, WebP, TIFF, AVIF, GIF, PDF (several photos make one PDF), ICO (up to six sizes), PSD, TGA, OpenEXR; also reads BMP, HEIC, camera RAW, JPEG XL, DDS, DICOM, JPEG 2000 |
 | PDF | to PNG or JPG (several pages become a folder of pages), TXT, Markdown, RTF, DOCX, HTML |
-| Documents | DOCX, ODT, RTF, TXT, Markdown, HTML into each other and into PDF |
-| Video | MP4, MOV, MKV, WebM, AVI, WMV into each other, GIF and MP3 |
-| Audio | MP3, M4A, WAV, FLAC, OGG, Opus, AIFF, WMA |
-| Subtitles | SRT and VTT into each other and into TXT |
-| Tables | CSV, TSV, XLSX into each other (a workbook with several sheets becomes a folder of tables) |
-| Archives | ZIP, TAR, TAR.GZ into each other; folders into archives |
+| Documents | DOCX, ODT, RTF, TXT, Markdown, HTML into each other, into PDF and into e-books |
+| E-books | EPUB and FB2 (`.fb2.zip` and Windows-1251 too) into each other, PDF, DOCX, TXT, Markdown, HTML |
+| Video | MP4, MOV, MKV, WebM, AVI, WMV into each other, GIF and MP3; also reads FLV, MPEG, VOB, TS, M2TS, 3GP, OGV. H.264, HEVC or AV1 in Settings, on the graphics card if you like (NVIDIA, Intel, AMD) |
+| Audio | MP3, M4A, WAV, FLAC, OGG, Opus, AIFF, WMA; also reads APE, WavPack, AMR, AC3, DTS |
+| Subtitles | SRT, VTT and ASS/SSA into each other and into TXT |
+| Tables | CSV (with `,` or `;`), TSV, XLSX and JSON into each other (a workbook with several sheets becomes a folder of tables) |
+| Archives | ZIP, TAR, TAR.GZ, 7Z, ISO into each other; folders into archives; also reads RAR, CAB, TAR.XZ, TAR.BZ2, GZ (7Z, ISO and RAR through Windows' own `tar.exe`) |
 
 When the target container accepts the original streams, video is copied without re-encoding, so it is instant and
 lossless. Text in the old Windows Cyrillic encoding is read correctly, and CSV files open in Excel with Cyrillic intact.
@@ -107,7 +114,10 @@ Every tool opens a small window with a live preview. Close it and nothing is cha
 - **Text** — recognises the text of photos and scanned PDFs on the device and saves it as TXT.
 - **Collage** — grid, row, column or a featured photo.
 - **Hide** — finds faces and text on the device and covers them with a fill, a blur or pixels.
-- **Metadata** — view everything, edit common fields, remove the location or all metadata (JPEG is not re-encoded).
+- **Metadata** — view everything, edit common fields, remove the location or all metadata (JPEG is not re-encoded);
+  for video, audio and PDF the title, artist, album and other tags, without re-encoding.
+- **To vector** — a picture as SVG, black-and-white or in colour; the two previews zoom and move together.
+- **Per sheet** — 2, 4, 6 or 9 PDF pages on a sheet, as vector graphics.
 - **Page order** — reorder, rotate, duplicate and delete PDF pages; **Split** a PDF into parts; **Merge** PDFs.
 
 <p align="center">
@@ -127,6 +137,7 @@ Every tool opens a small window with a live preview. Close it and nothing is cha
 - **Bleep** — mark words on the timeline and listen to the bleeped version before saving.
 - **Hide on video** — cover areas with a fill, blur or pixels, each with its own time range.
 - **Reframe** video, **Join** clips, save **Frames** as PNG, **Channels** for audio, and a **Visualizer** that turns a song into an MP4.
+- **Remove bars** (black bars are found by themselves), **HDR → SDR**, **Subtitles** out of a video, **Live → video** for Live Photos.
 
 ### Archives
 
