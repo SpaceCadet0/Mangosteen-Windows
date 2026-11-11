@@ -33,6 +33,7 @@ internal sealed class AppController : IDisposable
     public void Start()
     {
         FormatCatalog.MediaAvailable = Media.FFmpeg.IsBundled;
+        FormatCatalog.MagickAvailable = Conversion.MagickImaging.IsBundled;
         Brand.Load(_settings);
         _settings.Apply();
         OutputLocation.Downloads = FileActions.DownloadsFolder();

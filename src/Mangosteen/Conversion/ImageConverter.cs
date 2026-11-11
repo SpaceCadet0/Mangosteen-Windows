@@ -16,7 +16,8 @@ internal static class ImageConverter
     public const int WebpQuality = 80;
 
     /// <summary>Formats this converter writes: the image targets, and BMP for edited BMP files.</summary>
-    public static bool CanWrite(FileFormat format) => FormatCatalog.WicImageOutputs.Contains(format) || FormatCatalog.EditableImageFormats.Contains(format);
+    public static bool CanWrite(FileFormat format) => FormatCatalog.WicImageOutputs.Contains(format) || FormatCatalog.EditableImageFormats.Contains(format)
+        || FormatCatalog.MagickAvailable && FormatCatalog.MagickImageOutputs.Contains(format);
 
     /// <summary>Converts <paramref name="source"/> next to itself and returns the path of the new file.</summary>
     public static string Convert(string source, FileFormat target)
@@ -48,6 +49,11 @@ internal static class ImageConverter
         if (target == FileFormat.Ico)
         {
             File.WriteAllBytes(output, EncodeIco(image));
+            return;
+        }
+        if (FormatCatalog.MagickImageOutputs.Contains(target))
+        {
+            MagickImaging.Write(image, target, output);
             return;
         }
         using var stream = new FileStream(output, FileMode.CreateNew, FileAccess.Write, FileShare.None);
@@ -114,6 +120,25 @@ internal static class ImageConverter
     }
 
     internal static BitmapSource Decode(string path)
+    {
+        var format = FileFormats.Detect(path);
+        if (format is { } f && FormatCatalog.MagickImageInputs.Contains(f))
+        {
+            return MagickImaging.Decode(path);
+        }
+        try
+        {
+            return DecodeWithWic(path);
+        }
+        catch (Exception error) when (format is FileFormat.Heic or FileFormat.Avif or FileFormat.Webp or FileFormat.Tiff
+            && error is NotSupportedException or FileFormatException or System.Runtime.InteropServices.COMException or ArgumentException)
+        {
+            // HEIC and AVIF need codecs from the Microsoft Store; without them ImageMagick reads the picture.
+            return MagickImaging.Decode(path);
+        }
+    }
+
+    private static BitmapSource DecodeWithWic(string path)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);

@@ -62,6 +62,9 @@
     <PackageReference Include="PDFsharp-MigraDoc" Version="6.2.4" />
     <PackageReference Include="SkiaSharp" Version="4.153.1" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.31.0" />
+    <!-- ImageMagick (Apache-2.0) for PSD, TGA, OpenEXR, camera RAW, JPEG XL, DDS, DICOM and JPEG 2000. Q8 is enough for
+         8-bit results and half the size of Q16. Loaded only when such a file is opened. -->
+    <PackageReference Include="Magick.NET-Q8-x64" Version="14.17.2" />
   </ItemGroup>
   <!-- Native packages ship their own .pdb files, and ONNX Runtime its .lib import libraries for C++ linking; the
        published app is Mangosteen.exe alone. -->

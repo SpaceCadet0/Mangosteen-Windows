@@ -93,6 +93,8 @@ internal static class Program
     {
         Core.Loc.SetLanguage(Environment.GetEnvironmentVariable("MANGOSTEEN_LANGUAGE") ?? "en");
         Core.FormatCatalog.MediaAvailable = Media.FFmpeg.IsBundled;
+        Core.FormatCatalog.MagickAvailable = Conversion.MagickImaging.IsBundled;
+        Core.FormatCatalog.SevenZipWritable = Core.FormatCatalog.IsoWritable = true;
         Core.WheelCatalog.BackgroundRemovalAvailable = Tools.BackgroundRemoval.IsBundled;
         Log.Start(Version + " (snapshot)");
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
