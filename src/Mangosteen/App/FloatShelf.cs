@@ -25,7 +25,7 @@ internal sealed class FloatShelf : Window
     private static readonly Brush Hover = Frozen(new SolidColorBrush(Color.FromRgb(0x2C, 0x2C, 0x2F)));
     private static readonly Brush TextBrush = Frozen(new SolidColorBrush(Color.FromRgb(0xE6, 0xE6, 0xEA)));
     private static readonly Brush Secondary = Frozen(new SolidColorBrush(Color.FromRgb(0x9A, 0x9A, 0xA0)));
-    private static readonly Brush BrandBrush = Frozen(new SolidColorBrush(WheelWindow.Brand));
+    private static Brush BrandBrush => Brand.AccentBrush;
 
     /// <summary>Thumbnails sit in a square of this many DIPs, keeping their proportions.</summary>
     private const int ThumbnailSide = 48;

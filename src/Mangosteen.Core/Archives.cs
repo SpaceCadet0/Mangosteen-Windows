@@ -4,7 +4,10 @@ using System.Text;
 
 namespace Mangosteen.Core;
 
-/// <summary>ZIP, TAR and TAR.GZ: files and folders into archives, archives into each other, and extraction.</summary>
+/// <summary>
+/// ZIP, TAR and TAR.GZ through .NET; 7Z, RAR, ISO, CAB, TAR.XZ and TAR.BZ2 through Windows' own tar.exe (libarchive),
+/// which also writes 7Z and ISO on Windows 11. Files and folders into archives, archives into each other, extraction.
+/// </summary>
 public static class Archives
 {
     static Archives() => Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -53,8 +56,134 @@ public static class Archives
                     }
                 }
                 break;
+            case FileFormat.SevenZip:
+            case FileFormat.Iso:
+                PackWithTar(items, target, output, EntryName);
+                break;
             default:
                 throw new NotSupportedException($"{target.DisplayName()} is not an archive format.");
+        }
+    }
+
+    /// <summary>Windows' own tar.exe (bsdtar), there since Windows 10 1803.</summary>
+    public static string TarPath => Path.Combine(Environment.SystemDirectory, "tar.exe");
+
+    /// <summary>Runs tar.exe and returns what it printed; throws with its message when it fails.</summary>
+    public static string RunTar(IEnumerable<string> arguments, string? workingDirectory = null)
+    {
+        if (!File.Exists(TarPath))
+        {
+            throw new NotSupportedException(Loc.L("This version of Windows has no tar.exe, which reads and writes this kind of archive."));
+        }
+        var start = new System.Diagnostics.ProcessStartInfo(TarPath)
+        {
+            UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true,
+            WorkingDirectory = workingDirectory ?? Environment.CurrentDirectory,
+            StandardErrorEncoding = Encoding.UTF8, StandardOutputEncoding = Encoding.UTF8,
+        };
+        foreach (var argument in arguments)
+        {
+            start.ArgumentList.Add(argument);
+        }
+        using var process = System.Diagnostics.Process.Start(start) ?? throw new InvalidOperationException("tar.exe did not start.");
+        var errors = process.StandardError.ReadToEndAsync();
+        var output = process.StandardOutput.ReadToEnd();
+        process.WaitForExit();
+        if (process.ExitCode != 0)
+        {
+            var message = errors.Result.Trim();
+            throw new InvalidDataException(message.Length > 0 ? message.Replace("tar.exe: ", "") : $"tar.exe exited with code {process.ExitCode}.");
+        }
+        return output;
+    }
+
+    /// <summary>7z and ISO 9660 (with Joliet names) through tar.exe; each item keeps its name at the top level.</summary>
+    private static void PackWithTar(IReadOnlyList<string> items, FileFormat target, string output, Func<string, string> entryName)
+    {
+        var format = target == FileFormat.SevenZip ? "7zip" : "iso9660";
+        var arguments = new List<string> { "--format", format };
+        if (target == FileFormat.Iso)
+        {
+            var volume = new string(Path.GetFileNameWithoutExtension(output).ToUpperInvariant().Where(c => c is >= 'A' and <= 'Z' or >= '0' and <= '9' or '_').Take(32).ToArray());
+            arguments.AddRange(["--options", $"iso9660:joliet,iso9660:rockridge,iso9660:volume-id={(volume.Length > 0 ? volume : "MANGOSTEEN")}"]);
+        }
+        arguments.AddRange(["-cf", Path.GetFullPath(output)]);
+        // Items with names of their own are added from where they are; a name clash is resolved in a staging folder.
+        var names = items.Select(entryName).ToList();
+        var renamed = items.Where((item, i) => Path.GetFileName(Path.TrimEndingDirectorySeparator(item)) != names[i]).Any();
+        string? staging = null;
+        try
+        {
+            if (renamed)
+            {
+                staging = Directory.CreateTempSubdirectory("mangosteen-").FullName;
+                for (var i = 0; i < items.Count; i++)
+                {
+                    CopyItem(items[i], Path.Combine(staging, names[i]));
+                }
+                arguments.AddRange(["-C", staging]);
+                arguments.AddRange(names);
+            }
+            else
+            {
+                foreach (var item in items)
+                {
+                    var full = Path.GetFullPath(Path.TrimEndingDirectorySeparator(item));
+                    arguments.AddRange(["-C", Path.GetDirectoryName(full)!, Path.GetFileName(full)]);
+                }
+            }
+            RunTar(arguments);
+        }
+        finally
+        {
+            if (staging is not null)
+            {
+                Directory.Delete(staging, recursive: true);
+            }
+        }
+    }
+
+    private static void CopyItem(string source, string destination)
+    {
+        if (Directory.Exists(source))
+        {
+            Directory.CreateDirectory(destination);
+            foreach (var entry in Directory.EnumerateFileSystemEntries(source))
+            {
+                CopyItem(entry, Path.Combine(destination, Path.GetFileName(entry)));
+            }
+        }
+        else
+        {
+            File.Copy(source, destination);
+        }
+    }
+
+    /// <summary>True when tar.exe writes <paramref name="format"/> ("7zip" or "iso9660"): a tiny archive is made and listed.</summary>
+    public static bool TarWrites(string format)
+    {
+        var folder = Directory.CreateTempSubdirectory("mangosteen-tar-").FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(folder, "a.txt"), "Mangosteen");
+            var archive = Path.Combine(folder, "test.out");
+            RunTar(["--format", format, "-cf", archive, "-C", folder, "a.txt"]);
+            return RunTar(["-tf", archive]).Contains("a.txt", StringComparison.Ordinal);
+        }
+        catch (Exception error) when (error is InvalidDataException or NotSupportedException or IOException or InvalidOperationException
+            or System.ComponentModel.Win32Exception)
+        {
+            return false;
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(folder, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
         }
     }
 
@@ -117,8 +246,20 @@ public static class Archives
         {
             throw new InvalidDataException($"{Path.GetFileName(archive)} is not an archive.");
         }
-        return OutputNaming.WriteAtomically(Path.GetDirectoryName(Path.GetFullPath(archive))!, OutputNaming.BaseName(archive), "",
-            folder => Extract(archive, format, folder));
+        var directory = Path.GetDirectoryName(Path.GetFullPath(archive))!;
+        if (format == FileFormat.Gz)
+        {
+            // A single gzipped file comes out as that file, not a folder holding it.
+            var inner = Path.GetFileNameWithoutExtension(archive);
+            return OutputNaming.WriteAtomically(directory, Path.GetFileNameWithoutExtension(inner), Path.GetExtension(inner).TrimStart('.'), output =>
+            {
+                using var file = File.OpenRead(archive);
+                using var gzip = new GZipStream(file, CompressionMode.Decompress);
+                using var target = File.Create(output);
+                gzip.CopyTo(target);
+            });
+        }
+        return OutputNaming.WriteAtomically(directory, OutputNaming.BaseName(archive), "", folder => Extract(archive, format, folder));
     }
 
     /// <param name="oemCodePage">The code page for ZIP names without the UTF-8 flag; the system's OEM code page by default.</param>
@@ -144,6 +285,24 @@ public static class Archives
                 using (var gzip = new GZipStream(file, CompressionMode.Decompress))
                 {
                     TarFile.ExtractToDirectory(gzip, folder, overwriteFiles: false);
+                }
+                break;
+            case FileFormat.Gz:
+                // A single gzipped file: the file itself, without ".gz".
+                using (var file = File.OpenRead(archive))
+                using (var gzip = new GZipStream(file, CompressionMode.Decompress))
+                using (var target = File.Create(Path.Combine(folder, Path.GetFileNameWithoutExtension(archive))))
+                {
+                    gzip.CopyTo(target);
+                }
+                break;
+            case FileFormat.SevenZip or FileFormat.Rar or FileFormat.Iso or FileFormat.Cab or FileFormat.Txz or FileFormat.Tbz:
+                RunTar(["-xf", Path.GetFullPath(archive), "-C", Path.GetFullPath(folder)]);
+                if (!Directory.EnumerateFileSystemEntries(folder).Any())
+                {
+                    throw new InvalidDataException(format == FileFormat.Iso
+                        ? string.Format(Loc.L("“{0}” could not be read: the image may use only UDF, which tar.exe cannot read."), Path.GetFileName(archive))
+                        : string.Format(Loc.L("“{0}” is empty."), Path.GetFileName(archive)));
                 }
                 break;
             default:

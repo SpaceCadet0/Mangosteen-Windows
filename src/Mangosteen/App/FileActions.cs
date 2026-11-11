@@ -18,6 +18,26 @@ internal static class FileActions
         Clipboard.SetFileDropList(list);
     }
 
+    /// <summary>The user's Downloads folder (wherever it was moved to).</summary>
+    public static string DownloadsFolder()
+    {
+        try
+        {
+            if (SHGetKnownFolderPath(new Guid("374DE290-123F-4565-9164-39C4925E467B"), 0, IntPtr.Zero, out var path) == 0)
+            {
+                return path;
+            }
+        }
+        catch (Exception error) when (error is System.Runtime.InteropServices.COMException or EntryPointNotFoundException)
+        {
+        }
+        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+    }
+
+    [System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int SHGetKnownFolderPath([System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPStruct)] Guid id,
+        uint flags, IntPtr token, out string path);
+
     /// <summary>One full path per line.</summary>
     public static void CopyPaths(IReadOnlyList<string> paths) => Clipboard.SetText(string.Join(Environment.NewLine, paths));
 

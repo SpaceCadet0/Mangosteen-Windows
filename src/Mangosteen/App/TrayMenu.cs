@@ -18,7 +18,7 @@ namespace Mangosteen;
 /// </summary>
 internal sealed class TrayMenu : Window
 {
-    private static readonly Brush Highlight = Frozen(new SolidColorBrush(WheelWindow.Brand));
+    private static Brush Highlight => Brand.AccentBrush;
     private readonly StackPanel _items = new() { Margin = new Thickness(4) };
     private readonly List<FrameworkElement> _rows = [];
     private readonly bool _light;

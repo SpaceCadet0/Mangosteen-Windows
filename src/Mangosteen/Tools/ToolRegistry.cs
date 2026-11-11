@@ -59,10 +59,17 @@ internal static class ToolRegistry
         }
         else if (id.StartsWith("wheel.", StringComparison.Ordinal))
         {
-            // wheel.convert, wheel.tools, wheel.actions: the wheel for the files, as it opens at the pointer.
-            var kind = Enum.Parse<Core.WheelKind>(id["wheel.".Length..], ignoreCase: true);
+            // wheel.convert, wheel.tools, wheel.actions: the wheel for the files, as it opens at the pointer;
+            // wheel.tools.back: its back.
+            var parts = id.Split('.');
+            var kind = Enum.Parse<Core.WheelKind>(parts[1], ignoreCase: true);
             Platform.Native.GetCursorPos(out var at);
-            window = new Wheel.WheelWindow(kind, Core.WheelCatalog.Items(kind, files), files.Count, at);
+            var wheel = new Wheel.WheelWindow(kind, Core.WheelCatalog.Sides(kind, files, null), files.Count, at);
+            if (parts.Length > 2 && parts[2] == "back")
+            {
+                wheel.Loaded += (_, _) => wheel.Flip();
+            }
+            window = wheel;
         }
         else if (id.StartsWith("traymenu-recent", StringComparison.Ordinal) || id.StartsWith("traymenu-result", StringComparison.Ordinal))
         {
@@ -77,7 +84,7 @@ internal static class ToolRegistry
             // wheel.convert, wheel.tools, wheel.actions: the wheel for the files, as it opens at the pointer.
             var kind = Enum.Parse<Core.WheelKind>(id["wheel.".Length..], ignoreCase: true);
             Platform.Native.GetCursorPos(out var at);
-            window = new Wheel.WheelWindow(kind, Core.WheelCatalog.Items(kind, files), files.Count, at);
+            window = new Wheel.WheelWindow(kind, Core.WheelCatalog.Sides(kind, files, null), files.Count, at);
         }
         else if (id.StartsWith("traymenu-recent", StringComparison.Ordinal))
             {

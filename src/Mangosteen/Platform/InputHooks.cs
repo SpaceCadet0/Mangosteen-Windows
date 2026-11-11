@@ -58,6 +58,15 @@ internal sealed class InputHooks : IDisposable
     /// <summary>Raised on the hook thread when Shift, Ctrl or Alt is pressed while a wheel is open.</summary>
     public event Action<WheelKind>? SwitchWheel;
 
+    /// <summary>
+    /// Raised on the hook thread to turn the open wheel over: the mouse wheel over it, or Tab. The wheel never takes the
+    /// keyboard focus, so these never reach its window and are caught here; both are swallowed.
+    /// </summary>
+    public event Action<string>? FlipWheel;
+
+    /// <summary>When the last mouse-wheel flip happened; a fast spin of the wheel turns it over once.</summary>
+    private long _lastWheelFlip;
+
     // Touched only on the hook thread.
     private readonly HashSet<uint> _modifiersDown = [];
     private readonly HashSet<uint> _swallowedModifiers = [];
@@ -158,6 +167,16 @@ internal sealed class InputHooks : IDisposable
                     _armed = null;
                     Triggered?.Invoke(armed, info.pt);
                     return 1;
+
+                case WM_MOUSEWHEEL or WM_MOUSEHWHEEL when _wheel is { } open && open.Contains(info.pt):
+                    // One turn per gesture: notches that follow within 350 ms belong to the same spin.
+                    var now = Environment.TickCount64;
+                    if (now - _lastWheelFlip > 350)
+                    {
+                        FlipWheel?.Invoke("mouse wheel");
+                    }
+                    _lastWheelFlip = now;
+                    return 1;
             }
         }
         catch (Exception)
@@ -212,6 +231,18 @@ internal sealed class InputHooks : IDisposable
         else if (keyDown && _wheel is not null && info.vkCode == VK_ESCAPE)
         {
             DismissWheel?.Invoke("Esc");
+            return 1;
+        }
+        else if (!injected && _wheel is not null && info.vkCode == VK_TAB && (keyDown || keyUp))
+        {
+            if (keyDown && _modifiersDown.Add(VK_TAB))
+            {
+                FlipWheel?.Invoke("Tab");
+            }
+            else if (keyUp)
+            {
+                _modifiersDown.Remove(VK_TAB);
+            }
             return 1;
         }
         return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
