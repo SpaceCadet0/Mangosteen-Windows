@@ -24,12 +24,19 @@ jobs:
             $list = if ($code -eq 0) { (& tar.exe -tvf $out 2>&1) -join ' | ' } else { '' }
             Write-Host ("CASE {0} -> exit {1}; list: {2}" -f $label, $code, $list)
           }
-          foreach ($f in 'ustar', 'pax', 'zip', '7zip', 'iso9660') {
-            Probe-Tar "$f file" @('--format', $f, '-cf', "$root\a-$f.out", '-C', $root, 'loose.txt') "$root\a-$f.out"
-            Probe-Tar "$f folder" @('--format', $f, '-cf', "$root\b-$f.out", '-C', $root, 'Photo') "$root\b-$f.out"
-            Probe-Tar "$f folder-n+files" @('--format', $f, '-n', '-cf', "$root\c-$f.out", '-C', $root, 'Photo', 'Photo/note.txt', 'Photo/заметка.txt') "$root\c-$f.out"
-            Probe-Tar "$f files-in-folder" @('--format', $f, '-cf', "$root\d-$f.out", '-C', $root, 'Photo/note.txt', 'Photo/заметка.txt') "$root\d-$f.out"
-            Probe-Tar "$f relative-out" @('--format', $f, '-cf', "e-$f.out", 'Photo') "$root\e-$f.out"
+          $ascii = New-Item -ItemType Directory (Join-Path $root 'Ascii'); Set-Content (Join-Path $ascii 'one.txt') 'x'
+          New-Item -ItemType Directory (Join-Path $ascii 'sub') | Out-Null; Set-Content (Join-Path $ascii 'sub\two.txt') 'y'
+          Set-Content -Encoding utf8 (Join-Path $root 'заметка.txt') 'привет'
+          $cyr = New-Item -ItemType Directory (Join-Path $root 'Папка'); Set-Content (Join-Path $cyr 'one.txt') 'x'
+          foreach ($f in 'ustar', '7zip', 'iso9660') {
+            Probe-Tar "$f ascii-folder" @('--format', $f, '-cf', "$root\a-$f.out", '-C', $root, 'Ascii') "$root\a-$f.out"
+            Probe-Tar "$f cyrillic-file" @('--format', $f, '-cf', "$root\b-$f.out", '-C', $root, 'заметка.txt') "$root\b-$f.out"
+            Probe-Tar "$f cyrillic-folder-ascii-file" @('--format', $f, '-cf', "$root\c-$f.out", '-C', $root, 'Папка') "$root\c-$f.out"
           }
+          chcp
+          [Console]::OutputEncoding = [Text.Encoding]::UTF8
+          Probe-Tar "ustar cyrillic-file utf8-console" @('--format', 'ustar', '-cf', "$root\d.out", '-C', $root, 'заметка.txt') "$root\d.out"
+          Probe-Tar "ustar cyrillic-file quiet" @('--format', 'ustar', '-cf', "$root\e.out", '-C', $root, 'заметка.txt') "$root\e.out"
+          & "C:\Program Files\Git\usr\bin\tar.exe" --version
           # Windows' System32 tar vs. the one in Git for Windows, for comparison
           Get-Command tar.exe -All | ForEach-Object { Write-Host "tar at $($_.Source)" }
