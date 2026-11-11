@@ -10,7 +10,7 @@ internal sealed class AppSettings
     private static readonly string FilePath = Path.Combine(Log.Directory, "settings.json");
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
 
-    /// <summary>"system", "en", "es" or "ru".</summary>
+    /// <summary>"system" or one of Loc.Languages ("en", "es", "ru", "de", "fr", "pt-BR", "zh-Hans", "ja").</summary>
     public string Language { get; set; } = "system";
 
     public bool WelcomeShown { get; set; }

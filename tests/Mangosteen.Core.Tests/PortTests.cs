@@ -453,3 +453,64 @@ public class BookTests
         }
     }
 }
+
+public class PortLanguageTests
+{
+    [Theory]
+    [InlineData("de", "Konvertieren")]
+    [InlineData("fr", "Convertir")]
+    [InlineData("pt-BR", "Converter")]
+    [InlineData("zh-Hans", "转换")]
+    [InlineData("ja", "変換")]
+    public void NewLanguagesAreLoaded(string code, string convert)
+    {
+        try
+        {
+            Loc.SetLanguage(code);
+            Assert.Equal(code, Loc.Language);
+            Assert.Equal(convert, Loc.L("Convert"));
+        }
+        finally
+        {
+            Loc.SetLanguage("en");
+        }
+    }
+
+    [Fact]
+    public void EveryLanguageHasEveryString()
+    {
+        var russian = Loc.Load("ru").Keys.ToHashSet();
+        Assert.True(russian.Count > 500);
+        foreach (var (code, _) in Loc.Languages.Skip(1))
+        {
+            Assert.Equal(russian, Loc.Load(code).Keys.ToHashSet());
+        }
+    }
+
+    [Theory]
+    [InlineData("de", 1, "1 Datei")]
+    [InlineData("de", 3, "3 Dateien")]
+    [InlineData("fr", 0, "0 fichier")]
+    [InlineData("zh-Hans", 3, "3 个文件")]
+    [InlineData("ja", 2, "2 個のファイル")]
+    public void FilesAreCounted(string code, int count, string text)
+    {
+        try
+        {
+            Loc.SetLanguage(code);
+            Assert.Equal(text, WheelCatalog.FileCount(count));
+        }
+        finally
+        {
+            Loc.SetLanguage("en");
+        }
+    }
+
+    [Theory]
+    [InlineData("pt-PT", "pt-BR")]
+    [InlineData("zh-CN", "zh-Hans")]
+    [InlineData("de-AT", "de")]
+    [InlineData("it-IT", "en")]
+    public void WindowsLanguageIsMapped(string culture, string code) =>
+        Assert.Equal(code, Loc.FromCulture(new System.Globalization.CultureInfo(culture)));
+}
