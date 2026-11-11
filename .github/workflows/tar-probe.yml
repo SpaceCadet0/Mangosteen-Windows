@@ -1,5 +1,7 @@
 name: tar probe
-on: workflow_dispatch
+on:
+  push:
+    paths: [.github/workflows/tar-probe.yml]
 jobs:
   probe:
     runs-on: windows-latest
