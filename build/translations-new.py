@@ -288,4 +288,20 @@ N = {
 "“{0}” has no video beside it.": ("Рядом с «{0}» нет видео.", "No hay vídeo junto a «{0}».", "Neben „{0}“ liegt kein Video.", "Aucune vidéo à côté de « {0} ».", "Não há vídeo ao lado de “{0}”.", "“{0}”旁边没有视频。", "「{0}」の隣にビデオがありません。"),
 "“{0}” is empty.": ("«{0}» пуст.", "«{0}» está vacío.", "„{0}“ ist leer.", "« {0} » est vide.", "“{0}” está vazio.", "“{0}”是空的。", "「{0}」は空です。"),
 "“{0}” is not HDR video.": ("«{0}» — не HDR-видео.", "«{0}» no es un vídeo HDR.", "„{0}“ ist kein HDR-Video.", "« {0} » n’est pas une vidéo HDR.", "“{0}” não é vídeo HDR.", "“{0}”不是 HDR 视频。", "「{0}」は HDR ビデオではありません。"),
+"tar.exe, which Windows uses for this kind of archive, cannot handle names in this alphabet on this computer. ZIP keeps any names.": (
+    "tar.exe, которым Windows открывает такие архивы, не понимает имена на этом алфавите на этом компьютере. ZIP сохраняет любые имена.",
+    "tar.exe, que Windows usa para este tipo de archivo, no admite nombres en este alfabeto en este equipo. ZIP conserva cualquier nombre.",
+    "tar.exe, das Windows für solche Archive nutzt, kann Namen in diesem Alphabet auf diesem Computer nicht verarbeiten. ZIP behält alle Namen.",
+    "tar.exe, que Windows utilise pour ce type d’archive, ne gère pas les noms dans cet alphabet sur cet ordinateur. ZIP conserve tous les noms.",
+    "O tar.exe, que o Windows usa para esse tipo de arquivo, não aceita nomes neste alfabeto neste computador. O ZIP mantém qualquer nome.",
+    "Windows 处理此类压缩包所用的 tar.exe 在这台电脑上无法处理此文字的名称。ZIP 可保留任何名称。",
+    "Windows がこの種類のアーカイブに使う tar.exe は、このコンピューターではこの文字の名前を扱えません。ZIP ならどんな名前も保てます。"),
+"“{0}”: tar.exe, which Windows uses for 7Z and ISO, cannot handle names in this alphabet on this computer. ZIP keeps any names.": (
+    "«{0}»: tar.exe, которым Windows создаёт 7Z и ISO, не понимает имена на этом алфавите на этом компьютере. ZIP сохраняет любые имена.",
+    "«{0}»: tar.exe, que Windows usa para 7Z e ISO, no admite nombres en este alfabeto en este equipo. ZIP conserva cualquier nombre.",
+    "„{0}“: tar.exe, das Windows für 7Z und ISO nutzt, kann Namen in diesem Alphabet auf diesem Computer nicht verarbeiten. ZIP behält alle Namen.",
+    "« {0} » : tar.exe, que Windows utilise pour le 7Z et l’ISO, ne gère pas les noms dans cet alphabet sur cet ordinateur. ZIP conserve tous les noms.",
+    "“{0}”: o tar.exe, que o Windows usa para 7Z e ISO, não aceita nomes neste alfabeto neste computador. O ZIP mantém qualquer nome.",
+    "“{0}”：Windows 用于 7Z 和 ISO 的 tar.exe 在这台电脑上无法处理此文字的名称。ZIP 可保留任何名称。",
+    "「{0}」: Windows が 7Z と ISO に使う tar.exe は、このコンピューターではこの文字の名前を扱えません。ZIP ならどんな名前も保てます。"),
 }

@@ -94,14 +94,32 @@ public sealed class PortTests : IDisposable
         FormatCatalog.SevenZipWritable = Archives.TarWrites("7zip");
         FormatCatalog.IsoWritable = Archives.TarWrites("iso9660");
         Assert.True(FormatCatalog.SevenZipWritable && FormatCatalog.IsoWritable, "tar.exe on the runner writes 7z and ISO");
-        var folder = Directory.CreateDirectory(PathOf("Фото")).FullName;
-        File.WriteAllText(Path.Combine(folder, "заметка.txt"), "привет");
+        // tar.exe takes the names its ANSI code page can spell: Cyrillic on a Russian Windows, Latin-1 on the runner.
+        var (folderName, fileName) = Archives.TarCanName("Фото заметка") ? ("Фото", "заметка.txt") : ("Café", "résumé.txt");
+        var folder = Directory.CreateDirectory(PathOf(folderName)).FullName;
+        File.WriteAllText(Path.Combine(folder, fileName), "привет");
         foreach (var format in new[] { FileFormat.SevenZip, FileFormat.Iso })
         {
             var archive = Converter.Convert(folder, format)!;
             var extracted = Archives.ExtractNextToArchive(archive);
-            Assert.Equal("привет", File.ReadAllText(Directory.EnumerateFiles(extracted, "заметка.txt", SearchOption.AllDirectories).Single()));
+            Assert.Equal("привет", File.ReadAllText(Directory.EnumerateFiles(extracted, fileName, SearchOption.AllDirectories).Single()));
         }
+    }
+
+    [SkippableFact]
+    public void NamesTarCannotSpellAreRefusedWithAReason()
+    {
+        Skip.If(Archives.TarCanName("Фото"), "This Windows' code page spells Cyrillic.");
+        FormatCatalog.SevenZipWritable = FormatCatalog.IsoWritable = true;
+        var folder = Directory.CreateDirectory(PathOf("Photos")).FullName;
+        File.WriteAllText(Path.Combine(folder, "заметка.txt"), "привет");
+        foreach (var format in new[] { FileFormat.SevenZip, FileFormat.Iso })
+        {
+            var error = Assert.Throws<NotSupportedException>(() => Converter.Convert(folder, format));
+            Assert.Contains("заметка.txt", error.Message);
+            Assert.Contains("ZIP", error.Message);
+        }
+        Assert.Equal(["Photos"], Directory.EnumerateFileSystemEntries(_dir).Select(Path.GetFileName));
     }
 
     [Fact]

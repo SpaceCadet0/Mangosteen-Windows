@@ -527,6 +527,7 @@
  "right-click": "clic derecho",
  "speed": "velocidad",
  "subtitles": "subtítulos",
+ "tar.exe, which Windows uses for this kind of archive, cannot handle names in this alphabet on this computer. ZIP keeps any names.": "tar.exe, que Windows usa para este tipo de archivo, no admite nombres en este alfabeto en este equipo. ZIP conserva cualquier nombre.",
  "text": "texto",
  "to": "a",
  "trimmed": "recortado",
@@ -558,5 +559,6 @@
  "“{0}” has no video.": "«{0}» no tiene vídeo.",
  "“{0}” is empty.": "«{0}» está vacío.",
  "“{0}” is locked with a password.": "«{0}» está protegido con contraseña.",
- "“{0}” is not HDR video.": "«{0}» no es un vídeo HDR."
+ "“{0}” is not HDR video.": "«{0}» no es un vídeo HDR.",
+ "“{0}”: tar.exe, which Windows uses for 7Z and ISO, cannot handle names in this alphabet on this computer. ZIP keeps any names.": "«{0}»: tar.exe, que Windows usa para 7Z e ISO, no admite nombres en este alfabeto en este equipo. ZIP conserva cualquier nombre."
 }

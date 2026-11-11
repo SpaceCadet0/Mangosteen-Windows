@@ -527,6 +527,7 @@
  "right-click": "правый щелчок",
  "speed": "скорость",
  "subtitles": "субтитры",
+ "tar.exe, which Windows uses for this kind of archive, cannot handle names in this alphabet on this computer. ZIP keeps any names.": "tar.exe, которым Windows открывает такие архивы, не понимает имена на этом алфавите на этом компьютере. ZIP сохраняет любые имена.",
  "text": "текст",
  "to": "до",
  "trimmed": "обрезано",
@@ -558,5 +559,6 @@
  "“{0}” has no video.": "В «{0}» нет видео.",
  "“{0}” is empty.": "«{0}» пуст.",
  "“{0}” is locked with a password.": "«{0}» защищён паролем.",
- "“{0}” is not HDR video.": "«{0}» — не HDR-видео."
+ "“{0}” is not HDR video.": "«{0}» — не HDR-видео.",
+ "“{0}”: tar.exe, which Windows uses for 7Z and ISO, cannot handle names in this alphabet on this computer. ZIP keeps any names.": "«{0}»: tar.exe, которым Windows создаёт 7Z и ISO, не понимает имена на этом алфавите на этом компьютере. ZIP сохраняет любые имена."
 }

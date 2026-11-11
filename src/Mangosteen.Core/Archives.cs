@@ -79,7 +79,8 @@ public static class Archives
         {
             UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true,
             WorkingDirectory = workingDirectory ?? Environment.CurrentDirectory,
-            StandardErrorEncoding = Encoding.UTF8, StandardOutputEncoding = Encoding.UTF8,
+            // tar.exe prints names in the system's ANSI code page, not UTF-8.
+            StandardErrorEncoding = TarEncoding, StandardOutputEncoding = TarEncoding,
         };
         foreach (var argument in arguments)
         {
@@ -92,9 +93,84 @@ public static class Archives
         if (process.ExitCode != 0)
         {
             var message = errors.Result.Trim();
+            if (process.ExitCode == AccessViolation || message.Contains("unreadable filename", StringComparison.Ordinal))
+            {
+                throw new InvalidDataException(Loc.L("tar.exe, which Windows uses for this kind of archive, cannot handle names in this alphabet on this computer. ZIP keeps any names."));
+            }
             throw new InvalidDataException(message.Length > 0 ? message.Replace("tar.exe: ", "") : $"tar.exe exited with code {process.ExitCode}.");
         }
         return output;
+    }
+
+    /// <summary>What tar.exe crashes with (0xC0000005) when a name is outside the ANSI code page.</summary>
+    private const int AccessViolation = unchecked((int)0xC0000005);
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    private static extern uint GetACP();
+
+    /// <summary>
+    /// The system's ANSI code page, which tar.exe (bsdtar) reads names and arguments in; Latin-1 on an English
+    /// Windows, Cyrillic on a Russian one. UTF-8 when Windows uses it as the ANSI code page, or off Windows.
+    /// </summary>
+    private static Encoding TarEncoding
+    {
+        get
+        {
+            try
+            {
+                var page = OperatingSystem.IsWindows() ? (int)GetACP() : 65001;
+                return page == 65001 ? new UTF8Encoding(false)
+                    : Encoding.GetEncoding(page, EncoderFallback.ExceptionFallback, DecoderFallback.ReplacementFallback);
+            }
+            catch (Exception error) when (error is ArgumentException or NotSupportedException)
+            {
+                return new UTF8Encoding(false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// True when tar.exe can take <paramref name="name"/>: Windows' tar.exe 3.8 crashes on a name its ANSI code page
+    /// cannot spell, and skips such names when reading.
+    /// </summary>
+    public static bool TarCanName(string name)
+    {
+        var encoding = TarEncoding;
+        if (encoding is UTF8Encoding)
+        {
+            return true;
+        }
+        try
+        {
+            return encoding.GetString(encoding.GetBytes(name)) == name;
+        }
+        catch (EncoderFallbackException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Every name tar.exe would see when archiving <paramref name="item"/>, the item itself first.</summary>
+    private static IEnumerable<string> NamesWithin(string item)
+    {
+        yield return item;
+        if (Directory.Exists(item))
+        {
+            foreach (var entry in Directory.EnumerateFileSystemEntries(item, "*", SearchOption.AllDirectories))
+            {
+                yield return entry;
+            }
+        }
+    }
+
+    /// <summary>Refuses, before tar.exe runs, an archive whose paths tar.exe cannot spell (see <see cref="TarCanName"/>).</summary>
+    private static void CheckTarNames(IEnumerable<string> paths)
+    {
+        if (paths.FirstOrDefault(path => !TarCanName(path)) is { } bad)
+        {
+            throw new NotSupportedException(string.Format(Loc.L("“{0}”: tar.exe, which Windows uses for 7Z and ISO, cannot handle names in this alphabet on this computer. ZIP keeps any names."),
+                Path.GetFileName(Path.TrimEndingDirectorySeparator(bad))));
+        }
     }
 
     /// <summary>7z and ISO 9660 (with Joliet names) through tar.exe; each item keeps its name at the top level.</summary>
@@ -110,6 +186,7 @@ public static class Archives
         arguments.AddRange(["-cf", Path.GetFullPath(output)]);
         // Items with names of their own are added from where they are; a name clash is resolved in a staging folder.
         var names = items.Select(entryName).ToList();
+        CheckTarNames(items.Select(item => Path.GetFullPath(item)).SelectMany(NamesWithin).Concat(names).Append(Path.GetFullPath(output)));
         var renamed = items.Where((item, i) => Path.GetFileName(Path.TrimEndingDirectorySeparator(item)) != names[i]).Any();
         string? staging = null;
         try
@@ -297,6 +374,7 @@ public static class Archives
                 }
                 break;
             case FileFormat.SevenZip or FileFormat.Rar or FileFormat.Iso or FileFormat.Cab or FileFormat.Txz or FileFormat.Tbz:
+                CheckTarNames([Path.GetFullPath(archive), Path.GetFullPath(folder)]);
                 RunTar(["-xf", Path.GetFullPath(archive), "-C", Path.GetFullPath(folder)]);
                 if (!Directory.EnumerateFileSystemEntries(folder).Any())
                 {
