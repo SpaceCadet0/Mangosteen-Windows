@@ -388,6 +388,19 @@ internal sealed class AppController : IDisposable
                     jobs.RunEach(L("Recognising text"), L("Text recognised"), paths.Where(Tools.TextRecognition.Accepts).ToList(),
                         (input, token) => Tools.TextRecognition.RecognizeFile(input, token));
                     break;
+                case "tool.removeBars":
+                    jobs.RunEach(L("Removing black bars"), L("Black bars removed"), Videos(paths), (input, token, progress) => Media.VideoFixes.RemoveBlackBars(input, progress, token));
+                    break;
+                case "tool.hdrToSDR":
+                    jobs.RunEach(L("HDR to SDR"), L("Converted to SDR"), Videos(paths), (input, token, progress) => Media.VideoFixes.HdrToSdr(input, progress, token));
+                    break;
+                case "tool.extractSubtitles":
+                    jobs.RunEach(L("Subtitles from video"), L("Subtitles saved"), Videos(paths), (input, token, progress) => Media.VideoFixes.ExtractSubtitles(input, progress, token));
+                    break;
+                case "tool.livePhoto":
+                    jobs.RunEach(L("Video from Live Photo"), L("Video saved"), paths.Where(p => WheelCatalog.LivePhotoMovie(p) is not null
+                        && FileFormats.Detect(p)?.Category() == FormatCategory.Image).ToList(), (input, token, progress) => Media.VideoFixes.LivePhotoVideo(input, progress, token));
+                    break;
                 case "tool.mergePDF":
                     jobs.RunOnce(L("Merging PDFs"), L("PDFs merged"), WheelCatalog.FileCount(paths.Count), () => Converter.MergePdfs(paths));
                     break;
@@ -436,6 +449,9 @@ internal sealed class AppController : IDisposable
             tray.Notify(item.Title, error.Message, error: true);
         }
     }
+
+    private static List<string> Videos(IReadOnlyList<string> paths) =>
+        paths.Where(p => FileFormats.Detect(p)?.Category() == FormatCategory.Video).ToList();
 
     private static void SendKey(ushort vk)
     {

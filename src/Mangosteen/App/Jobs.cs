@@ -19,6 +19,21 @@ internal sealed class Jobs(Dispatcher dispatcher, TrayIcon tray)
     /// <summary>Like <see cref="RunEach(string, string, IReadOnlyList{string}, Func{string, CancellationToken, string?})"/>, with progress (0…1) within each file.</summary>
     public void RunEach(string title, string doneTitle, IReadOnlyList<string> inputs, Func<string, CancellationToken, Action<double>, string?> work)
     {
+        // "Ask every time": the folder is picked before the job starts; closing the dialog cancels the job.
+        if (Core.OutputLocation.Policy.Mode == Core.SaveMode.Ask)
+        {
+            var dialog = new Microsoft.Win32.OpenFolderDialog { Title = string.Format(L("Where to save: {0}"), title) };
+            if (Core.OutputLocation.AskedFolder is { } last && Directory.Exists(last))
+            {
+                dialog.InitialDirectory = last;
+            }
+            if (dialog.ShowDialog() != true)
+            {
+                Log.Write($"{title}: no folder chosen, cancelled");
+                return;
+            }
+            Core.OutputLocation.AskedFolder = dialog.FolderName;
+        }
         var cancel = new CancellationTokenSource();
         ProgressHud? hud = null;
         var finished = false;
@@ -63,6 +78,8 @@ internal sealed class Jobs(Dispatcher dispatcher, TrayIcon tray)
                         lastShown = fraction;
                         dispatcher.BeginInvoke(() => hud?.Report(index, inputs.Count, name, fraction));
                     }
+                    // The original, for keeping its dates on the result.
+                    Core.OutputLocation.Source = File.Exists(input) || Directory.Exists(input) ? input : null;
                     if (work(input, cancel.Token, Progress) is { } output)
                     {
                         outputs.Add(output);

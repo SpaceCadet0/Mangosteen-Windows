@@ -42,6 +42,9 @@ internal static class ToolRegistry
         "tool.bleep" => new BleepTool(files, jobs),
         "tool.visualizer" => new VisualizerTool(files, jobs),
         "tool.redactVideo" => new VideoHideTool(files, jobs),
+        "tool.tags" => new TagsTool(files, jobs),
+        "tool.pagesPerSheet" => new PagesPerSheetTool(files, jobs),
+        "tool.trace" => new TraceTool(files, jobs),
         _ => null,
     };
 

@@ -37,19 +37,80 @@ internal static class ImageConverter
         {
             throw new NotSupportedException($"{target.DisplayName()} is not supported yet.");
         }
-        var image = Decode(input);
+        // The settings in use (the standard ones or a preset): quality, the longest side and camera data.
+        var options = OutputLocation.Options;
+        var image = Downscale(Decode(input), options.MaxPixelSize);
         if (target == FileFormat.Pdf)
         {
             PdfWriter.ImagesToPdf([(image, FileFormats.Detect(input) == FileFormat.Jpg)], output);
             return;
         }
-        WriteImage(image, target, output);
+        if (target == FileFormat.Ico)
+        {
+            File.WriteAllBytes(output, EncodeIco(image));
+            return;
+        }
+        using var stream = new FileStream(output, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        Encode(image, target, stream, options.Quality, options.KeepMetadata ? input : null);
     }
 
     public static void WriteImage(BitmapSource image, FileFormat target, string output)
     {
+        if (target == FileFormat.Ico)
+        {
+            File.WriteAllBytes(output, EncodeIco(image));
+            return;
+        }
         using var stream = new FileStream(output, FileMode.CreateNew, FileAccess.Write, FileShare.None);
         Encode(image, target, stream);
+    }
+
+    /// <summary>The picture with its longer side at most <paramref name="maxSide"/> pixels (0 keeps it).</summary>
+    internal static BitmapSource Downscale(BitmapSource image, int maxSide)
+    {
+        var longSide = Math.Max(image.PixelWidth, image.PixelHeight);
+        if (maxSide <= 0 || longSide <= maxSide)
+        {
+            return image;
+        }
+        var scale = (double)maxSide / longSide;
+        using var source = ToSkia(image);
+        var size = new SKImageInfo(Math.Max(1, (int)Math.Round(source.Width * scale)), Math.Max(1, (int)Math.Round(source.Height * scale)),
+            SKColorType.Bgra8888, SKAlphaType.Unpremul);
+        using var scaled = source.Resize(size, new SKSamplingOptions(SKCubicResampler.Mitchell)) ?? throw new InvalidOperationException("Could not resize the image.");
+        var result = BitmapSource.Create(size.Width, size.Height, 96, 96, PixelFormats.Bgra32, null, scaled.Bytes, scaled.RowBytes);
+        result.Freeze();
+        return result;
+    }
+
+    private static SKBitmap ToSkia(BitmapSource image)
+    {
+        var (pixels, width, height) = Bgra(image);
+        var bitmap = new SKBitmap(new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Unpremul));
+        Marshal.Copy(pixels, 0, bitmap.GetPixels(), pixels.Length);
+        return bitmap;
+    }
+
+    /// <summary>
+    /// A Windows icon: the picture centred on a transparent square at each size up to its own (16–256 px, at most six),
+    /// every size a PNG.
+    /// </summary>
+    internal static byte[] EncodeIco(BitmapSource image)
+    {
+        using var source = ToSkia(image);
+        using var sourceImage = SKImage.FromBitmap(source);
+        var frames = new List<(int, byte[])>();
+        foreach (var size in Core.Imaging.IcoFile.Sizes(Math.Max(source.Width, source.Height)))
+        {
+            var (x, y, w, h) = Core.Imaging.IcoFile.Fit(source.Width, source.Height, size);
+            using var surface = SKSurface.Create(new SKImageInfo(size, size, SKColorType.Bgra8888, SKAlphaType.Premul));
+            surface.Canvas.Clear(SKColors.Transparent);
+            surface.Canvas.DrawImage(sourceImage, SKRect.Create(x, y, w, h), new SKSamplingOptions(SKCubicResampler.Mitchell));
+            using var snapshot = surface.Snapshot();
+            using var png = snapshot.Encode(SKEncodedImageFormat.Png, 100);
+            frames.Add((size, png.ToArray()));
+        }
+        return Core.Imaging.IcoFile.Write(frames);
     }
 
     internal static BitmapSource Decode(string path)
@@ -63,17 +124,19 @@ internal static class ImageConverter
         return image;
     }
 
-    internal static void Encode(BitmapSource image, FileFormat target, Stream output)
+    /// <param name="quality">1…100 for JPG and WebP; null keeps their usual quality.</param>
+    /// <param name="metadataFrom">A JPEG or TIFF whose camera data (EXIF, GPS) goes into a JPEG or TIFF result.</param>
+    internal static void Encode(BitmapSource image, FileFormat target, Stream output, int? quality = null, string? metadataFrom = null)
     {
         if (target == FileFormat.Webp)
         {
-            EncodeWebp(image, output);
+            EncodeWebp(image, output, quality ?? WebpQuality);
             return;
         }
         BitmapEncoder encoder = target switch
         {
             FileFormat.Png => new PngBitmapEncoder(),
-            FileFormat.Jpg => new JpegBitmapEncoder { QualityLevel = 92 },
+            FileFormat.Jpg => new JpegBitmapEncoder { QualityLevel = Math.Clamp(quality ?? 92, 1, 100) },
             FileFormat.Tiff => new TiffBitmapEncoder { Compression = TiffCompressOption.Lzw },
             FileFormat.Bmp => new BmpBitmapEncoder(),
             FileFormat.Gif => new GifBitmapEncoder(),
@@ -82,12 +145,60 @@ internal static class ImageConverter
         // JPG and BMP have no alpha, and GIF's one-bit transparency turns soft edges black, so these get a
         // white background like a browser would show.
         var frame = target is FileFormat.Jpg or FileFormat.Bmp or FileFormat.Gif ? FlattenOnWhite(image) : image;
+        if (metadataFrom is not null && target is FileFormat.Jpg or FileFormat.Tiff && CameraData(metadataFrom, target) is { } metadata)
+        {
+            try
+            {
+                encoder.Frames.Add(BitmapFrame.Create(frame, null, metadata, null));
+                encoder.Save(output);
+                return;
+            }
+            catch (Exception error) when (error is InvalidOperationException or NotSupportedException or ArgumentException or System.Runtime.InteropServices.COMException)
+            {
+                // The data does not fit this file; save without it.
+                output.SetLength(0);
+                encoder = target == FileFormat.Jpg ? new JpegBitmapEncoder { QualityLevel = Math.Clamp(quality ?? 92, 1, 100) } : new TiffBitmapEncoder { Compression = TiffCompressOption.Lzw };
+            }
+        }
         encoder.Frames.Add(BitmapFrame.Create(frame));
         encoder.Save(output);
     }
 
-    /// <summary>Lossy WebP at quality 80 with the alpha channel kept, like cwebp on the Mac.</summary>
-    private static void EncodeWebp(BitmapSource image, Stream output)
+    /// <summary>
+    /// The camera data of a JPEG or TIFF, ready for a file of <paramref name="target"/>; null when there is none or it
+    /// cannot move. The orientation is reset, since the pixels are already upright.
+    /// </summary>
+    private static BitmapMetadata? CameraData(string path, FileFormat target)
+    {
+        var source = FileFormats.Detect(path);
+        if (source is not (FileFormat.Jpg or FileFormat.Tiff) || source != target && target != FileFormat.Jpg)
+        {
+            return null;
+        }
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+            if (decoder.Frames[0].Metadata is not BitmapMetadata metadata || source != target)
+            {
+                return null;
+            }
+            var copy = metadata.Clone();
+            if (copy.ContainsQuery("System.Photo.Orientation"))
+            {
+                copy.SetQuery("System.Photo.Orientation", (ushort)1);
+            }
+            return copy;
+        }
+        catch (Exception error) when (error is IOException or NotSupportedException or InvalidOperationException or ArgumentException
+            or System.Runtime.InteropServices.COMException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Lossy WebP (quality 80 by default) with the alpha channel kept, like cwebp on the Mac.</summary>
+    private static void EncodeWebp(BitmapSource image, Stream output, int quality = WebpQuality)
     {
         var (pixels, width, height) = Bgra(image);
         var info = new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Unpremul);
@@ -96,7 +207,7 @@ internal static class ImageConverter
         {
             using var skImage = SKImage.FromPixelCopy(info, handle.AddrOfPinnedObject(), width * 4)
                 ?? throw new InvalidOperationException("Could not prepare the image for WebP.");
-            using var data = skImage.Encode(SKEncodedImageFormat.Webp, WebpQuality)
+            using var data = skImage.Encode(SKEncodedImageFormat.Webp, Math.Clamp(quality, 1, 100))
                 ?? throw new InvalidOperationException("Could not encode WebP.");
             data.SaveTo(output);
         }

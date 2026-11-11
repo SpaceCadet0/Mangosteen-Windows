@@ -171,8 +171,9 @@ internal static class MediaTools
         graph.Add($"{concat}concat=n={inputs.Count}:v=1:a=1[v][a]");
         var arguments = inputs.SelectMany(i => new[] { "-i", i }).Concat([
             "-filter_complex", string.Join(";", graph), "-map", "[v]", "-map", "[a]",
-            "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
+            .. VideoEncoding.Current.Arguments(FileFormat.Mp4), "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
         ]).ToList();
+        Capabilities.EnsureHardwareProbed();
         var total = infos.Sum(i => i.Duration ?? 0);
         return OutputNaming.WriteAtomically(Dir(inputs[0]), L("Joined"), "mp4", output => FFmpeg.Encode(arguments, output, total, progress, token));
     }
@@ -406,7 +407,7 @@ internal static class MediaTools
         FileFormat.Webm => ["-c:v", "libvpx-vp9", "-crf", "30", "-b:v", "0", "-row-mt", "1", "-deadline", "good", "-cpu-used", "4"],
         FileFormat.Avi => ["-c:v", "mpeg4", "-q:v", "2"],
         FileFormat.Wmv => ["-c:v", "wmv2", "-q:v", "2"],
-        _ => ["-c:v", "libx264", "-preset", "medium", "-crf", "18"],
+        _ => [.. VideoEncoding.Current.Arguments(format, 18)],
     };
 
     public static string RedactVideo(string input, IReadOnlyList<VideoRegion> regions, RedactionStyle style, uint color,

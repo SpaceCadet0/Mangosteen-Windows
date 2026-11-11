@@ -55,11 +55,34 @@ internal static class MediaConverter
             duration,
             video is { } v ? Text(v, "codec_name") : null,
             audio is { } au ? Text(au, "codec_name") : null,
-            video is { } vw && vw.TryGetProperty("width", out var width) ? width.GetInt32() : null,
-            video is { } vh && vh.TryGetProperty("height", out var height) ? height.GetInt32() : null,
+            // A phone video stored sideways carries a rotation; the size people see is the upright one.
+            video is { } vw && vw.TryGetProperty(Rotated(vw) ? "height" : "width", out var width) ? width.GetInt32() : null,
+            video is { } vh && vh.TryGetProperty(Rotated(vh) ? "width" : "height", out var height) ? height.GetInt32() : null,
             audio is { } ac && ac.TryGetProperty("channels", out var channels) ? channels.GetInt32() : null,
             video is { } vr ? Rate(Text(vr, "avg_frame_rate")) ?? Rate(Text(vr, "r_frame_rate")) : null,
             audio is { } ar && Text(ar, "sample_rate") is { } rate && int.TryParse(rate, out var sampleRate) ? sampleRate : null);
+    }
+
+    /// <summary>True when a video stream is turned a quarter (rotate tag, or a display matrix side data of ±90°).</summary>
+    private static bool Rotated(JsonElement stream)
+    {
+        double? rotation = null;
+        if (stream.TryGetProperty("side_data_list", out var sideData) && sideData.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in sideData.EnumerateArray())
+            {
+                if (item.TryGetProperty("rotation", out var value) && value.TryGetDouble(out var degrees))
+                {
+                    rotation = degrees;
+                }
+            }
+        }
+        if (rotation is null && stream.TryGetProperty("tags", out var tags) && Text(tags, "rotate") is { } tag
+            && double.TryParse(tag, NumberStyles.Float, CultureInfo.InvariantCulture, out var tagged))
+        {
+            rotation = tagged;
+        }
+        return rotation is { } r && Math.Abs(Math.Abs(r) % 180 - 90) < 1;
     }
 
     private static string? Text(JsonElement element, string name) =>
@@ -195,7 +218,12 @@ internal static class MediaConverter
     {
         // H.264 and the other 4:2:0 encoders need even dimensions.
         string[] evenSize = ["-vf", string.Join(",", videoFilters.Append("scale=trunc(iw/2)*2:trunc(ih/2)*2"))];
-        string[] h264 = ["-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", .. evenSize];
+        // MP4, MOV and MKV get the encoder chosen in Settings › Video (H.264 by default).
+        if (target is FileFormat.Mp4 or FileFormat.Mov or FileFormat.Mkv)
+        {
+            Capabilities.EnsureHardwareProbed();
+        }
+        string[] h264 = [.. Core.Media.VideoEncoding.Current.Arguments(target), .. evenSize];
         string[] aac = ["-c:a", "aac", "-b:a", "192k"];
         string[] maps = ["-map", "0:v:0", "-map", "0:a?"];
         return target switch
