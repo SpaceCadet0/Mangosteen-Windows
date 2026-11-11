@@ -15,23 +15,21 @@ jobs:
             Set-Content -Encoding utf8 (Join-Path $dir 'note.txt') 'hi'
             Set-Content -Encoding utf8 (Join-Path $dir 'заметка.txt') 'привет'
           }
-          $cases = @(
-            @('7zip', $null, 'Photo'), @('7zip', $null, 'Фото'),
-            @('iso9660', $null, 'Photo'), @('iso9660', $null, 'Фото'),
-            @('iso9660', 'iso9660:joliet', 'Фото'),
-            @('iso9660', 'iso9660:joliet,iso9660:rockridge', 'Photo'),
-            @('iso9660', 'iso9660:joliet,iso9660:rockridge', 'Фото'),
-            @('iso9660', 'iso9660:joliet,iso9660:rockridge,iso9660:volume-id=MANGOSTEEN', 'Фото'),
-            @('iso9660', 'iso9660:rockridge', 'Фото')
-          )
-          $i = 0
-          foreach ($c in $cases) {
-            $i++; $out = Join-Path $root "out$i.$($c[0])"
-            $args = @('--format', $c[0])
-            if ($c[1]) { $args += @('--options', $c[1]) }
-            $args += @('-cf', $out, '-C', $root, $c[2])
-            & tar.exe @args 2>&1 | Out-Host
+          Set-Content -Encoding utf8 (Join-Path $root 'loose.txt') 'x'
+          function Try($label, [string[]]$a, $out) {
+            Push-Location $root
+            & tar.exe @a 2>&1 | Out-Host
             $code = $LASTEXITCODE
-            $list = if ($code -eq 0) { (& tar.exe -tf $out 2>&1) -join ' | ' } else { '' }
-            Write-Host ("CASE {0}: {1} [{2}] {3} -> exit {4}; list: {5}" -f $i, $c[0], $c[1], $c[2], $code, $list)
+            Pop-Location
+            $list = if ($code -eq 0) { (& tar.exe -tvf $out 2>&1) -join ' | ' } else { '' }
+            Write-Host ("CASE {0} -> exit {1}; list: {2}" -f $label, $code, $list)
           }
+          foreach ($f in 'ustar', 'pax', 'zip', '7zip', 'iso9660') {
+            Try "$f file" @('--format', $f, '-cf', "$root\a-$f.out", '-C', $root, 'loose.txt') "$root\a-$f.out"
+            Try "$f folder" @('--format', $f, '-cf', "$root\b-$f.out", '-C', $root, 'Photo') "$root\b-$f.out"
+            Try "$f folder-n+files" @('--format', $f, '-n', '-cf', "$root\c-$f.out", '-C', $root, 'Photo', 'Photo/note.txt', 'Photo/заметка.txt') "$root\c-$f.out"
+            Try "$f files-in-folder" @('--format', $f, '-cf', "$root\d-$f.out", '-C', $root, 'Photo/note.txt', 'Photo/заметка.txt') "$root\d-$f.out"
+            Try "$f relative-out" @('--format', $f, '-cf', "e-$f.out", 'Photo') "$root\e-$f.out"
+          }
+          # Windows' System32 tar vs. the one in Git for Windows, for comparison
+          Get-Command tar.exe -All | ForEach-Object { Write-Host "tar at $($_.Source)" }
