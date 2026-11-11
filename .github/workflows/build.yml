@@ -164,7 +164,9 @@ jobs:
           # Start the published exe as a user would (tray icon and hooks, welcome already seen), let it settle, then
           # measure it doing nothing. The numbers go to the job summary and to the stats artifact (README strip).
           New-Item -ItemType Directory -Force (Join-Path $env:LOCALAPPDATA 'Mangosteen') | Out-Null
-          Set-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/settings.json') '{"Language":"en","WelcomeShown":true}'
+          # Welcome and What's New already seen, as for someone who has used this version.
+          $version = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version
+          Set-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/settings.json') ('{"Language":"en","WelcomeShown":true,"WhatsNewSeenVersion":"' + $version + '"}')
           $process = Start-Process publish/Mangosteen.exe -PassThru
           Start-Sleep -Seconds 20
           $process.Refresh()
