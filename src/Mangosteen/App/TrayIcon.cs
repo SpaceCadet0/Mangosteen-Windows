@@ -85,7 +85,7 @@ internal sealed class TrayIcon : IDisposable
         foreach (var entry in entries)
         {
             menu.AddSubmenu(RecentResults.Label(entry), Directory.Exists(entry.Outputs[0]) ? "\uE8B7" : "\uE8A5",
-                actions => FillResult(actions, entry), tooltip: $"{entry.Title} · {When(entry)}");
+                actions => FillResult(actions, entry), tooltip: $"{entry.Title} · {When(entry)}", thumbnail: entry.Outputs[0]);
         }
         menu.AddSeparator();
         menu.AddItem(L("Clear History"), "\uE894", RecentResults.Clear);
@@ -95,9 +95,17 @@ internal sealed class TrayIcon : IDisposable
     public static void FillResult(TrayMenu menu, Core.ResultEntry entry)
     {
         menu.AddHeader(entry.Title, When(entry));
+        if (entry.Outputs.Count == 1 && File.Exists(entry.Outputs[0]))
+        {
+            menu.AddPreview(entry.Outputs[0]);
+        }
         menu.AddSeparator();
         menu.AddItem(L("Show in Explorer"), "\uEC50", () => RecentResults.Reveal(entry));
         menu.AddItem(L("Open"), "\uE8E5", () => RecentResults.Open(entry));
+        if (entry.Outputs.Count == 1 && File.Exists(entry.Outputs[0]))
+        {
+            menu.AddItem(L("Open With…"), "\uE7AC", () => RecentResults.OpenWith(entry));
+        }
         menu.AddItem(L("Delete Result"), "\uE74D", () => RecentResults.Delete(entry));
     }
 
