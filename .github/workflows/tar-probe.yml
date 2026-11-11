@@ -1,0 +1,35 @@
+name: tar probe
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: windows-latest
+    steps:
+      - shell: pwsh
+        run: |
+          tar.exe --version
+          $root = Join-Path $env:RUNNER_TEMP 'p'; New-Item -ItemType Directory $root | Out-Null
+          foreach ($name in 'Photo', 'Фото') {
+            $dir = New-Item -ItemType Directory (Join-Path $root $name)
+            Set-Content -Encoding utf8 (Join-Path $dir 'note.txt') 'hi'
+            Set-Content -Encoding utf8 (Join-Path $dir 'заметка.txt') 'привет'
+          }
+          $cases = @(
+            @('7zip', $null, 'Photo'), @('7zip', $null, 'Фото'),
+            @('iso9660', $null, 'Photo'), @('iso9660', $null, 'Фото'),
+            @('iso9660', 'iso9660:joliet', 'Фото'),
+            @('iso9660', 'iso9660:joliet,iso9660:rockridge', 'Photo'),
+            @('iso9660', 'iso9660:joliet,iso9660:rockridge', 'Фото'),
+            @('iso9660', 'iso9660:joliet,iso9660:rockridge,iso9660:volume-id=MANGOSTEEN', 'Фото'),
+            @('iso9660', 'iso9660:rockridge', 'Фото')
+          )
+          $i = 0
+          foreach ($c in $cases) {
+            $i++; $out = Join-Path $root "out$i.$($c[0])"
+            $args = @('--format', $c[0])
+            if ($c[1]) { $args += @('--options', $c[1]) }
+            $args += @('-cf', $out, '-C', $root, $c[2])
+            & tar.exe @args 2>&1 | Out-Host
+            $code = $LASTEXITCODE
+            $list = if ($code -eq 0) { (& tar.exe -tf $out 2>&1) -join ' | ' } else { '' }
+            Write-Host ("CASE {0}: {1} [{2}] {3} -> exit {4}; list: {5}" -f $i, $c[0], $c[1], $c[2], $code, $list)
+          }

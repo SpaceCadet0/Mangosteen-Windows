@@ -112,7 +112,8 @@ public sealed class PortTests : IDisposable
         var epub = Converter.Convert(md, FileFormat.Epub)!;
         var pdf = Converter.Convert(epub, FileFormat.Pdf)!;
         using var document = PdfDocument.Open(pdf);
-        Assert.Contains("Текст книги", string.Concat(document.GetPages().Select(p => p.Text)));
+        // Page.Text has no spaces between words; the words come apart by their positions.
+        Assert.Contains("Текст книги", string.Join(" ", document.GetPages().SelectMany(p => p.GetWords()).Select(w => w.Text)));
     }
 
     [Fact]
@@ -134,7 +135,11 @@ public sealed class PortTests : IDisposable
         var result = TraceTool.TraceWith(new VectorTracer.Pixels(bgra.Pixels, bgra.Width, bgra.Height), [], 200, 120, 1,
             new VectorTracer.Options(), CancellationToken.None);
         Assert.Equal(2, result.Layers.Count);
-        Assert.All(result.Layers, layer => TraceTool.Shape(layer));
+        Sta.Run(() =>
+        {
+            Assert.All(result.Layers, layer => TraceTool.Shape(layer));
+            return 0;
+        });
     }
 
     [SkippableFact]
@@ -150,8 +155,13 @@ public sealed class PortTests : IDisposable
         var result = VTracer.Trace(new VectorTracer.Pixels(bgra.Pixels, bgra.Width, bgra.Height), png.ToArray(), 200, 120,
             new VectorTracer.Options(Colors: 2), CancellationToken.None);
         Assert.NotEmpty(result.Layers);
-        Assert.Contains(result.Layers, l => l.Color.B > 0.6 && l.Color.R < 0.3);
-        Assert.All(result.Layers, layer => TraceTool.Shape(layer));
+        // The ink of Picture is BGRA (40, 30, 200): red.
+        Assert.Contains(result.Layers, l => l.Color.R > 0.6 && l.Color.B < 0.3);
+        Sta.Run(() =>
+        {
+            Assert.All(result.Layers, layer => TraceTool.Shape(layer));
+            return 0;
+        });
     }
 
     [Fact]
