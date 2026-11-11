@@ -30,6 +30,15 @@ jobs:
         shell: pwsh
         run: ./build/fetch-ffmpeg.ps1
 
+      - uses: actions/cache@v6
+        with:
+          path: vtracer-cache/vtracer.zip
+          key: vtracer-${{ hashFiles('build/vtracer.pin') }}
+
+      - name: Fetch vtracer
+        shell: pwsh
+        run: ./build/fetch-vtracer.ps1
+
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
@@ -117,6 +126,31 @@ jobs:
           Get-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/mangosteen.log') -Tail 15
           if ($process.ExitCode -ne 0) { throw "Media self-test failed with exit code $($process.ExitCode)" }
 
+      - name: What the runner's FFmpeg, tar and fonts can do (log only)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $ffmpeg = (Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Mangosteen/ffmpeg') -Recurse -Filter ffmpeg.exe | Select-Object -First 1).FullName
+          Write-Host '--- encoders'
+          & $ffmpeg -hide_banner -encoders | Select-String 'nvenc|qsv|amf|libx264|libx265|libsvtav1|libaom|mf '
+          Write-Host '--- filters'
+          & $ffmpeg -hide_banner -filters | Select-String ' zscale | tonemap | cropdetect | libplacebo | tonemap_opencl '
+          Write-Host '--- tar'
+          & "$env:SystemRoot\System32\tar.exe" --version
+          $work = New-Item -ItemType Directory -Force (Join-Path $env:RUNNER_TEMP 'tar-check')
+          Copy-Item tests/fixtures/photo.jpg $work
+          Push-Location $work
+          foreach ($format in @('7zip', 'iso9660', 'zip', 'ustar')) {
+            & "$env:SystemRoot\System32\tar.exe" --format $format -cf "out.$format" photo.jpg 2>&1 | Write-Host
+            Write-Host "write $format exit $LASTEXITCODE size $((Get-Item "out.$format" -ErrorAction SilentlyContinue).Length)"
+            & "$env:SystemRoot\System32\tar.exe" -tf "out.$format" 2>&1 | Write-Host
+          }
+          & "$env:SystemRoot\System32\tar.exe" -cJf out.txz photo.jpg 2>&1 | Write-Host; Write-Host "xz exit $LASTEXITCODE"
+          & "$env:SystemRoot\System32\tar.exe" -cjf out.tbz photo.jpg 2>&1 | Write-Host; Write-Host "bz2 exit $LASTEXITCODE"
+          Pop-Location
+          Write-Host '--- fonts'
+          Get-ChildItem "$env:SystemRoot\Fonts" -Include 'msyh*', 'YuGoth*', 'meiryo*', 'simsun*', 'malgun*' -Recurse | Select-Object -ExpandProperty Name
+
       - name: Click through the tray menu with the real mouse
         shell: pwsh
         run: |
@@ -130,7 +164,9 @@ jobs:
           # Start the published exe as a user would (tray icon and hooks, welcome already seen), let it settle, then
           # measure it doing nothing. The numbers go to the job summary and to the stats artifact (README strip).
           New-Item -ItemType Directory -Force (Join-Path $env:LOCALAPPDATA 'Mangosteen') | Out-Null
-          Set-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/settings.json') '{"Language":"en","WelcomeShown":true}'
+          # Welcome and What's New already seen, as for someone who has used this version.
+          $version = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version
+          Set-Content (Join-Path $env:LOCALAPPDATA 'Mangosteen/settings.json') ('{"Language":"en","WelcomeShown":true,"WhatsNewSeenVersion":"' + $version + '"}')
           $process = Start-Process publish/Mangosteen.exe -PassThru
           Start-Sleep -Seconds 20
           $process.Refresh()
@@ -271,8 +307,37 @@ jobs:
             @{ id = 'tool.compress'; files = @('photo.jpg'); language = 'ru'; name = 'ru.tool.compress' },
             @{ id = 'tool.trimMedia'; files = @('clip.mp4'); language = 'ru'; name = 'ru.tool.trimMedia' },
             @{ id = 'welcome'; files = @(); language = 'ru'; name = 'ru.welcome' },
-            @{ id = 'tool.edit'; files = @('photo.jpg'); language = 'es'; name = 'es.tool.edit' }
+            @{ id = 'tool.edit'; files = @('photo.jpg'); language = 'es'; name = 'es.tool.edit' },
+            @{ id = 'tool.trace'; files = @('photo.jpg') },
+            @{ id = 'tool.trace'; files = @('photo.jpg'); language = 'ru'; name = 'ru.tool.trace' },
+            @{ id = 'tool.pagesPerSheet'; files = @('document.pdf') },
+            @{ id = 'tool.tags'; files = @('clip.mp4') },
+            @{ id = 'tool.tags'; files = @('document.pdf'); language = 'ru'; name = 'ru.tool.tags.pdf' },
+            @{ id = 'whatsnew'; files = @() },
+            @{ id = 'whatsnew'; files = @(); language = 'ru'; name = 'ru.whatsnew' },
+            @{ id = 'settings.wheels'; files = @() },
+            @{ id = 'settings.appearance'; files = @() },
+            @{ id = 'settings.saving'; files = @(); language = 'ru'; name = 'ru.settings.saving' },
+            @{ id = 'settings.video'; files = @() },
+            @{ id = 'wheel.tools.back'; files = @('clip.mp4'); name = 'wheel.tools.video.back' },
+            @{ id = 'wheel.convert.back'; files = @('photo.jpg'); name = 'wheel.convert.photo.back' }
           )
+          # The wheels in the five newer languages: every title must fit inside its segment.
+          foreach ($language in @('de', 'fr', 'pt-BR', 'zh-Hans', 'ja', 'ru', 'es')) {
+            $tools += @(
+              @{ id = 'wheel.tools'; files = @('photo.jpg', 'portrait.jpg'); language = $language; name = "$language.wheel.tools.photos"; fit = $true },
+              @{ id = 'wheel.tools.back'; files = @('photo.jpg', 'portrait.jpg'); language = $language; name = "$language.wheel.tools.photos.back"; fit = $true },
+              @{ id = 'wheel.tools'; files = @('clip.mp4'); language = $language; name = "$language.wheel.tools.video"; fit = $true },
+              @{ id = 'wheel.tools.back'; files = @('clip.mp4'); language = $language; name = "$language.wheel.tools.video.back"; fit = $true },
+              @{ id = 'wheel.tools'; files = @('document.pdf'); language = $language; name = "$language.wheel.tools.pdf"; fit = $true },
+              @{ id = 'wheel.tools'; files = @('song.mp3'); language = $language; name = "$language.wheel.tools.audio"; fit = $true },
+              @{ id = 'wheel.convert'; files = @('photo.jpg'); language = $language; name = "$language.wheel.convert.photo"; fit = $true },
+              @{ id = 'wheel.convert.back'; files = @('photo.jpg'); language = $language; name = "$language.wheel.convert.photo.back"; fit = $true },
+              @{ id = 'wheel.actions'; files = @('photo.jpg'); language = $language; name = "$language.wheel.actions"; fit = $true }
+            )
+          }
+          $log = Join-Path $env:LOCALAPPDATA 'Mangosteen/mangosteen.log'
+          $overflow = @()
           New-Item -ItemType Directory -Force snapshots | Out-Null
           foreach ($tool in $tools) {
             $name = if ($tool.name) { $tool.name } else { $tool.id }
@@ -280,6 +345,7 @@ jobs:
             $env:MANGOSTEEN_LANGUAGE = if ($tool.language) { $tool.language } else { 'en' }
             $env:MANGOSTEEN_SNAPSHOT_DEMO = if ($tool.demo) { $tool.demo } else { '' }
             $arguments = @('--snapshot', $tool.id, $output) + ($tool.files | ForEach-Object { Join-Path $fixtures $_ })
+            $before = if (Test-Path $log) { @(Get-Content $log).Count } else { 0 }
             $process = Start-Process publish/Mangosteen.exe -ArgumentList $arguments -Wait -PassThru
             if ($process.ExitCode -ne 0) {
               Write-Host ("snapshot {0} exited with 0x{1:X8}; trying again" -f $tool.id, $process.ExitCode)
@@ -290,7 +356,22 @@ jobs:
               throw "Snapshot of $($tool.id) failed"
             }
             Write-Host "snapshot: $($tool.id)"
+            if ($tool.fit) {
+              $lines = @(Get-Content $log | Select-Object -Skip $before | Where-Object { $_ -match 'titles that do not fit' })
+              if ($lines.Count -gt 0) { $overflow += "$name : $($lines[-1])" }
+            }
           }
+          New-Item -ItemType Directory -Force snapshots | Out-Null
+          $overflow | Set-Content snapshots/labels-overflow.txt
+          if ($overflow.Count -gt 0) { $overflow | ForEach-Object { Write-Host "label overflow: $_" } }
+
+      - name: Wheel titles fit in every language
+        shell: pwsh
+        run: |
+          $file = 'snapshots/labels-overflow.txt'
+          $lines = if (Test-Path $file) { @(Get-Content $file | Where-Object { $_.Trim().Length -gt 0 }) } else { @() }
+          $lines | ForEach-Object { Write-Host $_ }
+          if ($lines.Count -gt 0) { throw "$($lines.Count) wheels have titles that do not fit their segment" }
 
       - name: README screenshots
         shell: pwsh

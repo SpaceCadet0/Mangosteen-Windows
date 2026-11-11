@@ -1,0 +1,4 @@
+# vtracer, the colour tracer behind "To vector" (MIT, https://github.com/visioncortex/vtracer), bundled into
+# Mangosteen.exe by build/fetch-vtracer.ps1. The command-line build for 64-bit Windows from release 1.0.0-alpha.4.
+url=https://github.com/visioncortex/vtracer/releases/download/1.0.0-alpha.4/vtracer-x86_64-pc-windows-msvc.zip
+sha256=8eadb5529864265f003f791ad9cb128e1b9b8b8af8c21016f38b04706bcf3531

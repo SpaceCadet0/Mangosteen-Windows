@@ -37,6 +37,9 @@ public static class OutputNaming
     /// </summary>
     public static string WriteAtomically(string directory, string baseName, string extension, Action<string> produce)
     {
+        // The save policy: the chosen folder (or Downloads when this one is read-only) and the name template.
+        directory = OutputLocation.Directory(directory);
+        baseName = OutputLocation.Name(baseName, extension);
         var temp = Path.Combine(directory, $".mangosteen-{Guid.NewGuid():N}" + (extension.Length > 0 ? "." + extension : ""));
         try
         {
@@ -60,6 +63,7 @@ public static class OutputNaming
                     {
                         File.Move(temp, final, overwrite: false);
                     }
+                    OutputLocation.KeepDates(OutputLocation.Source, final);
                     return final;
                 }
                 catch (IOException) when (File.Exists(final) || Directory.Exists(final))

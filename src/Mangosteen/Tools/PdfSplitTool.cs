@@ -26,6 +26,8 @@ internal sealed class PdfSplitTool : ToolWindow
     private readonly WrapPanel _tiles = new();
     private readonly TextBlock _summary = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0), FontWeight = FontWeights.SemiBold };
     private readonly TextBox _every = new() { Text = "2", Width = 48, VerticalContentAlignment = VerticalAlignment.Center };
+    private readonly TextBox _ranges = new() { Width = 220, VerticalContentAlignment = VerticalAlignment.Center };
+    private readonly TextBlock _rangesError = new() { Foreground = Brushes.IndianRed, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0) };
     private readonly HashSet<int> _cuts = [];
     private readonly HashSet<int> _excluded = [];
     private IReadOnlyList<BitmapSource> _thumbnails = [];
@@ -55,9 +57,28 @@ internal sealed class PdfSplitTool : ToolWindow
         };
         presets.Children.Add(reset);
 
+        // Ranges typed as text: "1-3, 8, 12-" makes three documents and leaves the other pages out.
+        var rangesRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
+        rangesRow.Children.Add(new TextBlock { Text = L("Pages:"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
+        _ranges.ToolTip = L("For example 1-3, 8, 12- : a document for each range");
+        rangesRow.Children.Add(_ranges);
+        var apply = new Button { Content = L("Apply"), Margin = new Thickness(8, 0, 0, 0) };
+        apply.Click += (_, _) => ApplyRanges();
+        _ranges.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Enter)
+            {
+                ApplyRanges();
+                e.Handled = true;
+            }
+        };
+        rangesRow.Children.Add(apply);
+        rangesRow.Children.Add(_rangesError);
+
         var scroll = new ScrollViewer { Content = _tiles, Width = 820, Height = 440, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         var stack = new StackPanel();
         stack.Children.Add(presets);
+        stack.Children.Add(rangesRow);
         stack.Children.Add(scroll);
         stack.Children.Add(_summary);
         stack.Children.Add(Note(L("Click between two pages to cut there; click a page to leave it out. The original is not changed.")));
@@ -89,6 +110,21 @@ internal sealed class PdfSplitTool : ToolWindow
             }
             _settled = true;
         }, TaskScheduler.FromCurrentSynchronizationContext());
+    }
+
+    private void ApplyRanges()
+    {
+        if (PdfSplit.FromRanges(_ranges.Text, _thumbnails.Count) is { } selection)
+        {
+            _rangesError.Text = "";
+            _excluded.Clear();
+            _excluded.UnionWith(selection.Excluded);
+            SetCuts(selection.Cuts);
+        }
+        else
+        {
+            _rangesError.Text = string.Format(L("Ranges go up and stay within 1–{0}."), _thumbnails.Count);
+        }
     }
 
     private void SetCuts(HashSet<int> cuts)

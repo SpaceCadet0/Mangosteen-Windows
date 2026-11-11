@@ -91,7 +91,8 @@ internal static class FFmpeg
     }
 
     /// <summary>Runs a program from the bundle and returns its standard output; throws with the last error lines on failure.</summary>
-    public static string Run(string program, IEnumerable<string> arguments, CancellationToken token = default, Action<string>? onOutputLine = null)
+    public static string Run(string program, IEnumerable<string> arguments, CancellationToken token = default, Action<string>? onOutputLine = null,
+        Action<string>? onErrorLine = null)
     {
         var start = new ProcessStartInfo(Path.Combine(Folder(), program))
         {
@@ -123,6 +124,7 @@ internal static class FFmpeg
             {
                 return;
             }
+            onErrorLine?.Invoke(e.Data);
             lock (errors)
             {
                 errors.Enqueue(e.Data);

@@ -18,7 +18,7 @@ namespace Mangosteen;
 /// </summary>
 internal sealed class TrayMenu : Window
 {
-    private static readonly Brush Highlight = Frozen(new SolidColorBrush(WheelWindow.Brand));
+    private static Brush Highlight => Brand.AccentBrush;
     private readonly StackPanel _items = new() { Margin = new Thickness(4) };
     private readonly List<FrameworkElement> _rows = [];
     private readonly bool _light;
@@ -131,20 +131,53 @@ internal sealed class TrayMenu : Window
         AddRow(text, glyph, indent, tooltip, submenu: null, action);
 
     /// <summary>An item that opens a submenu, filled by <paramref name="fill"/> each time it opens.</summary>
-    public void AddSubmenu(string text, string glyph, Action<TrayMenu> fill, string? tooltip = null) =>
-        AddRow(text, glyph, false, tooltip, fill, null);
+    /// <param name="thumbnail">A file whose Explorer thumbnail replaces the glyph once it is ready.</param>
+    public void AddSubmenu(string text, string glyph, Action<TrayMenu> fill, string? tooltip = null, string? thumbnail = null) =>
+        AddRow(text, glyph, false, tooltip, fill, null, thumbnail);
+
+    /// <summary>A larger picture of a file (its Explorer thumbnail), above a result's actions.</summary>
+    public void AddPreview(string path)
+    {
+        var image = new Image { Width = 180, Height = 120, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Left };
+        RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
+        var frame = new Border { Child = image, Margin = new Thickness(12, 4, 12, 6), HorizontalAlignment = HorizontalAlignment.Left, Visibility = Visibility.Collapsed };
+        Platform.Thumbnails.Request(path, 256, Dispatcher, bitmap =>
+        {
+            if (bitmap is not null)
+            {
+                image.Source = bitmap;
+                frame.Visibility = Visibility.Visible;
+            }
+        });
+        _items.Children.Add(frame);
+    }
 
     /// <summary>A line of grey text that does nothing (an empty submenu).</summary>
     public void AddNote(string text) =>
         _items.Children.Add(new TextBlock { Text = text, Foreground = _secondary, FontSize = 13, Margin = new Thickness(12, 7, 16, 7) });
 
-    private void AddRow(string text, string glyph, bool indent, string? tooltip, Action<TrayMenu>? submenu, Action? action)
+    private void AddRow(string text, string glyph, bool indent, string? tooltip, Action<TrayMenu>? submenu, Action? action, string? thumbnail = null)
     {
         var icon = new TextBlock
         {
             Text = glyph, FontFamily = new FontFamily(WheelGlyphs.FontFamily), FontSize = 15, Width = 22, Foreground = _text,
             VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0),
         };
+        // A result shows its own picture: the thumbnail Explorer would show, small, in place of the glyph.
+        var picture = new Image { Width = 22, Height = 22, Margin = new Thickness(0, 0, 10, 0), Visibility = Visibility.Collapsed, Stretch = Stretch.Uniform };
+        RenderOptions.SetBitmapScalingMode(picture, BitmapScalingMode.HighQuality);
+        if (thumbnail is not null)
+        {
+            Platform.Thumbnails.Request(thumbnail, 48, Dispatcher, bitmap =>
+            {
+                if (bitmap is not null)
+                {
+                    picture.Source = bitmap;
+                    picture.Visibility = Visibility.Visible;
+                    icon.Visibility = Visibility.Collapsed;
+                }
+            });
+        }
         var label = new TextBlock
         {
             Text = text, Foreground = _text, FontSize = 13, VerticalAlignment = VerticalAlignment.Center,
@@ -158,6 +191,7 @@ internal sealed class TrayMenu : Window
         var row = new DockPanel();
         DockPanel.SetDock(chevron, Dock.Right);
         row.Children.Add(chevron);
+        row.Children.Add(picture);
         row.Children.Add(icon);
         row.Children.Add(label);
         var item = new Border
@@ -168,8 +202,8 @@ internal sealed class TrayMenu : Window
         void Lit(bool on)
         {
             item.Background = on ? Highlight : Brushes.Transparent;
-            icon.Foreground = label.Foreground = on ? Brushes.White : _text;
-            chevron.Foreground = on ? Brushes.White : _secondary;
+            icon.Foreground = label.Foreground = on ? Brand.OnAccentBrush : _text;
+            chevron.Foreground = on ? Brand.OnAccentBrush : _secondary;
         }
         item.MouseEnter += (_, _) =>
         {

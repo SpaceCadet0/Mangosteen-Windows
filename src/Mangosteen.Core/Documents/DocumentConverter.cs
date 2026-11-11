@@ -13,6 +13,7 @@ public static class DocumentConverter
         FileFormat.Odt => OdtFormat.Read(path),
         FileFormat.Rtf => RtfFormat.Parse(File.ReadAllBytes(path)),
         FileFormat.Pdf => PdfText.Read(path),
+        FileFormat.Epub or FileFormat.Fb2 => HtmlFormat.Parse(BookConverter.Html(BookConverter.Read(path, format))),
         _ => throw new NotSupportedException($"{format.DisplayName()} documents cannot be read."),
     };
 
@@ -39,6 +40,9 @@ public static class DocumentConverter
             case FileFormat.Rtf:
                 File.WriteAllText(output, RtfFormat.Write(document), System.Text.Encoding.ASCII);
                 break;
+            case FileFormat.Epub or FileFormat.Fb2:
+                WriteBook(BookConverter.FromHtml(HtmlFormat.Write(document, title), title), format, output);
+                break;
             default:
                 throw new NotSupportedException($"Documents cannot be written as {format.DisplayName()} here.");
         }
@@ -55,6 +59,32 @@ public static class DocumentConverter
             TextFile.Write(output, PdfText.PlainText(input) + "\n");
             return;
         }
+        if (BookConverter.IsBook(source) && (BookConverter.IsBook(target) || target == FileFormat.Html))
+        {
+            // Book to book keeps the chapters and pictures; a single HTML page carries its pictures inside.
+            var book = BookConverter.Read(input, source);
+            if (target == FileFormat.Html)
+            {
+                TextFile.Write(output, BookConverter.Html(book, inlineImages: true));
+            }
+            else
+            {
+                WriteBook(book, target, output);
+            }
+            return;
+        }
         Write(Read(input, source), target, output, OutputNaming.BaseName(input));
+    }
+
+    private static void WriteBook(BookConverter.Book book, FileFormat format, string output)
+    {
+        if (format == FileFormat.Epub)
+        {
+            File.WriteAllBytes(output, BookConverter.Epub(book));
+        }
+        else
+        {
+            TextFile.Write(output, BookConverter.Fb2(book));
+        }
     }
 }

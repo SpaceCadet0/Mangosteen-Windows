@@ -314,7 +314,7 @@ internal sealed class CollageTool : ToolWindow
         if (CellAt(point) is { } target && target != source)
         {
             var to = Cell(target);
-            Add(new System.Windows.Shapes.Rectangle { Width = to.Width, Height = to.Height, Stroke = new SolidColorBrush(Wheel.WheelWindow.Brand), StrokeThickness = 3 }, to.X, to.Y);
+            Add(new System.Windows.Shapes.Rectangle { Width = to.Width, Height = to.Height, Stroke = Brand.AccentBrush, StrokeThickness = 3 }, to.X, to.Y);
         }
         var thumbnail = new Border
         {

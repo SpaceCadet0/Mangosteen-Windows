@@ -35,8 +35,36 @@ public static class TextFile
         }
         catch (DecoderFallbackException)
         {
-            return Encoding.GetEncoding(1251).GetString(data);
+            return Encoding.GetEncoding(LooksWesternEuropean(data) ? 1252 : 1251).GetString(data);
         }
+    }
+
+    /// <summary>
+    /// Whether single-byte text reads as Western European (Windows-1252) rather than Cyrillic (Windows-1251). An
+    /// accented Latin letter sits inside a word of plain ASCII letters ("año", "más"); Cyrillic words are runs of bytes
+    /// above 0x7F. Each such byte votes by its neighbours; Cyrillic wins a tie, as it did before.
+    /// </summary>
+    public static bool LooksWesternEuropean(byte[] bytes)
+    {
+        bool High(int i) => i >= 0 && i < bytes.Length && bytes[i] >= 0x80;
+        bool AsciiLetter(int i) => i >= 0 && i < bytes.Length && (bytes[i] is >= 0x41 and <= 0x5A or >= 0x61 and <= 0x7A);
+        int western = 0, cyrillic = 0;
+        for (var i = 0; i < bytes.Length; i++)
+        {
+            if (bytes[i] < 0x80)
+            {
+                continue;
+            }
+            if (High(i - 1) || High(i + 1))
+            {
+                cyrillic++;
+            }
+            else if (AsciiLetter(i - 1) || AsciiLetter(i + 1))
+            {
+                western++;
+            }
+        }
+        return western > cyrillic;
     }
 
     public static void Write(string path, string text) => File.WriteAllText(path, text, Utf8);

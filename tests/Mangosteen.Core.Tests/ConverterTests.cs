@@ -229,12 +229,12 @@ public class CatalogTests
 
     [Fact]
     public void DocumentsOfferEachOtherAndPdf() =>
-        Assert.Equal([FileFormat.Pdf, FileFormat.Odt, FileFormat.Rtf, FileFormat.Txt, FileFormat.Md, FileFormat.Html],
+        Assert.Equal([FileFormat.Pdf, FileFormat.Odt, FileFormat.Rtf, FileFormat.Txt, FileFormat.Md, FileFormat.Html, FileFormat.Epub, FileFormat.Fb2],
             FormatCatalog.Targets(["a.docx"]));
 
     [Fact]
     public void ImagesOfferWebpAndPdf() => Assert.Equal(
-        [FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Gif, FileFormat.Pdf], FormatCatalog.Targets(["a.png"]));
+        [FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Gif, FileFormat.Pdf, FileFormat.Ico], FormatCatalog.Targets(["a.png"]));
 
     [Fact]
     public void LegacyDocIsNotConvertible() => Assert.Empty(FormatCatalog.Targets(["old.doc"]));

@@ -4,6 +4,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Path = System.Windows.Shapes.Path;
 using Mangosteen.Core;
@@ -13,41 +14,52 @@ using static Mangosteen.Platform.Native;
 namespace Mangosteen.Wheel;
 
 /// <summary>
-/// The round wheel shown at the cursor: dark ring segments with small gaps, the brand colour on the
-/// segment under the mouse, and the wheel name with the file count in the centre. Clicking the centre switches to
-/// the next wheel; under the mouse the centre and the outer ring take the brand colour.
+/// The round wheel shown at the cursor: ring segments with small gaps, the accent colour on the segment under the
+/// mouse, and the wheel name with the file count in the centre. Clicking the centre switches to the next wheel; under
+/// the mouse the centre and the outer ring take the accent colour. A wheel has two sides: up to ten segments on its
+/// face and the rest on its back; the mouse wheel over it, or Tab, turns it over.
 /// </summary>
 /// <remarks>
-/// The window never takes focus (WS_EX_NOACTIVATE), so Explorer stays active and no foreground rules
-/// get in the way. Esc and clicks outside are caught by the global hooks and close it.
+/// The window never takes focus (WS_EX_NOACTIVATE), so Explorer stays active and no foreground rules get in the way.
+/// Esc, Tab, the mouse wheel and clicks outside are caught by the global hooks. Lighting a segment only changes the
+/// fill of that one shape: WPF keeps the rest of the wheel as it was drawn, so moving the mouse costs next to nothing.
 /// </remarks>
 internal sealed class WheelWindow : Window
 {
     private const double WindowSize = 420;      // window, DIP: room for the largest wheel and its shadow
     private const double MinOuterRadius = 150;  // segments' outer edge; dense wheels grow up to the maximum
     private const double MaxOuterRadius = 190;  //   so that every label fits inside its segment
-    private const double DiscMargin = 6;        // dark disc beyond the segments
+    private const double DiscMargin = 6;        // disc beyond the segments
     private const double InnerRadius = 64;      // segments' inner edge
     private const double CenterRadius = 58;     // centre circle
     private const double Gap = 6;               // between segments
     private const double Corner = 7;            // segment corner rounding
 
-    public static readonly Color Brand = Color.FromRgb(0x67, 0x1E, 0x38);
-    private static readonly Brush DiscBrush = Frozen(new SolidColorBrush(Color.FromRgb(0x1C, 0x1C, 0x1E)));
     private static readonly Brush DiscBorderBrush = Frozen(new SolidColorBrush(Color.FromRgb(0x3A, 0x3A, 0x3D)));
-    private static readonly Brush SegmentBrush = Frozen(new SolidColorBrush(Color.FromRgb(0x2C, 0x2C, 0x2F)));
-    private static readonly Brush HighlightBrush = Frozen(new SolidColorBrush(Brand));
-    private static readonly Brush CenterBrush = Frozen(new SolidColorBrush(Color.FromRgb(0x22, 0x22, 0x24)));
     private static readonly Brush TextBrush = Frozen(new SolidColorBrush(Color.FromRgb(0xE6, 0xE6, 0xEA)));
     private static readonly Brush SecondaryBrush = Frozen(new SolidColorBrush(Color.FromRgb(0x9A, 0x9A, 0xA0)));
+
+    /// <summary>The dark fills, as opaque as Settings › Appearance says.</summary>
+    private readonly Brush _discBrush, _segmentBrush, _centerBrush;
 
     private static readonly Point Center = new(WindowSize / 2, WindowSize / 2);
 
     private readonly POINT _anchor;
     private readonly Canvas _layer = new() { Width = WindowSize, Height = WindowSize };
+    private readonly Canvas _canvas = new() { Width = WindowSize, Height = WindowSize };
     private Ellipse? _disc;
+    private Image? _backdrop;
     private double _outerRadius = MinOuterRadius;
     private bool _closing;
+    private WheelKind _kind;
+    private WheelSides _sides;
+    private int _fileCount;
+
+    /// <summary>In snapshot mode: a file that gets the titles that do not fit their segment.</summary>
+    public static string? OverflowReport { get; set; }
+
+    /// <summary>True while the back of the wheel is shown.</summary>
+    public bool ShowingBack { get; private set; }
 
     /// <summary>Raised when a segment is clicked. The window closes itself first.</summary>
     public event Action<WheelItem>? Chosen;
@@ -58,9 +70,12 @@ internal sealed class WheelWindow : Window
     /// <summary>Raised once the window is placed: the disc in physical screen pixels.</summary>
     public event Action<ScreenCircle>? Placed;
 
-    public WheelWindow(WheelKind kind, IReadOnlyList<WheelItem> items, int fileCount, POINT anchor)
+    public WheelWindow(WheelKind kind, WheelSides sides, int fileCount, POINT anchor)
     {
         _anchor = anchor;
+        _kind = kind;
+        _sides = sides;
+        _fileCount = fileCount;
         Title = "Mangosteen";
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
@@ -78,44 +93,97 @@ internal sealed class WheelWindow : Window
         UseLayoutRounding = true;
         TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
 
-        // The disc stays; the segments and the centre live in a layer that is replaced when the wheel switches.
-        var canvas = new Canvas { Width = WindowSize, Height = WindowSize };
-        _disc = Circle(Center, MinOuterRadius + DiscMargin, DiscBrush, DiscBorderBrush, effect: new DropShadowEffect
+        var alpha = (byte)Math.Round(255 * Brand.WheelOpacity);
+        _discBrush = Frozen(new SolidColorBrush(Color.FromArgb(alpha, 0x1C, 0x1C, 0x1E)));
+        _segmentBrush = Frozen(new SolidColorBrush(Color.FromArgb(alpha, 0x2C, 0x2C, 0x2F)));
+        _centerBrush = Frozen(new SolidColorBrush(Color.FromArgb(alpha, 0x22, 0x22, 0x24)));
+
+        // The blurred picture of what is behind the wheel, taken before the window appears. The wheel is open for a
+        // moment, so a still picture looks the same as a live blur and costs nothing while the wheel is open.
+        // It is blurred once, here, into a still picture: a live blur effect would be drawn again whenever a segment lights.
+        if (Brand.WheelBlur && Brand.WheelOpacity < 0.995 && CaptureBehind(4 + (Brand.WheelOpacity - 0.4) / 0.6 * 11) is { } behind)
+        {
+            _backdrop = new Image
+            {
+                Source = behind, Width = WindowSize, Height = WindowSize, Stretch = Stretch.Fill, IsHitTestVisible = false,
+            };
+            _canvas.Children.Add(_backdrop);
+        }
+        // The disc stays; the segments and the centre live in a layer that is replaced when the wheel switches or turns.
+        _disc = Circle(Center, MinOuterRadius + DiscMargin, _discBrush, DiscBorderBrush, effect: new DropShadowEffect
         {
             BlurRadius = 14, ShadowDepth = 3, Direction = 270, Opacity = 0.45, Color = Colors.Black,
         });
-        canvas.Children.Add(_disc);
-        canvas.Children.Add(_layer);
-        _layer.Children.Add(BuildLayer(kind, items, fileCount));
+        _canvas.Children.Add(_disc);
+        _canvas.Children.Add(_layer);
+        _layer.Children.Add(BuildLayer());
 
         var scale = new ScaleTransform(0.92, 0.92, WindowSize / 2, WindowSize / 2);
-        canvas.RenderTransform = scale;
-        canvas.Opacity = 0;
-        Content = canvas;
+        _canvas.RenderTransform = scale;
+        _canvas.Opacity = 0;
+        Content = _canvas;
 
         Loaded += (_, _) =>
         {
             var duration = TimeSpan.FromMilliseconds(120);
             var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-            canvas.BeginAnimation(OpacityProperty, new DoubleAnimation(1, duration));
+            _canvas.BeginAnimation(OpacityProperty, new DoubleAnimation(1, duration));
             scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1, duration) { EasingFunction = ease });
             scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1, duration) { EasingFunction = ease });
         };
     }
 
-    /// <summary>Shows another wheel for the same files in place: same window, same position.</summary>
-    public void ShowItems(WheelKind kind, IReadOnlyList<WheelItem> items, int fileCount)
+    private IReadOnlyList<WheelItem> Visible => ShowingBack ? _sides.Back : _sides.Front;
+    private IReadOnlyList<WheelItem> Other => ShowingBack ? _sides.Front : _sides.Back;
+
+    /// <summary>Shows another wheel for the same files in place: same window, same position, its face first.</summary>
+    public void ShowItems(WheelKind kind, WheelSides sides, int fileCount)
     {
-        var layer = BuildLayer(kind, items, fileCount);
+        _kind = kind;
+        _sides = sides;
+        _fileCount = fileCount;
+        ShowingBack = false;
+        Rebuild(new DoubleAnimation(0.3, 1, TimeSpan.FromMilliseconds(90)));
+    }
+
+    /// <summary>Turns the wheel over when its other side has segments. Returns false when there is nothing behind.</summary>
+    public bool Flip()
+    {
+        if (_closing || Other.Count == 0)
+        {
+            return false;
+        }
+        ShowingBack = !ShowingBack;
+        // A quick turn: the old side folds to a line, the new one opens from it.
+        var turn = new ScaleTransform(1, 1, WindowSize / 2, WindowSize / 2);
+        _layer.RenderTransform = turn;
+        var fold = new DoubleAnimation(1, 0.05, TimeSpan.FromMilliseconds(70)) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn } };
+        fold.Completed += (_, _) =>
+        {
+            Rebuild(null);
+            turn.BeginAnimation(ScaleTransform.ScaleXProperty,
+                new DoubleAnimation(0.05, 1, TimeSpan.FromMilliseconds(90)) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } });
+        };
+        turn.BeginAnimation(ScaleTransform.ScaleXProperty, fold);
+        return true;
+    }
+
+    private void Rebuild(DoubleAnimation? fadeIn)
+    {
+        var layer = BuildLayer();
         _layer.Children.Clear();
         _layer.Children.Add(layer);
-        layer.BeginAnimation(OpacityProperty, new DoubleAnimation(0.3, 1, TimeSpan.FromMilliseconds(90)));
-        // The new wheel may be larger or smaller; the hooks need its new outline.
+        if (fadeIn is not null)
+        {
+            layer.BeginAnimation(OpacityProperty, fadeIn);
+        }
+        // The new side may be larger or smaller; the hooks need its new outline.
         Place();
     }
 
-    private Canvas BuildLayer(WheelKind kind, IReadOnlyList<WheelItem> items, int fileCount)
+    private Canvas BuildLayer()
     {
+        var items = Visible;
         var layer = new Canvas { Width = WindowSize, Height = WindowSize };
         // One layout for the whole wheel: the same icon size, title size and distance from the centre in every segment,
         // so the icons sit on one circle; only the line break of a title differs.
@@ -123,7 +191,13 @@ internal sealed class WheelWindow : Window
         _outerRadius = outer;
         if (fits.Any(f => f is null))
         {
-            Log.Write($"wheel: titles that do not fit their segment: {string.Join(", ", items.Where((_, i) => fits[i] is null).Select(i => i.Title))}");
+            var titles = string.Join(", ", items.Where((_, i) => fits[i] is null).Select(i => i.Title));
+            Log.Write($"wheel: titles that do not fit their segment: {titles}");
+            if (OverflowReport is { } report)
+            {
+                // Snapshots: CI fails when a title does not fit in some language.
+                File.AppendAllText(report, titles + Environment.NewLine);
+            }
         }
         SetDisc(_outerRadius + DiscMargin);
         for (var i = 0; i < items.Count; i++)
@@ -131,40 +205,61 @@ internal sealed class WheelWindow : Window
             AddSegment(layer, Center, items[i], i, items.Count, fits[i]);
         }
 
-        var hub = Circle(Center, CenterRadius, CenterBrush, null);
+        var hub = Circle(Center, CenterRadius, _centerBrush, null);
         hub.Cursor = System.Windows.Input.Cursors.Hand;
-        hub.MouseEnter += (_, _) => HighlightHub(hub, true);
-        hub.MouseLeave += (_, _) => HighlightHub(hub, false);
+        var centerText = new StackPanel { Width = CenterRadius * 2 - 12, IsHitTestVisible = false };
+        var title = new TextBlock
+        {
+            Text = WheelCatalog.Title(_kind), Foreground = Brushes.White, FontSize = 15, FontWeight = FontWeights.SemiBold,
+            TextAlignment = TextAlignment.Center,
+        };
+        var count = new TextBlock
+        {
+            Text = items.Count == 0 ? (_kind == WheelKind.Convert ? L("Nothing to convert") : L("Nothing here yet"))
+                : WheelCatalog.FileCount(_fileCount),
+            Foreground = SecondaryBrush, FontSize = 12, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 2, 0, 0),
+        };
+        centerText.Children.Add(title);
+        centerText.Children.Add(count);
+        // The other side: how many segments it has, turned to with the mouse wheel or Tab.
+        TextBlock? more = null;
+        if (Other.Count > 0)
+        {
+            more = new TextBlock
+            {
+                Text = ShowingBack ? "↺ " + L("Front") : "↻ " + string.Format(L("{0} more"), Other.Count),
+                Foreground = SecondaryBrush, FontSize = 11, TextAlignment = TextAlignment.Center, Margin = new Thickness(0, 2, 0, 0),
+                ToolTip = L("Mouse wheel or Tab: the other side of the wheel"),
+            };
+            centerText.Children.Add(more);
+        }
+        hub.MouseEnter += (_, _) => HighlightHub(hub, [title, count, more], true);
+        hub.MouseLeave += (_, _) => HighlightHub(hub, [title, count, more], false);
         hub.MouseLeftButtonUp += (_, args) =>
         {
             args.Handled = true;
             HubClicked?.Invoke();
         };
         layer.Children.Add(hub);
-        var centerText = new StackPanel { Width = CenterRadius * 2 - 12, IsHitTestVisible = false };
-        centerText.Children.Add(new TextBlock
-        {
-            Text = WheelCatalog.Title(kind), Foreground = Brushes.White, FontSize = 15, FontWeight = FontWeights.SemiBold,
-            TextAlignment = TextAlignment.Center,
-        });
-        centerText.Children.Add(new TextBlock
-        {
-            Text = items.Count == 0 ? (kind == WheelKind.Convert ? L("Nothing to convert") : L("Nothing here yet"))
-                : WheelCatalog.FileCount(fileCount),
-            Foreground = SecondaryBrush, FontSize = 12, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 2, 0, 0),
-        });
-        PlaceCentered(layer, centerText, Center, CenterRadius * 2 - 12, 44);
+        PlaceCentered(layer, centerText, Center, CenterRadius * 2 - 12, more is null ? 44 : 60);
         return layer;
     }
 
-    /// <summary>The centre and the outer ring in the brand colour while the mouse is over the centre.</summary>
-    private void HighlightHub(Ellipse hub, bool on)
+    /// <summary>The centre and the outer ring in the accent colour while the mouse is over the centre.</summary>
+    private void HighlightHub(Ellipse hub, TextBlock?[] texts, bool on)
     {
-        hub.Fill = on ? HighlightBrush : CenterBrush;
+        hub.Fill = on ? Brand.AccentBrush : _centerBrush;
+        for (var i = 0; i < texts.Length; i++)
+        {
+            if (texts[i] is { } text)
+            {
+                text.Foreground = on ? Brand.OnAccentBrush : i == 0 ? Brushes.White : SecondaryBrush;
+            }
+        }
         if (_disc is { } disc)
         {
-            disc.Stroke = on ? HighlightBrush : DiscBorderBrush;
+            disc.Stroke = on ? Brand.AccentBrush : DiscBorderBrush;
             disc.StrokeThickness = on ? 6 : 1;
         }
     }
@@ -195,7 +290,17 @@ internal sealed class WheelWindow : Window
         Dispatcher.BeginInvoke(Place);
     }
 
-    /// <summary>Centres the window on the anchor in physical pixels, kept inside the monitor's work area.</summary>
+    /// <summary>The window's rectangle in physical pixels: centred on the anchor, kept inside the monitor's work area.</summary>
+    private (int X, int Y, int Size) ScreenRect()
+    {
+        var dpi = MonitorDpi(_anchor);
+        var size = (int)Math.Round(WindowSize * dpi / 96.0);
+        var work = WorkArea(_anchor);
+        var x = Math.Clamp(_anchor.X - size / 2, work.Left, Math.Max(work.Left, work.Right - size));
+        var y = Math.Clamp(_anchor.Y - size / 2, work.Top, Math.Max(work.Top, work.Bottom - size));
+        return (x, y, size);
+    }
+
     private void Place()
     {
         var hwnd = new WindowInteropHelper(this).Handle;
@@ -203,16 +308,54 @@ internal sealed class WheelWindow : Window
         {
             return;
         }
-        var dpi = MonitorDpi(_anchor);
-        var size = (int)Math.Round(WindowSize * dpi / 96.0);
-        var work = WorkArea(_anchor);
-        var x = Math.Clamp(_anchor.X - size / 2, work.Left, Math.Max(work.Left, work.Right - size));
-        var y = Math.Clamp(_anchor.Y - size / 2, work.Top, Math.Max(work.Top, work.Bottom - size));
+        var (x, y, size) = ScreenRect();
         SetWindowPos(hwnd, HWND_TOPMOST, x, y, size, size, SWP_NOACTIVATE);
         GetWindowRect(hwnd, out var rect);
         var width = rect.Right - rect.Left;
         Placed?.Invoke(new ScreenCircle(rect.Left + width / 2.0, rect.Top + (rect.Bottom - rect.Top) / 2.0,
             width * (_outerRadius + DiscMargin) / WindowSize));
+    }
+
+    /// <summary>What the screen shows where the wheel is about to appear, blurred by <paramref name="sigma"/> DIP; null when it cannot be read.</summary>
+    private BitmapSource? CaptureBehind(double sigma)
+    {
+        try
+        {
+            var (x, y, size) = ScreenRect();
+            using var bitmap = new System.Drawing.Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+            using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
+            {
+                graphics.CopyFromScreen(x, y, 0, 0, new System.Drawing.Size(size, size));
+            }
+            var data = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, size, size), System.Drawing.Imaging.ImageLockMode.ReadOnly,
+                System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+            try
+            {
+                // Blurred once with Skia; edges clamp, so the rim of the disc does not darken.
+                var info = new SkiaSharp.SKImageInfo(size, size, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Opaque);
+                using var screen = SkiaSharp.SKImage.FromPixelCopy(info, data.Scan0, data.Stride)
+                    ?? throw new InvalidOperationException("The screen could not be read.");
+                using var surface = SkiaSharp.SKSurface.Create(info);
+                var pixels = sigma * size / WindowSize;
+                using var blur = SkiaSharp.SKImageFilter.CreateBlur((float)pixels, (float)pixels, SkiaSharp.SKShaderTileMode.Clamp);
+                using var paint = new SkiaSharp.SKPaint { ImageFilter = blur };
+                surface.Canvas.DrawImage(screen, 0, 0, new SkiaSharp.SKSamplingOptions(SkiaSharp.SKFilterMode.Linear), paint);
+                using var blurred = SkiaSharp.SKBitmap.FromImage(surface.Snapshot());
+                var source = BitmapSource.Create(size, size, 96, 96, PixelFormats.Bgra32, null, blurred.Bytes, blurred.RowBytes);
+                source.Freeze();
+                return source;
+            }
+            finally
+            {
+                bitmap.UnlockBits(data);
+            }
+        }
+        catch (Exception error) when (error is System.ComponentModel.Win32Exception or ArgumentException or InvalidOperationException
+            or System.Runtime.InteropServices.ExternalException)
+        {
+            Log.Write($"wheel: no backdrop ({error.Message})");
+            return null;
+        }
     }
 
     private void SetDisc(double radius)
@@ -222,6 +365,12 @@ internal sealed class WheelWindow : Window
             disc.Width = disc.Height = radius * 2;
             Canvas.SetLeft(disc, Center.X - radius);
             Canvas.SetTop(disc, Center.Y - radius);
+        }
+        if (_backdrop is { } backdrop)
+        {
+            var clip = new EllipseGeometry(Center, radius, radius);
+            clip.Freeze();
+            backdrop.Clip = clip;
         }
     }
 
@@ -359,8 +508,8 @@ internal sealed class WheelWindow : Window
         var path = new Path
         {
             Data = SegmentGeometry(center, angle, span, count, _outerRadius),
-            Fill = SegmentBrush,
-            Stroke = SegmentBrush,
+            Fill = _segmentBrush,
+            Stroke = _segmentBrush,
             StrokeThickness = count == 1 ? 0 : Corner * 2,
             StrokeLineJoin = PenLineJoin.Round,
             Cursor = System.Windows.Input.Cursors.Hand,
@@ -399,14 +548,15 @@ internal sealed class WheelWindow : Window
         var radians = angle * Math.PI / 180;
         var labelCenter = new Point(center.X + fit.Radius * Math.Cos(radians), center.Y + fit.Radius * Math.Sin(radians));
 
+        // Lighting a segment changes only its own fill and text colour: nothing else is drawn again.
         path.MouseEnter += (_, _) =>
         {
-            path.Fill = path.Stroke = HighlightBrush;
-            glyph.Foreground = label.Foreground = Brushes.White;
+            path.Fill = path.Stroke = Brand.AccentBrush;
+            glyph.Foreground = label.Foreground = Brand.OnAccentBrush;
         };
         path.MouseLeave += (_, _) =>
         {
-            path.Fill = path.Stroke = SegmentBrush;
+            path.Fill = path.Stroke = _segmentBrush;
             glyph.Foreground = label.Foreground = foreground;
         };
         path.MouseLeftButtonUp += (_, args) =>

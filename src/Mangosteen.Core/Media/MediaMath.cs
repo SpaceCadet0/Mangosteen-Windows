@@ -37,12 +37,16 @@ public static class MediaMath
         return seconds;
     }
 
-    /// <summary>Tools keep the source format, except M4V (written as MP4) and AAC (written as M4A).</summary>
+    /// <summary>
+    /// Tools keep the source format, except the ones Mangosteen only reads: video becomes MP4, APE and WavPack become
+    /// FLAC (they are lossless), other audio M4A.
+    /// </summary>
     public static FileFormat OutputFormat(FileFormat source) => source switch
     {
-        FileFormat.M4v => FileFormat.Mp4,
-        FileFormat.Aac => FileFormat.M4a,
-        _ => source,
+        _ when !source.IsReadOnlyMedia() => source,
+        FileFormat.Ape or FileFormat.Wv => FileFormat.Flac,
+        _ when source.Category() == FormatCategory.Video => FileFormat.Mp4,
+        _ => FileFormat.M4a,
     };
 
     public static List<double> EqualSplitPoints(double duration, int parts) =>

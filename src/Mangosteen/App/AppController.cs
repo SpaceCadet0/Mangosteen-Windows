@@ -33,6 +33,10 @@ internal sealed class AppController : IDisposable
     public void Start()
     {
         FormatCatalog.MediaAvailable = Media.FFmpeg.IsBundled;
+        FormatCatalog.MagickAvailable = Conversion.MagickImaging.IsBundled;
+        Brand.Load(_settings);
+        _settings.Apply();
+        OutputLocation.Downloads = FileActions.DownloadsFolder();
         WheelCatalog.BackgroundRemovalAvailable = Tools.BackgroundRemoval.IsBundled;
         Log.Write($"ffmpeg bundled: {Media.FFmpeg.IsBundled}, background model bundled: {Tools.BackgroundRemoval.IsBundled}, packaged: {Package.IsPackaged}");
         _tray = new TrayIcon(ChooseFiles, _shelf.Toggle, () => new SettingsWindow(_settings).Present(), () => new WelcomeWindow().Present(), Quit);
@@ -42,6 +46,13 @@ internal sealed class AppController : IDisposable
         _hooks.Triggered += (click, up) => _dispatcher.BeginInvoke(() => OnTriggered(click, up));
         _hooks.DismissWheel += reason => _dispatcher.BeginInvoke(() => CloseWheel(reason));
         _hooks.SwitchWheel += kind => _dispatcher.BeginInvoke(() => SwitchWheel(kind));
+        _hooks.FlipWheel += reason => _dispatcher.BeginInvoke(() =>
+        {
+            if (_wheel?.Flip() == true)
+            {
+                Log.Write($"wheel turned over: {reason}, {(_wheel.ShowingBack ? "back" : "front")}");
+            }
+        });
         _hooks.Start();
         if (Package.IsPackaged)
         {
@@ -61,11 +72,21 @@ internal sealed class AppController : IDisposable
             ExplorerMenu.Listen((kind, path) => _dispatcher.BeginInvoke(() => OpenFromExplorer(kind, path)));
         }
         _dispatcher.BeginInvoke(ShellHitTest.WarmUp, DispatcherPriority.ApplicationIdle);
+        // What Windows' tar.exe can write, and the graphics card's video encoders, are checked once in the background.
+        Task.Run(Capabilities.Check);
         if (!_settings.WelcomeShown)
         {
             _settings.WelcomeShown = true;
+            _settings.WhatsNewSeenVersion = Program.Version;
             _settings.Save();
             new WelcomeWindow().Present();
+        }
+        else if (_settings.WhatsNewSeenVersion != Program.Version)
+        {
+            // Once after an update: what this version brought.
+            _settings.WhatsNewSeenVersion = Program.Version;
+            _settings.Save();
+            new WhatsNewWindow().Present();
         }
         else if (_hooks.Installed)
         {
@@ -169,7 +190,7 @@ internal sealed class AppController : IDisposable
             return;
         }
         _wheelPaths = paths;
-        wheel.ShowItems(_wheelKind, WheelCatalog.Items(_wheelKind, paths), paths.Count);
+        wheel.ShowItems(_wheelKind, WheelCatalog.Sides(_wheelKind, paths, _settings.WheelSides), paths.Count);
     }
 
     public void Dispose()
@@ -269,9 +290,9 @@ internal sealed class AppController : IDisposable
     private WheelWindow ShowWheel(WheelKind kind, IReadOnlyList<string> paths, POINT at)
     {
         CloseWheel("new wheel");
-        var items = WheelCatalog.Items(kind, paths);
-        Log.Write($"wheel {kind}: {string.Join(", ", items.Select(i => i.Title))}");
-        var wheel = new WheelWindow(kind, items, paths.Count, at);
+        var sides = WheelCatalog.Sides(kind, paths, _settings.WheelSides);
+        Log.Write($"wheel {kind}: {string.Join(", ", sides.Front.Select(i => i.Title))}{(sides.Back.Count > 0 ? $" | back: {string.Join(", ", sides.Back.Select(i => i.Title))}" : "")}");
+        var wheel = new WheelWindow(kind, sides, paths.Count, at);
         wheel.Placed += circle => _hooks.Wheel = circle;
         // The list can grow while the wheel is open (late paths from Explorer's menu).
         wheel.Chosen += item => Perform(item, ReferenceEquals(_wheel, wheel) ? _wheelPaths : paths);
@@ -299,10 +320,10 @@ internal sealed class AppController : IDisposable
         {
             return;
         }
-        var items = WheelCatalog.Items(kind, _wheelPaths);
-        Log.Write($"wheel switched {_wheelKind} -> {kind}: {string.Join(", ", items.Select(i => i.Title))}");
+        var sides = WheelCatalog.Sides(kind, _wheelPaths, _settings.WheelSides);
+        Log.Write($"wheel switched {_wheelKind} -> {kind}: {string.Join(", ", sides.Front.Select(i => i.Title))}");
         _wheelKind = kind;
-        wheel.ShowItems(kind, items, _wheelPaths.Count);
+        wheel.ShowItems(kind, sides, _wheelPaths.Count);
     }
 
     private void CloseWheel(string reason)
@@ -368,6 +389,19 @@ internal sealed class AppController : IDisposable
                     jobs.RunEach(L("Recognising text"), L("Text recognised"), paths.Where(Tools.TextRecognition.Accepts).ToList(),
                         (input, token) => Tools.TextRecognition.RecognizeFile(input, token));
                     break;
+                case "tool.removeBars":
+                    jobs.RunEach(L("Removing black bars"), L("Black bars removed"), Videos(paths), (input, token, progress) => Media.VideoFixes.RemoveBlackBars(input, progress, token));
+                    break;
+                case "tool.hdrToSDR":
+                    jobs.RunEach(L("HDR to SDR"), L("Converted to SDR"), Videos(paths), (input, token, progress) => Media.VideoFixes.HdrToSdr(input, progress, token));
+                    break;
+                case "tool.extractSubtitles":
+                    jobs.RunEach(L("Subtitles from video"), L("Subtitles saved"), Videos(paths), (input, token, progress) => Media.VideoFixes.ExtractSubtitles(input, progress, token));
+                    break;
+                case "tool.livePhoto":
+                    jobs.RunEach(L("Video from Live Photo"), L("Video saved"), paths.Where(p => WheelCatalog.LivePhotoMovie(p) is not null
+                        && FileFormats.Detect(p)?.Category() == FormatCategory.Image).ToList(), (input, token, progress) => Media.VideoFixes.LivePhotoVideo(input, progress, token));
+                    break;
                 case "tool.mergePDF":
                     jobs.RunOnce(L("Merging PDFs"), L("PDFs merged"), WheelCatalog.FileCount(paths.Count), () => Converter.MergePdfs(paths));
                     break;
@@ -416,6 +450,9 @@ internal sealed class AppController : IDisposable
             tray.Notify(item.Title, error.Message, error: true);
         }
     }
+
+    private static List<string> Videos(IReadOnlyList<string> paths) =>
+        paths.Where(p => FileFormats.Detect(p)?.Category() == FormatCategory.Video).ToList();
 
     private static void SendKey(ushort vk)
     {

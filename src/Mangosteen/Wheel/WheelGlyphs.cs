@@ -44,6 +44,13 @@ internal static class WheelGlyphs
         WheelIcon.Move => "",
         WheelIcon.Path => "",
         WheelIcon.Terminal => "",
+        WheelIcon.Book => "\uE736",           // ReadingMode
+        WheelIcon.RemoveBars => "\uE740",     // FullScreen
+        WheelIcon.Hdr => "\uE706",            // Brightness
+        WheelIcon.Vector => "\uE76D",         // InkingTool
+        WheelIcon.PagesPerSheet => "\uE80A",  // ViewAll
+        WheelIcon.LivePhoto => "\uE714",      // Video
+        WheelIcon.Tags => "\uE8EC",           // Tag
         _ => "",
     };
 }

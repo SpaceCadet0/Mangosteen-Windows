@@ -12,9 +12,12 @@ internal static class ToolOutput
             temp => File.WriteAllBytes(temp, data));
     }
 
-    /// <summary>The format edited images keep: the original's when it is an editable format (BMP too), otherwise PNG.</summary>
+    /// <summary>
+    /// The format edited images keep: the original's when it is an editable format (BMP too), JPG for camera RAW and
+    /// JPEG XL (a PNG of a 50-megapixel photo runs past 100 MB), otherwise PNG.
+    /// </summary>
     public static FileFormat KeepFormat(string input) =>
-        FileFormats.Detect(input) is { } format && FormatCatalog.EditableImageFormats.Contains(format) ? format : FileFormat.Png;
+        FileFormats.Detect(input) is { } format ? FormatCatalog.EditedFormat(format) : FileFormat.Png;
 
     public static List<string> Images(IEnumerable<string> paths) =>
         paths.Where(p => FileFormats.Detect(p) is { } f && FormatCatalog.ImageInputs.Contains(f)).ToList();

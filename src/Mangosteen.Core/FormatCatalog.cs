@@ -2,31 +2,63 @@ namespace Mangosteen.Core;
 
 /// <summary>Which output formats are offered for which inputs on Windows.</summary>
 /// <remarks>
-/// Only formats Mangosteen for Windows can already write are listed; the catalog grows phase by phase. HEIC and
-/// AVIF output have no dependable encoder on Windows yet, and video and audio arrive with ffmpeg.
+/// Only formats Mangosteen for Windows can write are listed. HEIC output has no dependable encoder on Windows; video,
+/// audio and AVIF need the bundled FFmpeg; PSD, TGA, OpenEXR and the read-only camera formats need Magick.NET.
 /// </remarks>
 public static class FormatCatalog
 {
     /// <summary>True when the app carries FFmpeg: video, audio and AVIF are offered only then.</summary>
     public static bool MediaAvailable { get; set; }
 
+    /// <summary>True when Magick.NET is there: PSD, TGA, OpenEXR, camera RAW, JPEG XL, DDS, DICOM, JPEG 2000.</summary>
+    public static bool MagickAvailable { get; set; }
+
+    /// <summary>True when Windows' tar.exe writes 7z (libarchive 3.6 and later); checked once at start.</summary>
+    public static bool SevenZipWritable { get; set; }
+
+    /// <summary>True when Windows' tar.exe writes ISO 9660 images.</summary>
+    public static bool IsoWritable { get; set; }
+
     /// <summary>Image formats written without FFmpeg (WIC, SkiaSharp, PDFsharp). BMP is not offered as a target.</summary>
     public static readonly IReadOnlyList<FileFormat> WicImageOutputs =
-        [FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Gif, FileFormat.Pdf];
+        [FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Gif, FileFormat.Pdf, FileFormat.Ico];
+
+    /// <summary>Written through Magick.NET; their segments start on the back of the wheel.</summary>
+    public static readonly IReadOnlyList<FileFormat> MagickImageOutputs = [FileFormat.Psd, FileFormat.Tga, FileFormat.Exr];
 
     /// <summary>
     /// Formats the editors (crop, editor, annotate, background, hide…) save an edited image in: the image targets
-    /// without PDF, plus BMP, so an edited BMP stays a BMP. Anything else is saved as PNG.
+    /// without PDF and ICO, plus BMP, so an edited BMP stays a BMP. Anything else is saved as PNG (see <see cref="EditedFormat"/>).
     /// </summary>
     public static readonly IReadOnlySet<FileFormat> EditableImageFormats = new HashSet<FileFormat>
     {
         FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Gif, FileFormat.Bmp,
     };
 
-    private static readonly IReadOnlyList<FileFormat> ImageOutputsWithAvif =
-        [FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Avif, FileFormat.Gif, FileFormat.Pdf];
+    /// <summary>
+    /// The format a tool saves an edited picture in: the original's when it can be written, JPG for camera RAW and
+    /// JPEG XL (a PNG of a 50-megapixel photo runs to 100 MB and more; Windows has no HEIC encoder), PNG otherwise.
+    /// </summary>
+    public static FileFormat EditedFormat(FileFormat source) =>
+        EditableImageFormats.Contains(source) ? source : source is FileFormat.Raw or FileFormat.Jxl ? FileFormat.Jpg : FileFormat.Png;
 
-    public static IReadOnlyList<FileFormat> ImageOutputs => MediaAvailable ? ImageOutputsWithAvif : WicImageOutputs;
+    public static IReadOnlyList<FileFormat> ImageOutputs
+    {
+        get
+        {
+            var list = new List<FileFormat> { FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff };
+            if (MediaAvailable)
+            {
+                list.Add(FileFormat.Avif);
+            }
+            list.AddRange([FileFormat.Gif, FileFormat.Pdf, FileFormat.Ico]);
+            if (MagickAvailable)
+            {
+                list.AddRange(MagickImageOutputs);
+            }
+            return list;
+        }
+    }
 
     public static readonly IReadOnlyList<FileFormat> VideoOutputs =
         [FileFormat.Mp4, FileFormat.Mov, FileFormat.Mkv, FileFormat.Webm, FileFormat.Avi, FileFormat.Wmv, FileFormat.Gif, FileFormat.Mp3];
@@ -34,18 +66,45 @@ public static class FormatCatalog
         [FileFormat.Mp3, FileFormat.M4a, FileFormat.Wav, FileFormat.Flac, FileFormat.Ogg, FileFormat.Opus, FileFormat.Aiff, FileFormat.Wma];
     public static readonly IReadOnlyList<FileFormat> PdfOutputs =
         [FileFormat.Png, FileFormat.Jpg, FileFormat.Txt, FileFormat.Md, FileFormat.Rtf, FileFormat.Docx, FileFormat.Html];
+    /// <summary>Books (EPUB, FB2) convert like documents, and documents become one-chapter books.</summary>
     public static readonly IReadOnlyList<FileFormat> DocumentOutputs =
-        [FileFormat.Pdf, FileFormat.Docx, FileFormat.Odt, FileFormat.Rtf, FileFormat.Txt, FileFormat.Md, FileFormat.Html];
-    public static readonly IReadOnlyList<FileFormat> SubtitleOutputs = [FileFormat.Srt, FileFormat.Vtt, FileFormat.Txt];
-    public static readonly IReadOnlyList<FileFormat> TableOutputs = [FileFormat.Csv, FileFormat.Tsv, FileFormat.Xlsx];
-    public static readonly IReadOnlyList<FileFormat> ArchiveOutputs = [FileFormat.Zip, FileFormat.Tar, FileFormat.Tgz];
+        [FileFormat.Pdf, FileFormat.Docx, FileFormat.Odt, FileFormat.Rtf, FileFormat.Txt, FileFormat.Md, FileFormat.Html, FileFormat.Epub, FileFormat.Fb2];
+    public static readonly IReadOnlyList<FileFormat> SubtitleOutputs = [FileFormat.Srt, FileFormat.Vtt, FileFormat.Ass, FileFormat.Txt];
+    public static readonly IReadOnlyList<FileFormat> TableOutputs = [FileFormat.Csv, FileFormat.Tsv, FileFormat.Xlsx, FileFormat.Json];
+
+    public static IReadOnlyList<FileFormat> ArchiveOutputs
+    {
+        get
+        {
+            var list = new List<FileFormat> { FileFormat.Zip, FileFormat.Tar, FileFormat.Tgz };
+            if (SevenZipWritable)
+            {
+                list.Add(FileFormat.SevenZip);
+            }
+            if (IsoWritable)
+            {
+                list.Add(FileFormat.Iso);
+            }
+            return list;
+        }
+    }
 
     /// <summary>Image inputs WIC can decode. WebP, HEIC and AVIF need the codecs from the Microsoft Store.</summary>
-    public static readonly IReadOnlySet<FileFormat> ImageInputs = new HashSet<FileFormat>
+    public static readonly IReadOnlySet<FileFormat> WicImageInputs = new HashSet<FileFormat>
     {
         FileFormat.Png, FileFormat.Jpg, FileFormat.Tiff, FileFormat.Bmp, FileFormat.Gif,
         FileFormat.Ico, FileFormat.Webp, FileFormat.Heic, FileFormat.Avif,
     };
+
+    /// <summary>Image inputs only Magick.NET decodes.</summary>
+    public static readonly IReadOnlySet<FileFormat> MagickImageInputs = new HashSet<FileFormat>
+    {
+        FileFormat.Psd, FileFormat.Tga, FileFormat.Exr, FileFormat.Raw, FileFormat.Jxl, FileFormat.Dds, FileFormat.Dicom, FileFormat.Jp2,
+    };
+
+    /// <summary>Image inputs this build can decode.</summary>
+    public static IReadOnlySet<FileFormat> ImageInputs =>
+        MagickAvailable ? WicImageInputs.Concat(MagickImageInputs).ToHashSet() : WicImageInputs;
 
     /// <summary>An image that becomes one page when several are converted to a single PDF (raster, readable).</summary>
     public static bool IsPageImage(FileFormat format) => ImageInputs.Contains(format);
@@ -77,11 +136,12 @@ public static class FormatCatalog
     private static readonly IReadOnlyList<FileFormat> DisplayOrder =
     [
         FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Avif, FileFormat.Gif, FileFormat.Pdf,
-        FileFormat.Docx, FileFormat.Odt, FileFormat.Rtf, FileFormat.Txt, FileFormat.Md, FileFormat.Html,
-        FileFormat.Srt, FileFormat.Vtt, FileFormat.Csv, FileFormat.Tsv, FileFormat.Xlsx,
+        FileFormat.Ico, FileFormat.Psd, FileFormat.Tga, FileFormat.Exr,
+        FileFormat.Docx, FileFormat.Odt, FileFormat.Rtf, FileFormat.Txt, FileFormat.Md, FileFormat.Html, FileFormat.Epub, FileFormat.Fb2,
+        FileFormat.Srt, FileFormat.Vtt, FileFormat.Ass, FileFormat.Csv, FileFormat.Tsv, FileFormat.Xlsx, FileFormat.Json,
         FileFormat.Mp4, FileFormat.Mov, FileFormat.Mkv, FileFormat.Webm, FileFormat.Avi, FileFormat.Wmv,
         FileFormat.Mp3, FileFormat.M4a, FileFormat.Wav, FileFormat.Flac, FileFormat.Ogg, FileFormat.Opus, FileFormat.Aiff, FileFormat.Wma,
-        FileFormat.Zip, FileFormat.Tar, FileFormat.Tgz,
+        FileFormat.Zip, FileFormat.Tar, FileFormat.Tgz, FileFormat.SevenZip, FileFormat.Iso,
     ];
 
     public static IReadOnlyList<FileFormat> Outputs(FormatCategory category) => category switch
