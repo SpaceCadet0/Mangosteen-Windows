@@ -237,3 +237,23 @@ public sealed class PortTests : IDisposable
         }
     }
 }
+
+public sealed class AnimatedGifTests : IDisposable
+{
+    private readonly string _dir = Directory.CreateTempSubdirectory("mangosteen-gif").FullName;
+
+    public void Dispose() => TempCleanup.Delete(_dir);
+
+    [SkippableFact]
+    public void AnimatedGifStaysAnimated()
+    {
+        Skip.IfNot(FFmpeg.IsBundled, "This build has no FFmpeg.");
+        var gif = Path.Combine(_dir, "anim.gif");
+        FFmpeg.Encode(["-f", "lavfi", "-i", "testsrc2=size=240x160:rate=10:duration=2"], gif, 2, null, CancellationToken.None);
+        Assert.True(Compression.IsAnimated(gif));
+        var output = Compression.CompressFile(gif, new Core.Imaging.CompressionSettings(), CancellationToken.None);
+        Assert.EndsWith(".webp", output);
+        // An animated WebP carries an ANIM chunk.
+        Assert.Contains("ANIM", System.Text.Encoding.ASCII.GetString(File.ReadAllBytes(output)[..64]));
+    }
+}

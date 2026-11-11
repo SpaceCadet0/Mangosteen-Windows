@@ -53,6 +53,42 @@ internal static class Compression
         return (ImageIO.Encode(image, format, 0.05, metadata), format);
     }
 
+    /// <summary>True for a GIF of more than one frame.</summary>
+    internal static bool IsAnimated(string gif)
+    {
+        try
+        {
+            using var stream = new FileStream(gif, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            return new System.Windows.Media.Imaging.GifBitmapDecoder(stream, System.Windows.Media.Imaging.BitmapCreateOptions.None,
+                System.Windows.Media.Imaging.BitmapCacheOption.None).Frames.Count > 1;
+        }
+        catch (Exception error) when (error is IOException or NotSupportedException or System.IO.FileFormatException or ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>An animated GIF as an animated WebP at the settings' quality, every frame and its timing kept.</summary>
+    internal static byte[] AnimatedWebp(string gif, CompressionSettings settings, CancellationToken token)
+    {
+        var temp = Path.Combine(Path.GetTempPath(), $"mangosteen-{Guid.NewGuid():N}.webp");
+        try
+        {
+            var quality = (int)Math.Round(Math.Clamp(settings.Quality, 0.05, 1) * 100);
+            var arguments = new List<string> { "-i", gif, "-c:v", "libwebp_anim", "-lossless", "0", "-q:v", quality.ToString(System.Globalization.CultureInfo.InvariantCulture), "-loop", "0" };
+            if (settings.EffectiveMaxPixelSize is { } side)
+            {
+                arguments.AddRange(["-vf", $"scale='min({side},iw)':'min({side},ih)':force_original_aspect_ratio=decrease"]);
+            }
+            Media.FFmpeg.Encode(arguments, temp, null, null, token);
+            return File.ReadAllBytes(temp);
+        }
+        finally
+        {
+            File.Delete(temp);
+        }
+    }
+
     public static string CompressFile(string input, CompressionSettings settings, CancellationToken token)
     {
         var original = new FileInfo(input).Length;
@@ -64,6 +100,17 @@ internal static class Compression
                 throw new InvalidOperationException(NotSmaller(original, pdf.Length));
             }
             return ToolOutput.Write(input, L("compressed"), FileFormat.Pdf, pdf);
+        }
+        if (FileFormats.Detect(input) == FileFormat.Gif && settings.Format is null or FileFormat.Webp && Media.FFmpeg.IsBundled && IsAnimated(input))
+        {
+            // An animated GIF stays animated: an animated WebP is several times smaller. A still picture would keep
+            // only the first frame.
+            var webp = AnimatedWebp(input, settings, token);
+            if (webp.Length >= original)
+            {
+                throw new InvalidOperationException(NotSmaller(original, webp.Length));
+            }
+            return ToolOutput.Write(input, L("compressed"), FileFormat.Webp, webp);
         }
         var (data, format) = CompressImage(input, settings, token);
         if (data.Length >= original)
