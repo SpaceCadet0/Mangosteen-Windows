@@ -30,6 +30,15 @@ jobs:
         shell: pwsh
         run: ./build/fetch-ffmpeg.ps1
 
+      - uses: actions/cache@v6
+        with:
+          path: vtracer-cache/vtracer.zip
+          key: vtracer-${{ hashFiles('build/vtracer.pin') }}
+
+      - name: Fetch vtracer
+        shell: pwsh
+        run: ./build/fetch-vtracer.ps1
+
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'

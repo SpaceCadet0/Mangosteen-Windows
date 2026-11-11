@@ -33,3 +33,7 @@ src/Mangosteen/Models/isnet.sha256
 /msix/
 *.pfx
 /test.msix
+
+# vtracer is fetched by build/fetch-vtracer.ps1
+vtracer-cache/
+src/Mangosteen/Tools/vtracer.exe

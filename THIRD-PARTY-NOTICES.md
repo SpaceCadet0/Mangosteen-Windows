@@ -11,9 +11,10 @@ license texts are available at the linked projects.
 | [PdfPig](https://github.com/UglyToad/PdfPig) | Reading the text of PDF files | Apache License 2.0 |
 | [PDFsharp and MigraDoc](https://github.com/empira/PDFsharp) 6.2 | Writing PDF files | MIT |
 | [SkiaSharp](https://github.com/mono/SkiaSharp) | Writing WebP images | MIT |
-| [FFmpeg](https://ffmpeg.org) 8.1, the [BtbN build](https://github.com/BtbN/FFmpeg-Builds) with x264, libvpx, libaom, Opus, LAME and more | Video, audio and AVIF | GPL v3 |
+| [FFmpeg](https://ffmpeg.org) 8.1, the [FFmpeg-Builds build](https://github.com/FFmpeg-Builds/FFmpeg-Builds) with x264, libvpx, libaom, Opus, LAME and more | Video, audio and AVIF | GPL v3 |
 | [ONNX Runtime](https://github.com/microsoft/onnxruntime) 1.31 | Running the background-removal model | MIT |
 | [IS-Net](https://github.com/xuebinqin/DIS) "general use" model (Dichotomous Image Segmentation), ONNX export by [rembg](https://github.com/danielgatis/rembg), converted to half precision | Remove background | Apache License 2.0 |
+| [vtracer](https://github.com/visioncortex/vtracer) 1.0.0-alpha.4 | Colour tracing in "To vector" | MIT |
 | [Skia](https://skia.org) and [libwebp](https://chromium.googlesource.com/webm/libwebp), inside SkiaSharp | Image encoding | BSD 3-Clause |
 
 ## PdfPig
@@ -42,3 +43,9 @@ licensed under the GNU General Public License version 3; its licence text and ex
 (`FFmpeg-LICENSE.txt`, `FFmpeg-VERSION.txt`). The source code is available at https://ffmpeg.org/download.html and the
 build scripts at https://github.com/BtbN/FFmpeg-Builds; the archive used is named in
 [build/ffmpeg.pin](build/ffmpeg.pin).
+
+## vtracer
+
+Mangosteen.exe carries vtracer (Copyright (c) 2024 TSANG, Hao Fung, MIT licence) as a separate program for colour
+tracing. On first use it is unpacked into `%LOCALAPPDATA%\Mangosteen\vtracer` and run as its own process; the
+archive used is named in [build/vtracer.pin](build/vtracer.pin).
