@@ -24,13 +24,13 @@ public class FormatCatalogTests
 {
     [Fact]
     public void PngOffersOtherImageFormats() =>
-        Assert.Equal([FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Gif, FileFormat.Pdf],
+        Assert.Equal([FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Gif, FileFormat.Pdf, FileFormat.Ico],
             FormatCatalog.Targets(["a.png"]));
 
     [Fact]
     public void BmpIsReadAndEditedButNotOffered()
     {
-        Assert.Equal([FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Gif, FileFormat.Pdf],
+        Assert.Equal([FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Gif, FileFormat.Pdf, FileFormat.Ico],
             FormatCatalog.Targets(["a.bmp"]));
         Assert.DoesNotContain(FileFormat.Bmp, FormatCatalog.Targets(["a.jpg", "b.mp4", "c.png"]));
         Assert.Contains(FileFormat.Bmp, FormatCatalog.EditableImageFormats);
@@ -38,7 +38,7 @@ public class FormatCatalogTests
 
     [Fact]
     public void MixedImagesOfferEveryFormatSomeItemNeeds() =>
-        Assert.Equal([FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Gif, FileFormat.Pdf],
+        Assert.Equal([FileFormat.Png, FileFormat.Jpg, FileFormat.Webp, FileFormat.Tiff, FileFormat.Gif, FileFormat.Pdf, FileFormat.Ico],
             FormatCatalog.Targets(["a.png", "b.jpg"]));
 
     [Fact]
@@ -68,7 +68,7 @@ public class WheelCatalogTests
     public void ImageToolsMatchMacOrder()
     {
         var ids = WheelCatalog.Items(WheelKind.Tools, ["a.png", "b.jpg"]).Select(i => i.Id);
-        Assert.Equal(["tool.compress", "tool.crop", "tool.edit", "tool.annotate", "tool.redact", "tool.recognizeText", "tool.frame", "tool.removeBackground",
+        Assert.Equal(["tool.compress", "tool.crop", "tool.edit", "tool.trace", "tool.annotate", "tool.redact", "tool.recognizeText", "tool.frame", "tool.removeBackground",
             "tool.collage", "tool.metadata"], ids);
     }
 

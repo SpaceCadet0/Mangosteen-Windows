@@ -16,9 +16,13 @@ public static class Tables
 
     public static void Convert(string input, FileFormat source, FileFormat target, string output)
     {
-        var rows = source == FileFormat.Xlsx
-            ? ReadXlsx(input).FirstOrDefault(s => s.Rows.Count > 0)?.Rows ?? []
-            : Parse(TextFile.Read(input), Separator(source));
+        var rows = source switch
+        {
+            FileFormat.Xlsx => ReadXlsx(input).FirstOrDefault(s => s.Rows.Count > 0)?.Rows ?? [],
+            FileFormat.Json => JsonTable.Rows(TextFile.Read(input)),
+            FileFormat.Csv => ParseCsv(TextFile.Read(input)),
+            _ => Parse(TextFile.Read(input), Separator(source)),
+        };
         Write(rows, target, OutputNaming.BaseName(input), output);
     }
 
@@ -27,6 +31,10 @@ public static class Tables
         if (target == FileFormat.Xlsx)
         {
             WriteXlsx(rows, sheetName, output);
+        }
+        else if (target == FileFormat.Json)
+        {
+            File.WriteAllText(output, JsonTable.Serialize(rows), new System.Text.UTF8Encoding(false));
         }
         else
         {
@@ -51,6 +59,40 @@ public static class Tables
     }
 
     public static char Separator(FileFormat format) => format == FileFormat.Tsv ? '\t' : ',';
+
+    /// <summary>
+    /// The separator of a ".csv": Excel in many European locales (Russian too) saves "CSV" with semicolons, and some
+    /// tools write tabs. The one that splits the first line into the most fields wins (counted outside quotes); a
+    /// comma when there is no difference.
+    /// </summary>
+    public static List<List<string>> ParseCsv(string text) => Parse(text, DetectedSeparator(text));
+
+    public static char DetectedSeparator(string text)
+    {
+        var line = text.Replace("\r\n", "\n").Split('\n').FirstOrDefault(l => l.Length > 0) ?? "";
+        var counts = new Dictionary<char, int> { [','] = 0, [';'] = 0, ['\t'] = 0 };
+        var inQuotes = false;
+        foreach (var c in line)
+        {
+            if (c == '"')
+            {
+                inQuotes = !inQuotes;
+            }
+            else if (!inQuotes && counts.ContainsKey(c))
+            {
+                counts[c]++;
+            }
+        }
+        var best = ',';
+        foreach (var candidate in new[] { ';', '\t' })
+        {
+            if (counts[candidate] > counts[best])
+            {
+                best = candidate;
+            }
+        }
+        return best;
+    }
 
     public static List<List<string>> Parse(string text, char separator)
     {
